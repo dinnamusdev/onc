@@ -1,0 +1,67 @@
+{
+  "manage": "Gestionează",
+  "dashboard": "Tabloul de bord",
+  "home": "Acasă",
+
+  "account-user": "Cont și utilizator",
+  "account": "Cont",
+  "user": "Utilizator",
+
+  "roles-permissions": "Roluri și permisiuni",
+  "billing": "Facturare",
+  "blog": "Blog",
+  "setting": "Setare",
+
+  "ui-elements": "UI Elements",
+  "components": "Componente",
+  "chart": "gràfiko",
+  "tanstack-table": "Tabel TanStack",
+
+  "avatar": "Avatar",
+  "button": "Buton",
+  "card": "Karta",
+  "checkbox": "Checkbox",
+  "chip": "cip",
+  "color": "Culoare",
+  "drop-down": "Derulare",
+  "dialog": "Dialog",
+  "illustration": "Ilustrație",
+  "input": "Intrare",
+  "progress": "Progres",
+  "radio": "Radio",
+  "shadow": "Umbra",
+  "slider": "Slider",
+  "snackbar": "Snackbar",
+  "switch": "Switch",
+  "tabs": "File",
+  "tooltip": "Tooltip",
+  "typography": "Tipografie",
+
+  "plugins": "Plugins",
+  "color-picker": "Selector de culori",
+  "calendar": "Calendar",
+  "dropzone": "Zonă de plasare",
+
+  "help": "Ajutor",
+  "sample-page": "pagină-probă",
+
+  "other": "Altul",
+  "changelog": "Jurnal de modificări",
+  "documentation": "Documentație",
+  "support": "Suport",
+
+  "menu-levels": "Niveluri de meniu",
+  "level": "Nivel",
+  "level1": "nivelul 1",
+  "level2": "nivelul 2",
+  "level3": "nivelul 3",
+
+  "page": "Pagină",
+  "authentication": "Autentificare",
+  "login": "Log in",
+  "register": "Registru",
+  "forgot-password": "Aţi uitat parola",
+  "password-recovery": "Recuperarea parolei",
+  "otp-verification": "Verificare OTP",
+  "onboarding": "Onboarding"
+}

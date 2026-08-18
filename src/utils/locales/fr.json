@@ -1,0 +1,67 @@
+{
+  "manage": "Gérer",
+  "dashboard": "Tableau de bord",
+  "home": "Maison",
+
+  "account-user": "Compte et utilisateur",
+  "account": "Compte",
+  "user": "Utilisateur",
+
+  "roles-permissions": "Rôles et autorisations",
+  "billing": "Facturation",
+  "blog": "Blog",
+  "setting": "Paramètre",
+
+  "ui-elements": "UI Elements",
+  "components": "Composants",
+  "chart": "Graphique",
+  "tanstack-table": "Tableau TanStack",
+
+  "avatar": "Avatar",
+  "button": "Bouton",
+  "card": "Carte",
+  "checkbox": "Case à cocher",
+  "chip": "Puce",
+  "color": "Couleur",
+  "drop-down": "Liste déroulante",
+  "dialog": "Dialogue",
+  "illustration": "Illustration",
+  "input": "Saisie",
+  "progress": "Progression",
+  "radio": "Radio",
+  "shadow": "Ombre",
+  "slider": "Curseur",
+  "snackbar": "Snack-bar",
+  "switch": "Commutateur",
+  "tabs": "Onglets",
+  "tooltip": "Info-bulle",
+  "typography": "Typographie",
+
+  "plugins": "Plugins",
+  "color-picker": "Sélecteur de couleurs",
+  "calendar": "Calendrier",
+  "dropzone": "Zone de dépôt",
+
+  "help": "Aide",
+  "sample-page": "exemple de page",
+
+  "other": "Autre",
+  "changelog": "Journal des modifications",
+  "documentation": "Documentation",
+  "support": "Assistance",
+
+  "menu-levels": "Niveaux de menu",
+  "level": "Niveau",
+  "level1": "Niveau 1",
+  "level2": "Niveau 2",
+  "level3": "Niveau 3",
+
+  "page": "Page",
+  "authentication": "Authentification",
+  "login": "Se connecter",
+  "register": "Registre",
+  "forgot-password": "Mot de passe oublié",
+  "password-recovery": "Récupération de mot de passe",
+  "otp-verification": "Vérification OTP",
+  "onboarding": "Intégration"
+}

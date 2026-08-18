@@ -1,0 +1,67 @@
+{
+  "manage": "Manage",
+  "dashboard": "Dashboard",
+  "home": "Home",
+
+  "account-user": "Account & User",
+  "account": "Account",
+  "user": "User",
+
+  "roles-permissions": "Roles & Permissions",
+  "billing": "Billing",
+  "blog": "Blog",
+  "setting": "Setting",
+
+  "ui-elements": "UI Elements",
+  "components": "Components",
+  "chart": "Chart",
+  "tanstack-table": "TanStack Table",
+
+  "avatar": "Avatar",
+  "button": "Button",
+  "card": "Card",
+  "checkbox": "Checkbox",
+  "chip": "Chip",
+  "color": "Color",
+  "drop-down": "Drop Down",
+  "dialog": "Dialog",
+  "illustration": "Illustration",
+  "input": "Input",
+  "progress": "Progress",
+  "radio": "Radio",
+  "shadow": "Shadow",
+  "slider": "Slider",
+  "snackbar": "Snackbar",
+  "switch": "Switch",
+  "tabs": "Tabs",
+  "tooltip": "Tooltip",
+  "typography": "Typography",
+
+  "plugins": "Plugins",
+  "color-picker": "Color Picker",
+  "calendar": "Calendar",
+  "dropzone": "Dropzone",
+
+  "help": "Help",
+  "sample-page": "Sample Page",
+
+  "other": "Other",
+  "changelog": "Changelog",
+  "documentation": "Documentation",
+  "support": "Support",
+
+  "menu-levels": "Menu Levels",
+  "level": "Level",
+  "level1": "Level 1",
+  "level2": "Level 2",
+  "level3": "Level 3",
+
+  "page": "Page",
+  "authentication": "Authentication",
+  "login": "Login",
+  "register": "Register",
+  "forgot-password": "Forgot Password",
+  "password-recovery": "Password Recovery",
+  "otp-verification": "Otp Verification",
+  "onboarding": "Onboarding"
+}

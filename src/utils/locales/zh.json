@@ -1,0 +1,67 @@
+{
+  "manage": "管理",
+  "dashboard": "仪表板",
+  "home": "家",
+
+  "account-user": "帐户和用户",
+  "account": "帐户",
+  "user": "用户",
+
+  "roles-permissions": "角色和权限",
+  "billing": "账单",
+  "blog": "博客",
+  "setting": "设置",
+
+  "ui-elements": "UI Elements",
+  "components": "组件",
+  "chart": "图表",
+  "tanstack-table": "谭栈 桌子",
+
+  "avatar": "头像",
+  "button": "按钮",
+  "card": "卡片",
+  "checkbox": "复选框",
+  "chip": "芯片",
+  "color": "颜色",
+  "drop-down": "下拉菜单",
+  "dialog": "对话框",
+  "illustration": "插图",
+  "input": "输入",
+  "progress": "进度",
+  "radio": "单选按钮",
+  "shadow": "阴影",
+  "slider": "滑块",
+  "snackbar": "小吃店",
+  "switch": "开关",
+  "tabs": "标签",
+  "tooltip": "工具提示",
+  "typography": "排版",
+
+  "plugins": "插件",
+  "color-picker": "颜色选择器",
+  "calendar": "日历",
+  "dropzone": "投放区",
+
+  "help": "帮助",
+  "sample-page": "样本页",
+
+  "other": "其他",
+  "changelog": "变更日志",
+  "documentation": "文档",
+  "support": "支持",
+
+  "menu-levels": "菜单级别",
+  "level": "级别",
+  "level1": "1级",
+  "level2": "2级",
+  "level3": "3级",
+
+  "page": "页",
+  "authentication": "验证",
+  "login": "登录",
+  "register": "登记",
+  "forgot-password": "忘记密码",
+  "password-recovery": "密码恢复",
+  "otp-verification": "一次性验证码",
+  "onboarding": "入职"
+}
