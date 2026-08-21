@@ -52,3 +52,8 @@ export async function logout() {
 export async function getUserProfile(email: string, token: string) {
   return attempt(axiosServices.post('/api/auth/getUserProfile', { email, token }));
 }
+
+export async function requestCodePasswordReset(formData: ApiFormData) {
+  localStorage.removeItem(AUTH_CONFIG_KEY);
+  return attempt(axiosServices.post('/api/auth/requestCodePasswordReset', formData));
+}

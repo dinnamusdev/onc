@@ -11,6 +11,7 @@ interface AuthProvider {
   verifyOtp?: (request: Request) => Promise<Response>;
   resend?: (request: Request) => Promise<Response>;
   getUserProfile?: (request: Request) => Promise<Response>;
+  requestCodePasswordReset?: (request: Request) => Promise<Response>;
 }
 
 // Mapping of auth types to dynamic imports

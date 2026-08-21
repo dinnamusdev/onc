@@ -168,12 +168,35 @@ export async function resend(request: Request) {
   }
 }
 
+/***************************  ONC - REQUEST CODE PASSWORD RESET  ***************************/
+
+export async function requestCodePasswordReset(request: Request) {
+  try {
+    const body = await request.json();
+
+    const res = await fetch(`${ONC_API}/auth/api/Login/request-code-password-reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: body.email })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || data?.title || 'Request failed' }, { status: res.status });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 /***************************  ONC - GET USER PROFILE  ***************************/
 
 export async function getUserProfile(request: Request) {
   try {
     const body = await request.json();
-    console.log('Fetching token:', body);
     const res = await fetch(`${ONC_API}/auth/api/Users?email=${encodeURIComponent(body.email)}`, {
       headers: { Authorization: 'Bearer ' + body.token }
     });
@@ -183,7 +206,6 @@ export async function getUserProfile(request: Request) {
     }
 
     const data = await res.json();
-    console.log('Fetched user profile data:', data);
     return NextResponse.json(Array.isArray(data) ? data[0] : data, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
@@ -191,6 +213,6 @@ export async function getUserProfile(request: Request) {
 }
 
 // Export as a single object for easy import
-const oncAuth = { login, getUser, signUp, forgotPassword, resetPassword, signOut, resend, getUserProfile };
+const oncAuth = { login, getUser, signUp, forgotPassword, resetPassword, signOut, resend, getUserProfile, requestCodePasswordReset };
 
 export default oncAuth;
