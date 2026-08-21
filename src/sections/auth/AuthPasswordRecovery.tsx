@@ -1,9 +1,9 @@
 'use client';
 
 // @next
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { useState, useRef, useEffect, useTransition } from 'react';
+import { useState, useRef, useTransition } from 'react';
 
 // @mui
 import { useTheme } from '@mui/material/styles';
@@ -39,9 +39,9 @@ interface PasswordRecoveryFormInput {
 
 export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const theme = useTheme();
 
-  const [hash, setHash] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [isProcessing, startTransition] = useTransition();
@@ -49,9 +49,8 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
 
   const iconCommonProps = { size: 16, color: theme.vars.palette.grey[700] };
 
-  useEffect(() => {
-    setHash(window.location.hash);
-  }, []);
+  // Get recovery token from URL instead of sessionStorage
+  const recoveryToken = searchParams.get('recoveryToken') || '';
 
   const {
     register,
@@ -65,31 +64,21 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
   password.current = watch('password', '');
 
   const onSubmit: SubmitHandler<PasswordRecoveryFormInput> = (formData) => {
-    if (!hash) {
-      setPasswordRecoveryError('Link inválido');
-      return;
-    }
+    const email = searchParams.get('email');
 
-    const hashParams = new URLSearchParams(hash.substring(1));
-    const errorDescription = hashParams.get('error_description') || '';
-
-    if (errorDescription) {
-      setPasswordRecoveryError(errorDescription);
-      return;
-    }
-
-    const type = hashParams.get('type');
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token') || '';
-
-    if (type !== 'recovery' || !accessToken || !refreshToken) {
-      setPasswordRecoveryError('Link inválido');
+    if (!email || !recoveryToken) {
+      setPasswordRecoveryError('Sessão de recuperação inválida');
       return;
     }
 
     setPasswordRecoveryError('');
 
-    const payload = { accessToken, refreshToken, password: formData.password };
+    const payload = {
+      email,
+      token: recoveryToken,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword
+    };
 
     startTransition(async () => {
       const { error } = await resetPassword(payload);

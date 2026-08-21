@@ -173,7 +173,7 @@ export async function resend(request: Request) {
 export async function requestCodePasswordReset(request: Request) {
   try {
     const body = await request.json();
-
+   console.log('Requesting code password reset for body:', body);
     const res = await fetch(`${ONC_API}/auth/api/Login/request-code-password-reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -184,6 +184,36 @@ export async function requestCodePasswordReset(request: Request) {
 
     if (!res.ok) {
       return NextResponse.json({ error: data?.message || data?.title || 'Request failed' }, { status: res.status });
+    }
+
+    // ONC API should return internalToken in the response
+    // Expected format: { internalToken: string, recoveryCode?: string (for testing) }
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - VERIFY RECOVERY CODE  ***************************/
+
+export async function verifyRecoveryCode(request: Request) {
+  try {
+    const body = await request.json();
+
+    const res = await fetch(`${ONC_API}/auth/api/Login/verify-recovery-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: body.email,
+        code: body.code,
+        internalToken: body.internalToken
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || data?.title || 'Verification failed' }, { status: res.status });
     }
 
     return NextResponse.json(data, { status: 200 });
@@ -213,6 +243,6 @@ export async function getUserProfile(request: Request) {
 }
 
 // Export as a single object for easy import
-const oncAuth = { login, getUser, signUp, forgotPassword, resetPassword, signOut, resend, getUserProfile, requestCodePasswordReset };
+const oncAuth = { login, getUser, signUp, forgotPassword, resetPassword, signOut, resend, getUserProfile, requestCodePasswordReset, verifyRecoveryCode };
 
 export default oncAuth;

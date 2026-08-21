@@ -17,7 +17,7 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
-import { forgotPassword } from '@/utils/api/auth';
+import { requestCodePasswordReset } from '@/utils/api/auth';
 import { emailSchema } from '@/utils/validation-schema/common';
 
 // @types
@@ -62,7 +62,7 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
     }
 
     startTransition(async () => {
-      const { error } = await forgotPassword(payload);
+      const { error, data } = await requestCodePasswordReset(payload);
       if (error) {
         setForgotPasswordError(error || 'Algo deu errado');
         return;
@@ -70,8 +70,22 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
 
       reset();
 
+      // Only log recovery code in development mode for testing
+      if (process.env.NODE_ENV === 'development' && data?.recoveryCode) {
+        console.log('=== MOCK EMAIL SERVICE ===');
+        console.log(`Código de recuperação para ${formData.email}: ${data.recoveryCode}`);
+        console.log('============================');
+      }
+
       if (redirectUrl && doRedirect) {
-        router.push(redirectUrl);
+        // Pass only the internal token via URL for validation
+        // Pass recovery code via router state (navigation-specific, more secure)
+        const internalToken = data?.internalToken || '';
+        const recoveryCode = data?.recoveryCode || '';
+        
+        router.push(redirectUrl, {
+          state: { recoveryCode } // Router state - lost on page refresh (more secure)
+        });
       }
     });
   };

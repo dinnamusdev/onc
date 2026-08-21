@@ -57,3 +57,8 @@ export async function requestCodePasswordReset(formData: ApiFormData) {
   localStorage.removeItem(AUTH_CONFIG_KEY);
   return attempt(axiosServices.post('/api/auth/requestCodePasswordReset', formData));
 }
+
+export async function verifyRecoveryCode(formData: ApiFormData) {
+  localStorage.removeItem(AUTH_CONFIG_KEY);
+  return attempt(axiosServices.post('/api/auth/verifyRecoveryCode', formData));
+}

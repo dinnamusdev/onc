@@ -14,7 +14,7 @@ import Copyright from '@/sections/auth/Copyright';
 
 export default function ForgotPassword() {
   const baseUrl = useBaseUrl();
-  const redirectUrl = `${baseUrl}/password-recovery`;
+  const redirectUrl = `${baseUrl}/otp-verification?verify=recovery`;
 
   return (
     <Stack sx={{ height: 1, gap: 3 }}>
@@ -27,7 +27,7 @@ export default function ForgotPassword() {
         </Stack>
 
         {/* Forgot password form */}
-        <AuthForgotPassword redirectTo={redirectUrl} />
+        <AuthForgotPassword redirectTo={redirectUrl} attachEmail doRedirect />
       </Box>
 
       {/* Copyright section*/}
