@@ -3,7 +3,7 @@
 // @next
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 
 // @mui
 import { useTheme } from '@mui/material/styles';
@@ -49,8 +49,12 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
 
   const iconCommonProps = { size: 16, color: theme.vars.palette.grey[700] };
 
-  // Get recovery token from URL instead of sessionStorage
-  const recoveryToken = searchParams.get('recoveryToken') || '';
+  // Token de recuperação guardado durante a etapa de solicitação (App Router não tem navigation state)
+  const [recoveryToken, setRecoveryToken] = useState('');
+
+  useEffect(() => {
+    setRecoveryToken(sessionStorage.getItem('recovery_token') || searchParams.get('recoveryToken') || '');
+  }, [searchParams]);
 
   const {
     register,
@@ -88,6 +92,8 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
       }
 
       reset();
+      sessionStorage.removeItem('recovery_token');
+      sessionStorage.removeItem('recovery_code');
       router.replace('/login');
     });
   };

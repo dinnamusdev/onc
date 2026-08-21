@@ -173,7 +173,9 @@ export async function resend(request: Request) {
 export async function requestCodePasswordReset(request: Request) {
   try {
     const body = await request.json();
-   console.log('Requesting code password reset for body:', body);
+    
+    console.log('Requesting code password reset for body:', body);
+
     const res = await fetch(`${ONC_API}/auth/api/Login/request-code-password-reset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

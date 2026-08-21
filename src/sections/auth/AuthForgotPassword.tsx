@@ -70,22 +70,24 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
 
       reset();
 
+      // ONC retorna { data: { token, code } }
+      const recoveryToken = data?.data?.token || '';
+      const recoveryCode = data?.data?.code || '';
+
       // Only log recovery code in development mode for testing
-      if (process.env.NODE_ENV === 'development' && data?.recoveryCode) {
+      if (process.env.NODE_ENV === 'development' && recoveryCode) {
         console.log('=== MOCK EMAIL SERVICE ===');
-        console.log(`Código de recuperação para ${formData.email}: ${data.recoveryCode}`);
+        console.log(`Código de recuperação para ${formData.email}: ${recoveryCode}`);
         console.log('============================');
       }
 
       if (redirectUrl && doRedirect) {
-        // Pass only the internal token via URL for validation
-        // Pass recovery code via router state (navigation-specific, more secure)
-        const internalToken = data?.internalToken || '';
-        const recoveryCode = data?.recoveryCode || '';
-        
-        router.push(redirectUrl, {
-          state: { recoveryCode } // Router state - lost on page refresh (more secure)
-        });
+        // O App Router do Next.js não suporta navigation state; usamos sessionStorage
+        // para carregar o token/código entre as etapas (request -> OTP -> reset).
+        sessionStorage.setItem('recovery_token', recoveryToken);
+        sessionStorage.setItem('recovery_code', recoveryCode);
+
+        router.push(redirectUrl);
       }
     });
   };
