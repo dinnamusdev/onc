@@ -12,6 +12,7 @@ interface AuthProvider {
   resend?: (request: Request) => Promise<Response>;
   getUserProfile?: (request: Request) => Promise<Response>;
   requestCodePasswordReset?: (request: Request) => Promise<Response>;
+  verifyRecoveryCode?: (request: Request) => Promise<Response>;
 }
 
 // Mapping of auth types to dynamic imports

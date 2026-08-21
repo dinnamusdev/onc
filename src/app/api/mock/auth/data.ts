@@ -36,6 +36,17 @@ const mockUsers = [
     lastname: 'Dylan',
     password: 'User@123',
     access_token: 'user_acess_token'
+  },
+  {
+    id: '4',
+    email: 'helenabritozzz@gmail.com',
+    role: AuthRole.USER,
+    contact: '123456789',
+    dialcode: '+55',
+    firstname: 'Helena',
+    lastname: 'Brito',
+    password: 'Helena@123',
+    access_token: 'helen_acess_token'
   }
 ];
 
