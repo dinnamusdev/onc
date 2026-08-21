@@ -24,12 +24,8 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
 import { APP_DEFAULT_PATH, AUTH_USER_KEY } from '@/config';
-import { login, getUserProfile } from '@/utils/api/auth';
+import { login } from '@/utils/api/auth';
 import { emailSchema, passwordSchema } from '@/utils/validation-schema/common';
-
-// @types
-import { AuthRole } from '@/enum';
-import { User } from '@/types/auth';
 
 // @icons
 import { IconEye, IconEyeOff } from '@tabler/icons-react';
@@ -40,52 +36,6 @@ import { CommonAuthComponentProps } from '@/types/auth';
 interface LoginFormInput {
   email: string;
   password: string;
-}
-
-interface UserCredentials extends LoginFormInput {
-  title: string;
-}
-
-// Mock user credentials
-const userCredentials = [
-  { title: 'Super Admin', email: 'super_admin@saasable.io', password: 'Super@123' },
-  { title: 'Admin', email: 'admin@saasable.io', password: 'Admin@123' },
-  { title: 'User', email: 'user@saasable.io', password: 'User@123' }
-];
-
-function isChildObjectContained(parent: UserCredentials, child: LoginFormInput) {
-  return Object.entries(child).every(
-    ([key, value]) => Object.prototype.hasOwnProperty.call(parent, key) && parent[key as keyof UserCredentials] === value
-  );
-}
-
-// Função para criar objeto User com dados do perfil e token
-function createUserFromProfile(profileData: any, token: string, email: string): User {
-  return {
-    id: profileData.id || '',
-    email: email,
-    role: AuthRole.USER, // Será ajustado conforme necessário
-    contact: profileData.whatsapp || profileData.telefone || '',
-    dialcode: '',
-    firstname: profileData.nomeCompleto || profileData.userName || '',
-    lastname: '',
-    token: token,
-    // Campos do perfil
-    userName: profileData.userName,
-    whatsapp: profileData.whatsapp,
-    telefone: profileData.telefone,
-    nomeCompleto: profileData.nomeCompleto,
-    cpf: profileData.cpf,
-    dataCadastro: profileData.dataCadastro,
-    fotoURL: profileData.fotoURL,
-    logradouro: profileData.logradouro,
-    numero: profileData.numero,
-    complemento: profileData.complemento,
-    bairro: profileData.bairro,
-    cidade: profileData.cidade,
-    estado: profileData.estado,
-    cep: profileData.cep
-  };
 }
 
 /***************************  AUTH - LOGIN  ***************************/
@@ -101,45 +51,22 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
   // Initialize react-hook-form
   const {
     register,
-    watch,
     handleSubmit,
-    reset,
     formState: { errors }
-  } = useForm<LoginFormInput>({ defaultValues: { email: 'super_admin@saasable.io', password: 'Super@123' } });
-
-  const formData = watch();
+  } = useForm<LoginFormInput>({ defaultValues: { email: '', password: '' } });
 
   // Handle form submission
   const onSubmit: SubmitHandler<LoginFormInput> = (formData) => {
     setLoginError('');
 
     startTransition(async () => {
-      // 1. Fazer login para obter o token
       const { data, error } = await login(formData);
       if (error) {
-        setLoginError(error || 'Something went wrong');
+        setLoginError(error || 'Algo deu errado');
         return;
       }
 
-      // Extrair o token da resposta da API
-      const token = data?.data || data;
-      if (typeof token !== 'string') {
-        setLoginError('Invalid token format received from server');
-        return;
-      }
-
-      // 2. Buscar dados completos do perfil do usuário usando o endpoint fornecido
-      const { data: profileData, error: profileError } = await getUserProfile(formData.email, token);
-      
-      if (profileError || !profileData) {
-        setLoginError('Failed to fetch user profile. Please try again.');
-        return;
-      }
-
-      // 3. Criar objeto User com dados do perfil e token
-      const userData = createUserFromProfile(profileData, token, formData.email);
-
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data));
       router.replace(APP_DEFAULT_PATH);
     });
   };
@@ -147,84 +74,86 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
   const commonIconProps = { size: 16, color: theme.vars.palette.grey[700] };
 
   return (
-    <>
-      <Stack direction="row" sx={{ gap: 1, mb: 2 }}>
-        {userCredentials.map((credential) => (
-          <Button
-            key={credential.title}
-            variant="outlined"
-            color={isChildObjectContained(credential, formData) ? 'primary' : 'secondary'}
-            sx={{ flex: 1 }}
-            onClick={() => {
-              reset({ email: credential.email, password: credential.password });
-            }}
-          >
-            {credential.title}
-          </Button>
-        ))}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Stack gap={2}>
+        <Box>
+          <InputLabel>E-mail</InputLabel>
+          <OutlinedInput
+            {...register('email', emailSchema)}
+            placeholder="exemplo@gmail.com"
+            fullWidth
+            error={Boolean(errors.email)}
+            sx={{
+  ...inputSx,
+  '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+    WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
+    WebkitTextFillColor: '#000000 !important',
+    caretColor: '#000000',
+    transition: 'background-color 5000s ease-in-out 0s !important'
+  }
+}}
+          />
+          {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
+        </Box>
+
+        <Box>
+          <InputLabel>Senha</InputLabel>
+          <OutlinedInput
+            {...register('password', passwordSchema)}
+            type={isPasswordVisible ? 'text' : 'password'}
+            placeholder="Digite sua senha"
+            fullWidth
+            error={Boolean(errors.password)}
+            endAdornment={
+              <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsPasswordVisible(!isPasswordVisible)}>
+                {isPasswordVisible ? <IconEye {...commonIconProps} /> : <IconEyeOff {...commonIconProps} />}
+              </InputAdornment>
+            }
+            sx={{
+  ...inputSx,
+  '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+    WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
+    WebkitTextFillColor: '#000000 !important',
+    caretColor: '#000000',
+    transition: 'background-color 5000s ease-in-out 0s !important'
+  }
+}}
+          />
+          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: errors.password ? 'space-between' : 'flex-end', width: 1 }}>
+            {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
+            <Link
+              component={NextLink}
+              underline="hover"
+              variant="caption"
+              href="/forgot-password"
+              textAlign="right"
+              sx={{ '&:hover': { color: 'primary.dark' }, mt: 0.75 }}
+            >
+              Esqueceu sua senha?
+            </Link>
+          </Stack>
+        </Box>
       </Stack>
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <Stack gap={2}>
-          <Box>
-            <InputLabel>Email</InputLabel>
-            <OutlinedInput
-              {...register('email', emailSchema)}
-              placeholder="example@saasable.io"
-              fullWidth
-              error={Boolean(errors.email)}
-              sx={inputSx}
-            />
-            {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
-          </Box>
 
-          <Box>
-            <InputLabel>Password</InputLabel>
-            <OutlinedInput
-              {...register('password', passwordSchema)}
-              type={isPasswordVisible ? 'text' : 'password'}
-              placeholder="Enter your password"
-              fullWidth
-              error={Boolean(errors.password)}
-              endAdornment={
-                <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsPasswordVisible(!isPasswordVisible)}>
-                  {isPasswordVisible ? <IconEye {...commonIconProps} /> : <IconEyeOff {...commonIconProps} />}
-                </InputAdornment>
-              }
-              sx={inputSx}
-            />
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: errors.password ? 'space-between' : 'flex-end', width: 1 }}>
-              {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
-              <Link
-                component={NextLink}
-                underline="hover"
-                variant="caption"
-                href="/forgot-password"
-                textAlign="right"
-                sx={{ '&:hover': { color: 'primary.dark' }, mt: 0.75 }}
-              >
-                Forgot Password?
-              </Link>
-            </Stack>
-          </Box>
-        </Stack>
-
-        <Button
-          type="submit"
-          color="primary"
-          variant="contained"
-          disabled={isProcessing}
-          endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
-          sx={{ minWidth: 120, mt: { xs: 1, sm: 4 }, '& .MuiButton-endIcon': { ml: 1 } }}
-        >
-          Sign In
-        </Button>
-
-        {loginError && (
-          <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
-            {loginError}
-          </Alert>
-        )}
-      </form>
-    </>
+      <Button
+  type="submit"
+  color="primary"
+  variant="contained"
+  fullWidth
+  disabled={isProcessing}
+  endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
+  sx={{
+    mt: { xs: 1, sm: 4 },
+    '& .MuiButton-endIcon': { ml: 1 }
+  }}
+>
+  Login
+</Button>
+      {loginError && (
+        <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
+          {loginError}
+        </Alert>
+      )}
+    </form>
   );
 }

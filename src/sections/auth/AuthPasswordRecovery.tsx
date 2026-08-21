@@ -53,7 +53,6 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
     setHash(window.location.hash);
   }, []);
 
-  // Initialize react-hook-form
   const {
     register,
     handleSubmit,
@@ -65,10 +64,9 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
   const password = useRef({});
   password.current = watch('password', '');
 
-  // Handle form submission
   const onSubmit: SubmitHandler<PasswordRecoveryFormInput> = (formData) => {
     if (!hash) {
-      setPasswordRecoveryError('Invalid link');
+      setPasswordRecoveryError('Link inválido');
       return;
     }
 
@@ -85,7 +83,7 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
     const refreshToken = hashParams.get('refresh_token') || '';
 
     if (type !== 'recovery' || !accessToken || !refreshToken) {
-      setPasswordRecoveryError('Invalid link');
+      setPasswordRecoveryError('Link inválido');
       return;
     }
 
@@ -96,7 +94,7 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
     startTransition(async () => {
       const { error } = await resetPassword(payload);
       if (error) {
-        setPasswordRecoveryError(error || 'Something went wrong');
+        setPasswordRecoveryError(error || 'Algo deu errado');
         return;
       }
 
@@ -109,11 +107,11 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
     <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
       <Stack gap={2}>
         <Box>
-          <InputLabel>New Password</InputLabel>
+          <InputLabel>Nova Senha</InputLabel>
           <OutlinedInput
             {...register('password', passwordSchema)}
             type={isOpen ? 'text' : 'password'}
-            placeholder="Enter new password"
+            placeholder="Digite uma nova senha"
             fullWidth
             autoComplete="new-password"
             error={Boolean(errors.password)}
@@ -127,11 +125,11 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
           {errors.password?.message && <FormHelperText error>{errors.password?.message}</FormHelperText>}
         </Box>
         <Box>
-          <InputLabel>Confirm Password</InputLabel>
+          <InputLabel>Confirme a Senha</InputLabel>
           <OutlinedInput
-            {...register('confirmPassword', { validate: (value) => value === password.current || 'The passwords do not match' })}
+            {...register('confirmPassword', { validate: (value) => value === password.current || 'As senhas não coincidem' })}
             type={isConfirmOpen ? 'text' : 'password'}
-            placeholder="Enter confirm password"
+            placeholder="Digite a confirmação de senha"
             fullWidth
             error={Boolean(errors.confirmPassword)}
             endAdornment={
@@ -149,11 +147,12 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
         type="submit"
         color="primary"
         variant="contained"
+        fullWidth
         disabled={isProcessing}
         endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
         sx={{ minWidth: 120, mt: { xs: 2, sm: 4 }, '& .MuiButton-endIcon': { ml: 1 } }}
       >
-        Reset Password
+        Redefinir Senha
       </Button>
       {passwordRecoveryError && (
         <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
