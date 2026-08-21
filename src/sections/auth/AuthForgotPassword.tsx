@@ -40,9 +40,7 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
 
   const [isProcessing, startTransition] = useTransition();
   const [forgotPasswordError, setForgotPasswordError] = useState('');
-  const [mailSent, setMailSent] = useState(false);
 
-  // Initialize react-hook-form
   const {
     register,
     handleSubmit,
@@ -50,15 +48,15 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
     formState: { errors }
   } = useForm<ForgotPasswordFormInput>();
 
-  // Handle form submission
   const onSubmit: SubmitHandler<ForgotPasswordFormInput> = (formData) => {
     setForgotPasswordError('');
-    setMailSent(false);
 
     const payload: Record<string, string> = { email: formData.email };
-    const redirectUrl = redirectTo && attachEmail ? `${redirectTo}?email=${formData.email}` : redirectTo;
+    const redirectUrl =
+      redirectTo && attachEmail
+        ? `${redirectTo}?email=${encodeURIComponent(formData.email)}&verify=recovery`
+        : redirectTo;
 
-    // Add redirectTo if it's provided
     if (redirectUrl) {
       payload.redirectTo = redirectUrl;
     }
@@ -66,25 +64,24 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
     startTransition(async () => {
       const { error } = await forgotPassword(payload);
       if (error) {
-        setForgotPasswordError(error || 'Something went wrong');
+        setForgotPasswordError(error || 'Algo deu errado');
         return;
       }
 
       reset();
+
       if (redirectUrl && doRedirect) {
         router.push(redirectUrl);
-      } else {
-        setMailSent(true);
       }
     });
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
-      <InputLabel>Email</InputLabel>
+      <InputLabel>E-mail</InputLabel>
       <OutlinedInput
         {...register('email', emailSchema)}
-        placeholder="example@saasable.io"
+        placeholder="exemplo@gmail.com"
         fullWidth
         error={Boolean(errors.email)}
         sx={{ ...inputSx }}
@@ -95,20 +92,16 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
         type="submit"
         color="primary"
         variant="contained"
+        fullWidth
         disabled={isProcessing}
         endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
         sx={{ minWidth: 120, mt: { xs: 2, sm: 4 }, '& .MuiButton-endIcon': { ml: 1 } }}
       >
-        Request Code
+        Solicitar Código de Recuperação
       </Button>
       {forgotPasswordError && (
         <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
           {forgotPasswordError}
-        </Alert>
-      )}
-      {mailSent && (
-        <Alert sx={{ mt: 2 }} severity="success" variant="filled" icon={false}>
-          An email with the recovery link has been sent to your inbox. Please check your email to proceed with account recovery.
         </Alert>
       )}
     </form>
