@@ -4,7 +4,7 @@
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 // @mui
 import { useTheme } from '@mui/material/styles';
@@ -38,6 +38,12 @@ interface LoginFormInput {
   password: string;
 }
 
+const errorMessagesMap: Record<string, string> = {
+  'Invalid email or password': 'Email ou senha inválidos'
+};
+
+const translateError = (message: string) => errorMessagesMap[message] || message;
+
 /***************************  AUTH - LOGIN  ***************************/
 
 export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
@@ -54,6 +60,19 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
     handleSubmit,
     formState: { errors }
   } = useForm<LoginFormInput>({ defaultValues: { email: '', password: '' } });
+    /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
+
+  useEffect(() => {
+    if (!loginError) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setLoginError('');
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [loginError]);
 
   // Handle form submission
   const onSubmit: SubmitHandler<LoginFormInput> = (formData) => {

@@ -29,6 +29,7 @@ interface OtpFormInput {
   otp: string;
 }
 
+
 const verificationTypes: Record<string, string> = {
   signup: 'signup',
   email_change: 'email_change'
@@ -53,18 +54,21 @@ export default function AuthOtpVerification({
   const expectedRecoveryCode = (router.state as any)?.recoveryCode || '';
 
   // Form starts empty - user must type the code
-  const {
+   const {
     handleSubmit,
     control,
+    resetField,
     formState: { errors }
-  } = useForm<OtpFormInput>();
+  } = useForm<OtpFormInput>({
+    defaultValues: { otp: '' }
+  });
 
   // Contador para reenvio do código
   const [seconds, setSeconds] = useState(46);
 
   /*************************** CONTADOR ***************************/
 
-  useEffect(() => {
+    useEffect(() => {
     if (seconds <= 0) {
       return;
     }
@@ -75,6 +79,20 @@ export default function AuthOtpVerification({
 
     return () => clearInterval(timer);
   }, [seconds]);
+
+  /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
+
+  useEffect(() => {
+    if (!otpError) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setOtpError('');
+    }, 5000); // mensagem some após 5 segundos
+
+    return () => clearTimeout(timer);
+  }, [otpError]);
 
   /*************************** REENVIO DO CÓDIGO ***************************/
 
@@ -124,6 +142,7 @@ export default function AuthOtpVerification({
       // First validate that the code matches what was sent (router state)
       if (expectedRecoveryCode && formData.otp !== expectedRecoveryCode) {
         setOtpError('Código incorreto. Verifique o código enviado para seu email.');
+        resetField('otp');
         return;
       }
 
@@ -139,6 +158,7 @@ export default function AuthOtpVerification({
 
         if (error) {
           setOtpError(error || 'Algo deu errado');
+          resetField('otp');
           return;
         }
 
@@ -166,6 +186,7 @@ export default function AuthOtpVerification({
 
       if (error) {
         setOtpError(error || 'Algo deu errado');
+        resetField('otp');
         return;
       }
 

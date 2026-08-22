@@ -88,12 +88,20 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
       }
 
       reset();
-      router.replace('/login');
+      router.replace('/password-reset-success');
     });
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
+      <input
+  type="password"
+  name="fake-password"
+  autoComplete="new-password"
+  style={{ display: 'none' }}
+  tabIndex={-1}
+  aria-hidden="true"
+/>
       <Stack gap={2}>
         <Box>
           <InputLabel>Nova Senha</InputLabel>
@@ -103,13 +111,30 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
             placeholder="Digite uma nova senha"
             fullWidth
             autoComplete="new-password"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other" 
             error={Boolean(errors.password)}
             endAdornment={
               <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? <IconEye {...iconCommonProps} /> : <IconEyeOff {...iconCommonProps} />}
               </InputAdornment>
             }
-            sx={inputSx}
+            sx={{
+  ...inputSx,
+  '& input:-webkit-autofill': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
+    WebkitTextFillColor: '#000',                 // cor do texto
+    caretColor: '#000',                           // cor do cursor
+    borderRadius: 'inherit'
+  },
+  '& input:-webkit-autofill:hover': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset'
+  },
+  '& input:-webkit-autofill:focus': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset'
+  }
+}}
           />
           {errors.password?.message && <FormHelperText error>{errors.password?.message}</FormHelperText>}
         </Box>
@@ -118,15 +143,33 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
           <OutlinedInput
             {...register('confirmPassword', { validate: (value) => value === password.current || 'As senhas não coincidem' })}
             type={isConfirmOpen ? 'text' : 'password'}
+            autoComplete="new-password"
             placeholder="Digite a confirmação de senha"
             fullWidth
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
             error={Boolean(errors.confirmPassword)}
             endAdornment={
               <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsConfirmOpen(!isConfirmOpen)}>
                 {isConfirmOpen ? <IconEye {...iconCommonProps} /> : <IconEyeOff {...iconCommonProps} />}
               </InputAdornment>
             }
-            sx={inputSx}
+            sx={{
+  ...inputSx,
+  '& input:-webkit-autofill': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
+    WebkitTextFillColor: '#000',                 // cor do texto
+    caretColor: '#000',                           // cor do cursor
+    borderRadius: 'inherit'
+  },
+  '& input:-webkit-autofill:hover': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset'
+  },
+  '& input:-webkit-autofill:focus': {
+    WebkitBoxShadow: '0 0 0 1000px #fff inset'
+  }
+}}
           />
           {errors.confirmPassword?.message && <FormHelperText error>{errors.confirmPassword?.message}</FormHelperText>}
         </Box>

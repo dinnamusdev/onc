@@ -1,26 +1,26 @@
 export const emailSchema = {
-  required: 'Email is required',
-  pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Invalid email address' }
+  required: 'O email é obrigatório',
+  pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Endereço de email inválido' }
 };
 
 export const passwordSchema = {
-  required: 'Password is required',
-  minLength: { value: 8, message: 'Password must be at least 8 characters' },
+  required: 'A senha é obrigatória',
+  minLength: { value: 8, message: 'A senha deve ter no mínimo 8 caracteres' },
   validate: {
-    noSpaces: (value: string) => !/\s/.test(value) || 'Password cannot contain spaces',
-    hasUpperCase: (value: string) => /[A-Z]/.test(value) || 'Password must have at least one uppercase letter',
-    hasNumber: (value: string) => /[0-9]/.test(value) || 'Password must have at least one number',
-    hasSpecialChar: (value: string) => /[!@#$%^&*(),.?":{}|<>]/.test(value) || 'Password must have at least one special character'
+    noSpaces: (value: string) => !/\s/.test(value) || 'A senha não pode conter espaços',
+    hasUpperCase: (value: string) => /[A-Z]/.test(value) || 'A senha deve conter pelo menos uma letra maiúscula',
+    hasNumber: (value: string) => /[0-9]/.test(value) || 'A senha deve conter pelo menos um número',
+    hasSpecialChar: (value: string) => /[!@#$%^&*(),.?":{}|<>]/.test(value) || 'A senha deve conter pelo menos um caractere especial'
   }
 };
 
 export const firstNameSchema = {
-  required: 'First name is required',
-  pattern: { value: /^[a-zA-Z\s]+$/, message: 'Invalid first name' },
+  required: 'O nome é obrigatório',
+  pattern: { value: /^[a-zA-Z\s]+$/, message: 'Nome inválido' },
   validate: {
     trim: (value: string) => {
       const trimmedValue = value.trim();
-      return trimmedValue.length > 0 || 'First name cannot be empty or contain only spaces';
+      return trimmedValue.length > 0 || 'O nome não pode ficar vazio ou conter apenas espaços';
     }
   },
   onBlur: (e: { target: { value: string } }) => {
@@ -29,12 +29,12 @@ export const firstNameSchema = {
 };
 
 export const lastNameSchema = {
-  required: 'Last name is required',
-  pattern: { value: /^[a-zA-Z\s]+$/, message: 'Invalid last name' },
+  required: 'O sobrenome é obrigatório',
+  pattern: { value: /^[a-zA-Z\s]+$/, message: 'Sobrenome inválido' },
   validate: {
     trim: (value: string) => {
       const trimmedValue = value.trim();
-      return trimmedValue.length > 0 || 'Last name cannot be empty or contain only spaces';
+      return trimmedValue.length > 0 || 'O sobrenome não pode ficar vazio ou conter apenas espaços';
     }
   },
   onBlur: (e: { target: { value: string } }) => {
@@ -43,18 +43,18 @@ export const lastNameSchema = {
 };
 
 export const usernameSchema = {
-  required: 'Username is required',
+  required: 'O nome de usuário é obrigatório',
   pattern: {
     value: /^[a-zA-Z0-9._]+$/, // Alphanumeric, underscores, and dots
-    message: 'Username can only contain letters, numbers, dots, and underscores'
+    message: 'O nome de usuário só pode conter letras, números, pontos e sublinhados'
   },
   validate: {
     trim: (value: string) => {
       const trimmedValue = value.trim();
-      return trimmedValue.length > 0 || 'Username cannot be empty or contain only spaces';
+      return trimmedValue.length > 0 || 'O nome de usuário não pode ficar vazio ou conter apenas espaços';
     },
     noSpaces: (value: string) => {
-      return !/\s/.test(value) || 'Username cannot contain spaces';
+      return !/\s/.test(value) || 'O nome de usuário não pode conter espaços';
     }
   },
   onBlur: (e: { target: { value: string } }) => {
@@ -63,11 +63,11 @@ export const usernameSchema = {
 };
 
 export const contactSchema = {
-  required: 'Contact number is required',
-  pattern: { value: /^[0-9().-]{7,15}$/, message: 'Invalid contact number' }
+  required: 'O número de contato é obrigatório',
+  pattern: { value: /^[0-9().-]{7,15}$/, message: 'Número de contato inválido' }
 };
 
 export const otpSchema = {
-  required: 'OTP is required',
-  minLength: { value: 6, message: 'OTP must be exactly 6 characters' }
+  required: 'O código é obrigatório',
+  minLength: { value: 6, message: 'O código deve ter exatamente 6 caracteres' }
 };
