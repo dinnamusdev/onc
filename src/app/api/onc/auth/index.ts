@@ -21,7 +21,20 @@ export async function login(request: Request) {
       return NextResponse.json({ error: data?.message || data?.title || 'Invalid credentials' }, { status: res.status });
     }
 
-    return NextResponse.json(data, { status: 200 });
+    // O ONC retorna { statusCode, message, data: { token, ... }, success }.
+    // O app espera um objeto plano com `access_token` no topo (usado por
+    // axios.ts, GuestGuard e AuthContext). Normalizamos aqui.
+    const inner = data?.data ?? data;
+    const token = inner?.token ?? inner?.accessToken ?? inner?.access_token ?? '';
+
+    return NextResponse.json(
+      {
+        ...inner,
+        access_token: token,
+        token
+      },
+      { status: 200 }
+    );
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
@@ -173,7 +186,7 @@ export async function resend(request: Request) {
 export async function requestCodePasswordReset(request: Request) {
   try {
     const body = await request.json();
-    
+
     console.log('Requesting code password reset for body:', body);
 
     const res = await fetch(`${ONC_API}/auth/api/Login/request-code-password-reset`, {

@@ -24,7 +24,7 @@ const AuthProviderComponent = function AuthProvider({ children }: { children: Re
   const manageUserData = useCallback((localStorageData: string | null) => {
     try {
       const parsedAuthData = localStorageData ? JSON.parse(localStorageData) : null;
-      if (parsedAuthData?.token) {
+      if (parsedAuthData?.access_token || parsedAuthData?.token) {
         setUser(parsedAuthData as User);
       } else {
         setUser(null);
