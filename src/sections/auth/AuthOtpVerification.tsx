@@ -29,6 +29,7 @@ interface OtpFormInput {
   otp: string;
 }
 
+
 const verificationTypes: Record<string, string> = {
   signup: 'signup',
   email_change: 'email_change'
@@ -54,18 +55,21 @@ export default function AuthOtpVerification({
   }, []);
 
   // Form starts empty - user must type the code
-  const {
+   const {
     handleSubmit,
     control,
+    resetField,
     formState: { errors }
-  } = useForm<OtpFormInput>();
+  } = useForm<OtpFormInput>({
+    defaultValues: { otp: '' }
+  });
 
   // Contador para reenvio do código
   const [seconds, setSeconds] = useState(46);
 
   /*************************** CONTADOR ***************************/
 
-  useEffect(() => {
+    useEffect(() => {
     if (seconds <= 0) {
       return;
     }
@@ -76,6 +80,20 @@ export default function AuthOtpVerification({
 
     return () => clearInterval(timer);
   }, [seconds]);
+
+  /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
+
+  useEffect(() => {
+    if (!otpError) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setOtpError('');
+    }, 5000); // mensagem some após 5 segundos
+
+    return () => clearTimeout(timer);
+  }, [otpError]);
 
   /*************************** REENVIO DO CÓDIGO ***************************/
 
@@ -120,12 +138,30 @@ export default function AuthOtpVerification({
       // Validação puramente client-side: compara o código digitado com o recebido na etapa 1
       if (!expectedRecoveryCode || formData.otp !== expectedRecoveryCode) {
         setOtpError('Código incorreto. Verifique o código enviado para seu email.');
+        resetField('otp');
         return;
       }
 
-      // Código confere — segue para a redefinição de senha.
-      // O token já está no sessionStorage e será lido pelo AuthPasswordRecovery.
-      router.replace(`/password-recovery?email=${encodeURIComponent(email)}`);
+      // If code matches, then verify with API using internal token
+      const payload = {
+        email,
+        code: formData.otp,
+        internalToken
+      };
+
+      startTransition(async () => {
+        const { error, data } = await verifyRecoveryCode(payload);
+
+        if (error) {
+          setOtpError(error || 'Algo deu errado');
+          resetField('otp');
+          return;
+        }
+
+        // Redirect to password recovery with the recovery token from API response
+        const recoveryToken = data?.recoveryToken || '';
+        router.replace(`/password-recovery?email=${encodeURIComponent(email)}&recoveryToken=${encodeURIComponent(recoveryToken)}`);
+      });
 
       const activeElement = document.activeElement as HTMLElement | null;
       activeElement?.blur();
@@ -146,6 +182,7 @@ export default function AuthOtpVerification({
 
       if (error) {
         setOtpError(error || 'Algo deu errado');
+        resetField('otp');
         return;
       }
 
