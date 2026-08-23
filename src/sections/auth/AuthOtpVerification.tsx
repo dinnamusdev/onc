@@ -1,7 +1,7 @@
 'use client';
 
 // next
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 import { useEffect, useState, useTransition } from 'react';
 
@@ -20,7 +20,11 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
 import CodeVerification from '@/components/CodeVerification';
-import { verifyOtp, requestCodePasswordReset, resendOtp } from '@/utils/api/auth';
+import {
+  verifyOtp,
+  requestCodePasswordReset,
+  resendOtp
+} from '@/utils/api/auth';
 
 // @types
 import { OtpVerificationProps } from '@/types/auth';
@@ -42,7 +46,6 @@ export default function AuthOtpVerification({
   verify
 }: OtpVerificationProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [isProcessing, startTransition] = useTransition();
   const [otpError, setOtpError] = useState('');
@@ -135,36 +138,15 @@ export default function AuthOtpVerification({
     setOtpError('');
 
     if (verify === 'recovery') {
-      // Validação puramente client-side: compara o código digitado com o recebido na etapa 1
-      if (!expectedRecoveryCode || formData.otp !== expectedRecoveryCode) {
+      const savedRecoveryCode = sessionStorage.getItem('recovery_code') || '';
+
+      if (!savedRecoveryCode || formData.otp !== savedRecoveryCode) {
         setOtpError('Código incorreto. Verifique o código enviado para seu email.');
         resetField('otp');
         return;
       }
 
-      // If code matches, then verify with API using internal token
-      const payload = {
-        email,
-        code: formData.otp,
-        internalToken
-      };
-
-      startTransition(async () => {
-        const { error, data } = await verifyRecoveryCode(payload);
-
-        if (error) {
-          setOtpError(error || 'Algo deu errado');
-          resetField('otp');
-          return;
-        }
-
-        // Redirect to password recovery with the recovery token from API response
-        const recoveryToken = data?.recoveryToken || '';
-        router.replace(`/password-recovery?email=${encodeURIComponent(email)}&recoveryToken=${encodeURIComponent(recoveryToken)}`);
-      });
-
-      const activeElement = document.activeElement as HTMLElement | null;
-      activeElement?.blur();
+      router.replace(`/password-recovery?email=${encodeURIComponent(email)}`);
       return;
     }
 
