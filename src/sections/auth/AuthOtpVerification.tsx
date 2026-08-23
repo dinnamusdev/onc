@@ -20,7 +20,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
 import CodeVerification from '@/components/CodeVerification';
-import { verifyOtp, verifyRecoveryCode, requestCodePasswordReset, resendOtp } from '@/utils/api/auth';
+import { verifyOtp, requestCodePasswordReset, resendOtp } from '@/utils/api/auth';
 
 // @types
 import { OtpVerificationProps } from '@/types/auth';
@@ -47,11 +47,12 @@ export default function AuthOtpVerification({
   const [isProcessing, startTransition] = useTransition();
   const [otpError, setOtpError] = useState('');
 
-  // Get internal token from URL for recovery verification
-  const internalToken = searchParams.get('internalToken') || '';
+  // Código de recuperação guardado na etapa de solicitação (App Router não tem navigation state)
+  const [expectedRecoveryCode, setExpectedRecoveryCode] = useState('');
 
-  // Get recovery code from router state (for validation reference)
-  const expectedRecoveryCode = (router.state as any)?.recoveryCode || '';
+  useEffect(() => {
+    setExpectedRecoveryCode(sessionStorage.getItem('recovery_code') || '');
+  }, []);
 
   // Form starts empty - user must type the code
    const {
@@ -101,27 +102,22 @@ export default function AuthOtpVerification({
     setOtpError('');
 
     if (verify === 'recovery') {
-      // Resend recovery code
+      // Reenvia o código de recuperação
       const { error, data } = await requestCodePasswordReset({ email });
       if (error) {
         setOtpError(error || 'Algo deu errado ao reenviar código');
         return;
       }
-      
-      // Update internal token if a new one is returned
-      const newInternalToken = data?.internalToken || internalToken;
-      if (newInternalToken && newInternalToken !== internalToken) {
-        const url = new URL(window.location.href);
-        url.searchParams.set('internalToken', newInternalToken);
-        window.history.replaceState({}, '', url.toString());
+
+      // ONC retorna { data: { token, code } } — atualiza sessionStorage
+      const newToken = data?.data?.token || '';
+      const newCode = data?.data?.code || '';
+      if (newToken) {
+        sessionStorage.setItem('recovery_token', newToken);
       }
-      
-      // Update router state with new recovery code (user must type it)
-      const newRecoveryCode = data?.recoveryCode || '';
-      if (newRecoveryCode) {
-        router.push(window.location.pathname + window.location.search, {
-          state: { recoveryCode: newRecoveryCode }
-        });
+      if (newCode) {
+        sessionStorage.setItem('recovery_code', newCode);
+        setExpectedRecoveryCode(newCode);
       }
     } else {
       // Resend OTP for other verification types
@@ -139,8 +135,8 @@ export default function AuthOtpVerification({
     setOtpError('');
 
     if (verify === 'recovery') {
-      // First validate that the code matches what was sent (router state)
-      if (expectedRecoveryCode && formData.otp !== expectedRecoveryCode) {
+      // Validação puramente client-side: compara o código digitado com o recebido na etapa 1
+      if (!expectedRecoveryCode || formData.otp !== expectedRecoveryCode) {
         setOtpError('Código incorreto. Verifique o código enviado para seu email.');
         resetField('otp');
         return;
