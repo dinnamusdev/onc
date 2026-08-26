@@ -82,13 +82,13 @@ export default function NavItem({ item, level = 0 }: Props) {
       selected={isSelected}
       disabled={item.disabled}
       disableRipple={level === 0}
-      {...(level > 0 && { component: Link, href: item.url!, ...(item?.target && { target: '_blank' }) })}
+      {...(level > 0 && { component: Link, href: item.url || '#', ...(item?.target && { target: '_blank' }) })}
       sx={{ ...(level === 0 ? listItemAvatarStyle : listItemStyle) }}
     >
       {level === 0 && (
         <ButtonBase
           component={Link}
-          href={item.url!}
+          href={item.url || '#'}
           {...(item?.target && { target: '_blank' })}
           tabIndex={-1}
           sx={{ borderRadius: 2 }}

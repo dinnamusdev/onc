@@ -34,13 +34,16 @@ const cspHeader = `
 
 const nextConfig = {
   // Removida configuração webpack - Turbopack no Next.js 16 gerencia cache automaticamente
-  modularizeImports: {
-    '@mui/material': {
-      transform: '@mui/material/{{member}}'
-    },
-    '@mui/lab': {
-      transform: '@mui/lab/{{member}}'
-    }
+  // optimizePackageImports faz tree-shaking dos "barris" pesados, reduzindo
+  // drasticamente o tempo de compilação/avaliação de módulos em dev.
+  // Substitui o modularizeImports do MUI (cobre o mesmo caso de forma mais robusta).
+  //
+  // ATENÇÃO: NÃO incluir '@tabler/icons-react' aqui. O componente DynamicIcon usa
+  // `import * as TablerIcons` + acesso dinâmico por nome (TablerIcons[name]). O
+  // optimizePackageImports não suporta acesso dinâmico ao namespace, o que deixa
+  // os ícones `undefined` e causa erro 500 ao renderizar o menu.
+  experimental: {
+    optimizePackageImports: ['@mui/material', '@mui/lab', 'lodash-es']
   },
   images: {
     remotePatterns: [

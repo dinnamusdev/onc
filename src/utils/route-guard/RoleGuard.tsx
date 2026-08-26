@@ -26,26 +26,26 @@ export default function RoleGuard({ children }: RoleGuardProp) {
   const { isProcessing, userData } = useCurrentUser();
   const currentRole = userData?.role; // 'admin' or 'user'
 
-  const findParentElements = (navItems: NavItemType[], targetUrl: string, parents: NavItemType[] = []): NavItemType[] | null => {
-    for (const item of navItems) {
-      const newParents = [...parents, item];
+  const activeItem = useMemo(() => {
+    const findParentElements = (navItems: NavItemType[], targetUrl: string, parents: NavItemType[] = []): NavItemType[] | null => {
+      for (const item of navItems) {
+        const newParents = [...parents, item];
 
-      if (item.url === targetUrl) {
-        return newParents;
-      }
+        if (item.url === targetUrl) {
+          return newParents;
+        }
 
-      if (item.children) {
-        const result = findParentElements(item.children, targetUrl, newParents);
-        if (result) {
-          return result;
+        if (item.children) {
+          const result = findParentElements(item.children, targetUrl, newParents);
+          if (result) {
+            return result;
+          }
         }
       }
-    }
 
-    return null;
-  };
+      return null;
+    };
 
-  const findMenu = (): NavItemType | undefined => {
     for (const menu of menuItems?.items ?? []) {
       if (menu.type === 'group') {
         const matchedParents = findParentElements(menu.children || [], pathname);
@@ -55,10 +55,6 @@ export default function RoleGuard({ children }: RoleGuardProp) {
       }
     }
     return undefined;
-  };
-
-  const activeItem = useMemo(() => {
-    return findMenu();
   }, [pathname]);
 
   if (isProcessing) return <PageLoader />;

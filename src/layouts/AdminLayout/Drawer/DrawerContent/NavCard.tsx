@@ -108,7 +108,7 @@ function CardContent({ title, description, icon }: CardProps) {
           startIcon={icon}
           variant="contained"
           component={Link}
-          href={process.env.NEXT_PUBLIC_BUY_URL}
+          href={process.env.NEXT_PUBLIC_BUY_URL || '#'}
           target="_blank"
           sx={{ mt: 0.5 }}
         >

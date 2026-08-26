@@ -4,6 +4,7 @@ import { createContext, use, useEffect, useState, ReactNode, useCallback, memo }
 
 // @project
 import { AUTH_USER_KEY } from '@/config';
+import { getTokenFromAuthData, isTokenExpired } from '@/utils/jwt';
 
 // @types
 import { User } from '@/types/auth';
@@ -24,9 +25,16 @@ const AuthProviderComponent = function AuthProvider({ children }: { children: Re
   const manageUserData = useCallback((localStorageData: string | null) => {
     try {
       const parsedAuthData = localStorageData ? JSON.parse(localStorageData) : null;
-      if (parsedAuthData?.access_token || parsedAuthData?.token) {
+      const token = getTokenFromAuthData(parsedAuthData);
+
+      // Sessão válida apenas com token presente e não expirado.
+      if (token && !isTokenExpired(token)) {
         setUser(parsedAuthData as User);
       } else {
+        // Token ausente/expirado: limpa a sessão persistida.
+        if (parsedAuthData && typeof window !== 'undefined') {
+          localStorage.removeItem(AUTH_USER_KEY);
+        }
         setUser(null);
       }
     } catch (error) {

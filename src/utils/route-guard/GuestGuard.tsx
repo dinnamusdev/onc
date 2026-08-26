@@ -8,6 +8,7 @@ import { ReactNode, useEffect, useState } from 'react';
 // @project
 import PageLoader from '@/components/PageLoader';
 import { APP_DEFAULT_PATH, AUTH_USER_KEY } from '@/config';
+import { getTokenFromAuthData, isTokenExpired } from '@/utils/jwt';
 
 type Props = {
   children: ReactNode;
@@ -21,9 +22,16 @@ export default function GuestGuard({ children }: Props) {
 
   const manageUserData = (localStorageData: string | null) => {
     const parsedAuthData = localStorageData ? JSON.parse(localStorageData) : null;
-    if (parsedAuthData?.access_token) {
+    const token = getTokenFromAuthData(parsedAuthData);
+
+    // Só considera autenticado se houver token E ele não estiver expirado.
+    if (token && !isTokenExpired(token)) {
       router.replace(APP_DEFAULT_PATH);
     } else {
+      // Token ausente ou expirado: limpa a sessão e mostra o login.
+      if (parsedAuthData && typeof window !== 'undefined') {
+        localStorage.removeItem(AUTH_USER_KEY);
+      }
       setIsChecked(true);
     }
   };

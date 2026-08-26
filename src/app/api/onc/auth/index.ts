@@ -3,6 +3,27 @@ import { NextResponse } from 'next/server';
 
 const ONC_API = process.env.ONC_API_BASE_URL || 'http://env-0887520.sp1.br.saveincloud.net.br';
 
+/**
+ * Decodifica o payload de um JWT (sem verificar assinatura) para extrair claims
+ * como nome, email e role. A verificação da assinatura fica a cargo do backend.
+ */
+function decodeJwtClaims(token: string): Record<string, unknown> {
+  try {
+    const payloadPart = token.split('.')[1];
+    if (!payloadPart) return {};
+    const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(normalized, 'base64').toString('utf-8');
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+const CLAIM_NAME = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name';
+const CLAIM_EMAIL = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress';
+const CLAIM_NAMEID = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
+const CLAIM_ROLE = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+
 /***************************  ONC - LOGIN  ***************************/
 
 export async function login(request: Request) {
@@ -21,15 +42,30 @@ export async function login(request: Request) {
       return NextResponse.json({ error: data?.message || data?.title || 'Invalid credentials' }, { status: res.status });
     }
 
-    // O ONC retorna { statusCode, message, data: { token, ... }, success }.
-    // O app espera um objeto plano com `access_token` no topo (usado por
-    // axios.ts, GuestGuard e AuthContext). Normalizamos aqui.
-    const inner = data?.data ?? data;
-    const token = inner?.token ?? inner?.accessToken ?? inner?.access_token ?? '';
+    // O ONC retorna { statusCode, message, data: <payload>, success }, onde
+    // `data` e a propria string do JWT. O app espera um objeto plano com
+    // `access_token` no topo (usado por axios.ts, GuestGuard e AuthContext).
+    const payload = data?.data ?? data;
+
+    const token =
+      typeof payload === 'string'
+        ? payload
+        : payload?.token ?? payload?.accessToken ?? payload?.access_token ?? payload?.jwtToken ?? '';
+
+    // Extrai dados do usuario das claims do JWT (o backend so devolve o token).
+    const claims = token ? decodeJwtClaims(token) : {};
+    const role = (claims[CLAIM_ROLE] as string) ?? (claims['role'] as string) ?? 'user';
+
+    const user = {
+      id: (claims[CLAIM_NAMEID] as string) ?? (claims['sub'] as string) ?? '',
+      name: (claims[CLAIM_NAME] as string) ?? '',
+      email: (claims[CLAIM_EMAIL] as string) ?? body.email ?? '',
+      role
+    };
 
     return NextResponse.json(
       {
-        ...inner,
+        ...user,
         access_token: token,
         token
       },

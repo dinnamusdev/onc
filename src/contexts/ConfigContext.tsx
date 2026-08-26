@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useMemo, memo, useEffect } from 'react';
+import { createContext, useMemo, memo } from 'react';
 
 // @project
 import config from '@/config';
@@ -30,6 +30,10 @@ function sanitizeConfig(): void {
   }
 }
 
+// Executa a limpeza SINCRONAMENTE no carregamento do módulo, antes de qualquer
+// render — garante que o useLocalStorage nunca leia um valor corrompido/legado.
+sanitizeConfig();
+
 /***************************  CONFIG CONTEXT  ***************************/
 
 export const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
@@ -37,10 +41,6 @@ export const ConfigContext = createContext<ConfigContextValue | undefined>(undef
 /***************************  CONFIG PROVIDER  ***************************/
 
 const ConfigProviderComponent = function ConfigProvider({ children }: ChildrenProps) {
-  useEffect(() => {
-    sanitizeConfig();
-  }, []);
-
   const { state, setState, setField, resetState } = useLocalStorage<ConfigStates>(CONFIG_KEY, config);
 
   const memoizedValue = useMemo(() => ({ state, setState, setField, resetState }), [state, setField, setState, resetState]);
