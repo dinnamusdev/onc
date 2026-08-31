@@ -5,7 +5,7 @@ import { NavItemType } from '@/types/menu';
 
 const pages: NavItemType = {
   id: 'group-page',
-  title: 'Navigation',
+  title: 'Gerenciar',
   icon: 'IconDotsVertical',
   type: 'group',
   children: [
@@ -15,6 +15,20 @@ const pages: NavItemType = {
       type: 'item',
       url: '/sample-page',
       icon: 'IconLayoutDashboard'
+    },
+    {
+      id: 'users',
+      title: 'Usuários',
+      type: 'item',
+      url: '/users',
+      icon: 'IconUsers'
+    },
+    {
+      id: 'roles-permissions',
+      title: 'Papéis e Permissões',
+      type: 'item',
+      url: '/roles-permissions',
+      icon: 'IconShieldLock'
     }
   ]
 };
