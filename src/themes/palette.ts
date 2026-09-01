@@ -20,12 +20,12 @@ export function buildPalette() {
 
   const lightPalette = {
     primary: {
-      lighter: '#E0E0FF', // Hosting/primary/90 - primary container / primary fixed
-      light: '#BDC2FF', // Hosting/primary/80 - primary fixed dim
-      main: '#606BDF', // Hosting/primary/40 - primary
-      dark: '#3944B8', // Hosting/primary/30 - on primary fixed variant
-      darker: '#000668' // Hosting/primary/10 - on primary container / on primary fixed
-    },
+  lighter: '#FFCDD2',
+  light: '#EF9A9A',
+  main: '#B71C1C',
+  dark: '#8E0000',
+  darker: '#5F0000'
+},
     secondary: {
       lighter: '#E0E0FF', // Hosting/secondary/90 - secondary container / secondary fixed
       light: '#C3C4E4', // Hosting/secondary/80 - secondary fixed dim
@@ -102,13 +102,13 @@ export function buildPalette() {
   const disabledBackgroundDark = '#36343B'; // Hosting/neutral/22 - surface container highest
 
   const darkPalette = {
-    primary: {
-      lighter: '#2C37AC', // Hosting/primary/30 - primary container / on primary fixed variant
-      light: '#7A86FB', // Hosting/primary/60 - primary fixed dim
-      main: '#BDC2FF', // Hosting/primary/80 - primary
-      dark: '#E0E0FF', // Hosting/primary/90 - on primary container / primary fixed
-      darker: '#F1EFFF' // Hosting/primary/95 - on primary container / on primary fixed
-    },
+   primary: {
+  lighter: '#8E0000',
+  light: '#D32F2F',
+  main: '#EF9A9A',
+  dark: '#FFCDD2',
+  darker: '#FFEBEE'
+},
     secondary: {
       lighter: '#43455F', // Hosting/secondary/30 - secondary container / on secondary fixed variant
       light: '#8D8EAC', // Hosting/secondary/60 - secondary fixed dim

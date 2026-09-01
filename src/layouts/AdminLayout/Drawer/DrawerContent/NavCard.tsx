@@ -41,8 +41,8 @@ interface CardProps {
 /***************************  NAVIGATION CARD - DATA  ***************************/
 
 const data = {
-  title: 'Upgrade Your Experience',
-  description: 'Take your experience to the next level with our premium offering. Buy now and enjoy more!',
+  title: 'Você recebeu um novo aviso',
+  description: 'O sistema foi atualizado com novas funcionalidades e melhorias de segurança. Por favor, confirme o recebimento desta notificação.',
   icon: <IconBolt size={16} />
 };
 
@@ -105,14 +105,10 @@ function CardContent({ title, description, icon }: CardProps) {
           {description}
         </Typography>
         <Button
-          startIcon={icon}
           variant="contained"
-          component={Link}
-          href={process.env.NEXT_PUBLIC_BUY_URL || '#'}
-          target="_blank"
           sx={{ mt: 0.5 }}
         >
-          Buy Now
+          Confirmação de visto
         </Button>
       </Stack>
     </Stack>

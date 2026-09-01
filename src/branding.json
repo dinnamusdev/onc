@@ -1,11 +1,11 @@
 {
-    "brandName": "ONC Certificação",
-    "company": {
-        "name": "Phoenixcoded",
-        "url": "https://phoenixcoded.authordesk.app/"
-    },
-    "logo": {
-        "main":"",
-        "logoIcon": ""
-    }
+  "brandName": "ONC Certificação",
+  "company": {
+    "name": "Phoenixcoded",
+    "url": "https://phoenixcoded.authordesk.app/"
+  },
+  "logo": {
+    "main": "/assets/images/auth/onc-logo.png",
+    "logoIcon": "/assets/images/auth/onc-logo.png"
+  }
 }
