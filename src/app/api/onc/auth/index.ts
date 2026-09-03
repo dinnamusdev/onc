@@ -48,9 +48,7 @@ export async function login(request: Request) {
     const payload = data?.data ?? data;
 
     const token =
-      typeof payload === 'string'
-        ? payload
-        : payload?.token ?? payload?.accessToken ?? payload?.access_token ?? payload?.jwtToken ?? '';
+      typeof payload === 'string' ? payload : (payload?.token ?? payload?.accessToken ?? payload?.access_token ?? payload?.jwtToken ?? '');
 
     // Extrai dados do usuario das claims do JWT (o backend so devolve o token).
     const claims = token ? decodeJwtClaims(token) : {};
@@ -101,7 +99,8 @@ export async function signUp(request: Request) {
   try {
     const body = await request.json();
 
-    const res = await fetch(`${ONC_API}/auth/api/Cadastro`, {
+    // Swagger: POST /auth/api/Register/register-account (CreateUserDTO)
+    const res = await fetch(`${ONC_API}/auth/api/Register/register-account`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -200,7 +199,8 @@ export async function resend(request: Request) {
   try {
     const body = await request.json();
 
-    const res = await fetch(`${ONC_API}/auth/api/Cadastro/resend-activation`, {
+    // Swagger: POST /auth/api/Register/resend-activation-code (body: raw JSON string)
+    const res = await fetch(`${ONC_API}/auth/api/Register/resend-activation-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body.email)
@@ -208,7 +208,8 @@ export async function resend(request: Request) {
 
     const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {      return NextResponse.json({ error: data?.message || 'Resend failed' }, { status: res.status });
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || 'Resend failed' }, { status: res.status });
     }
 
     return NextResponse.json(data, { status: 200 });
@@ -294,6 +295,17 @@ export async function getUserProfile(request: Request) {
 }
 
 // Export as a single object for easy import
-const oncAuth = { login, getUser, signUp, forgotPassword, resetPassword, signOut, resend, getUserProfile, requestCodePasswordReset, verifyRecoveryCode };
+const oncAuth = {
+  login,
+  getUser,
+  signUp,
+  forgotPassword,
+  resetPassword,
+  signOut,
+  resend,
+  getUserProfile,
+  requestCodePasswordReset,
+  verifyRecoveryCode
+};
 
 export default oncAuth;

@@ -1,5 +1,5 @@
 // @project
-import { AuthType } from '@/enum';
+import { AuthType, ProviderType } from '@/enum';
 
 // @types
 import { ConfigStates } from '@/types/config';
@@ -19,6 +19,14 @@ export const CSS_VAR_PREFIX = '';
 export const AUTH_USER_KEY = 'auth-user';
 export const AUTH_CONFIG_KEY = 'saas-able-auth-config';
 export const AUTH_PROVIDER: AuthType = AuthType.ONC;
+
+/***************************  RBAC CONSTANT  ***************************/
+
+export const RBAC_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mock para desenvolvimento
+
+/***************************  USERS CONSTANT  ***************************/
+
+export const USERS_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mock para desenvolvimento
 
 /***************************  THEME ENUM  ***************************/
 

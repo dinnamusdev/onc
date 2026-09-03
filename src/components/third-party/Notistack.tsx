@@ -12,7 +12,6 @@ import { SnackbarProvider } from 'notistack';
 
 // @project
 import { useGetSnackbar } from '@/states/snackbar';
-import Loader from '@/components/Loader';
 
 // @types
 import { KeyedObject } from '@/types/root';

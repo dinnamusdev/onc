@@ -2,7 +2,6 @@
 
 // @mui
 import Autocomplete from '@mui/material/Autocomplete';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -26,38 +25,15 @@ import Typography from '@mui/material/Typography';
 import { Controller, useForm, SubmitHandler } from 'react-hook-form';
 
 // @icons
-import {
-  IconPlus,
-  IconTrash,
-  IconUser,
-  IconX
-} from '@tabler/icons-react';
+import { IconTrash, IconUser, IconX } from '@tabler/icons-react';
 
 /*************************** MOCK - OPÇÕES ***************************/
 
-const targetOptions = [
-  'Proposta',
-  'Cliente',
-  'Dashboard',
-  'Papel',
-  'Permissão',
-  'Usuário'
-];
+const targetOptions = ['Proposta', 'Cliente', 'Dashboard', 'Papel', 'Permissão', 'Usuário'];
 
-const actionOptions = [
-  'Visualizar',
-  'Criar',
-  'Atualizar',
-  'Deletar',
-  'Aplicar Desconto'
-];
+const actionOptions = ['Visualizar', 'Criar', 'Atualizar', 'Deletar', 'Aplicar Desconto'];
 
-const roleOptions = [
-  'Super Admin',
-  'Gestor',
-  'Gerente',
-  'Atendente'
-];
+const roleOptions = ['Super Admin', 'Gestor', 'Gerente', 'Atendente'];
 
 /*************************** TYPES ***************************/
 
@@ -105,14 +81,10 @@ interface CreatePermissionDialogProps {
 
 const getRoleDescription = (role: string) => {
   const descriptions: Record<string, string> = {
-    'Super Admin':
-      'O Super Admin é o papel administrativo de mais alto nível com acesso total ao sistema.',
-    Gestor:
-      'Responsável por gerenciar atividades, usuários e permissões relacionadas ao sistema.',
-    Gerente:
-      'Responsável por acompanhar e gerenciar as atividades da equipe.',
-    Atendente:
-      'Responsável pelo atendimento e execução das atividades atribuídas.'
+    'Super Admin': 'O Super Admin é o papel administrativo de mais alto nível com acesso total ao sistema.',
+    Gestor: 'Responsável por gerenciar atividades, usuários e permissões relacionadas ao sistema.',
+    Gerente: 'Responsável por acompanhar e gerenciar as atividades da equipe.',
+    Atendente: 'Responsável pelo atendimento e execução das atividades atribuídas.'
   };
 
   return descriptions[role] || 'Papel atribuído a esta permissão.';
@@ -120,13 +92,7 @@ const getRoleDescription = (role: string) => {
 
 /*************************** PERMISSIONS DIALOG ***************************/
 
-export default function CreatePermissionDialog({
-  open,
-  onClose,
-  onCreate,
-  permission,
-  onUpdate
-}: CreatePermissionDialogProps) {
+export default function CreatePermissionDialog({ open, onClose, onCreate, permission, onUpdate }: CreatePermissionDialogProps) {
   const isEdit = Boolean(permission);
 
   const {
@@ -168,9 +134,7 @@ export default function CreatePermissionDialog({
     onClose();
   };
 
-  const onSubmit: SubmitHandler<CreatePermissionFormInput> = (
-    data
-  ) => {
+  const onSubmit: SubmitHandler<CreatePermissionFormInput> = (data) => {
     if (isEdit) {
       onUpdate?.(data);
     } else {
@@ -221,9 +185,7 @@ export default function CreatePermissionDialog({
               color: 'text.primary'
             }}
           >
-            {isEdit
-              ? 'Editar Permissão'
-              : 'Adicionar Permissão'}
+            {isEdit ? 'Editar Permissão' : 'Adicionar Permissão'}
           </DialogTitle>
 
           <Typography
@@ -234,9 +196,7 @@ export default function CreatePermissionDialog({
               fontSize: 14
             }}
           >
-            {isEdit
-              ? 'Defina claramente o escopo desta permissão.'
-              : 'Gerenciamento e atribuição de permissões de acesso.'}
+            {isEdit ? 'Defina claramente o escopo desta permissão.' : 'Gerenciamento e atribuição de permissões de acesso.'}
           </Typography>
         </Box>
 
@@ -271,7 +231,6 @@ export default function CreatePermissionDialog({
           }}
         >
           <Stack sx={{ gap: 2.5 }}>
-
             {/* ================================================= */}
             {/* INFORMAÇÕES GERAIS                               */}
             {/* ================================================= */}
@@ -334,8 +293,7 @@ export default function CreatePermissionDialog({
                     name="target"
                     control={control}
                     rules={{
-                      required:
-                        'Selecione o recurso alvo desta permissão'
+                      required: 'Selecione o recurso alvo desta permissão'
                     }}
                     render={({ field }) => (
                       <Select
@@ -353,10 +311,7 @@ export default function CreatePermissionDialog({
                         </MenuItem>
 
                         {targetOptions.map((option) => (
-                          <MenuItem
-                            key={option}
-                            value={option}
-                          >
+                          <MenuItem key={option} value={option}>
                             {option}
                           </MenuItem>
                         ))}
@@ -364,11 +319,7 @@ export default function CreatePermissionDialog({
                     )}
                   />
 
-                  {errors.target?.message && (
-                    <FormHelperText error>
-                      {errors.target.message}
-                    </FormHelperText>
-                  )}
+                  {errors.target?.message && <FormHelperText error>{errors.target.message}</FormHelperText>}
                 </Box>
 
                 {/* AÇÕES */}
@@ -388,17 +339,13 @@ export default function CreatePermissionDialog({
                     name="actions"
                     control={control}
                     rules={{
-                      validate: (value) =>
-                        value.length > 0 ||
-                        'Selecione pelo menos uma ação'
+                      validate: (value) => value.length > 0 || 'Selecione pelo menos uma ação'
                     }}
                     render={({ field }) => (
                       <Box
                         sx={{
                           border: '1px solid',
-                          borderColor: errors.actions
-                            ? 'error.main'
-                            : 'divider',
+                          borderColor: errors.actions ? 'error.main' : 'divider',
                           borderRadius: 1.5,
                           p: 1,
                           maxHeight: 160,
@@ -413,24 +360,9 @@ export default function CreatePermissionDialog({
                               control={
                                 <Checkbox
                                   size="small"
-                                  checked={field.value.includes(
-                                    action
-                                  )}
-                                  onChange={(
-                                    _event,
-                                    checked
-                                  ) => {
-                                    field.onChange(
-                                      checked
-                                        ? [
-                                            ...field.value,
-                                            action
-                                          ]
-                                        : field.value.filter(
-                                            (item) =>
-                                              item !== action
-                                          )
-                                    );
+                                  checked={field.value.includes(action)}
+                                  onChange={(_event, checked) => {
+                                    field.onChange(checked ? [...field.value, action] : field.value.filter((item) => item !== action));
                                   }}
                                 />
                               }
@@ -441,11 +373,7 @@ export default function CreatePermissionDialog({
                     )}
                   />
 
-                  {errors.actions?.message && (
-                    <FormHelperText error>
-                      {errors.actions.message}
-                    </FormHelperText>
-                  )}
+                  {errors.actions?.message && <FormHelperText error>{errors.actions.message}</FormHelperText>}
                 </Box>
               </>
             )}
@@ -467,11 +395,7 @@ export default function CreatePermissionDialog({
 
               <TextField
                 {...register('description')}
-                placeholder={
-                  isEdit
-                    ? ''
-                    : 'Insira uma descrição de permissão'
-                }
+                placeholder={isEdit ? '' : 'Insira uma descrição de permissão'}
                 fullWidth
                 multiline
                 minRows={isEdit ? 3 : 3}
@@ -501,11 +425,7 @@ export default function CreatePermissionDialog({
                 }}
               >
                 Papéis{' '}
-                <Typography
-                  component="span"
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography component="span" variant="body2" color="text.secondary">
                   (Opcional)
                 </Typography>
               </Typography>
@@ -571,17 +491,12 @@ export default function CreatePermissionDialog({
                           sx={{
                             display: '-webkit-box',
                             WebkitLineClamp: 1,
-                            WebkitBoxOrient:
-                              'vertical',
+                            WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
                             lineHeight: 1.4
                           }}
                         >
-                          {permission?.roleDetails?.find(
-                            (item) =>
-                              item.name === role
-                          )?.description ||
-                            getRoleDescription(role)}
+                          {permission?.roleDetails?.find((item) => item.name === role)?.description || getRoleDescription(role)}
                         </Typography>
                       </Box>
 
@@ -617,21 +532,11 @@ export default function CreatePermissionDialog({
                         multiple
                         options={roleOptions}
                         value={field.value}
-                        onChange={(_event, value) =>
-                          field.onChange(value)
-                        }
+                        onChange={(_event, value) => field.onChange(value)}
                         disableCloseOnSelect
-                        renderOption={(
-                          props,
-                          option,
-                          { selected }
-                        ) => (
+                        renderOption={(props, option, { selected }) => (
                           <li {...props}>
-                            <Checkbox
-                              checked={selected}
-                              size="small"
-                              sx={{ mr: 1 }}
-                            />
+                            <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
                             {option}
                           </li>
                         )}
@@ -664,21 +569,11 @@ export default function CreatePermissionDialog({
                       multiple
                       options={roleOptions}
                       value={field.value}
-                      onChange={(_event, value) =>
-                        field.onChange(value)
-                      }
+                      onChange={(_event, value) => field.onChange(value)}
                       disableCloseOnSelect
-                      renderOption={(
-                        props,
-                        option,
-                        { selected }
-                      ) => (
+                      renderOption={(props, option, { selected }) => (
                         <li {...props}>
-                          <Checkbox
-                            checked={selected}
-                            size="small"
-                            sx={{ mr: 1 }}
-                          />
+                          <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
                           {option}
                         </li>
                       )}
@@ -739,9 +634,7 @@ export default function CreatePermissionDialog({
               borderRadius: 1.5
             }}
           >
-            {isEdit
-              ? 'Atualizar Permissão'
-              : 'Criar Permissão'}
+            {isEdit ? 'Atualizar Permissão' : 'Criar Permissão'}
           </Button>
         </DialogActions>
       </form>

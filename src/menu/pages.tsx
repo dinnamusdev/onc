@@ -29,6 +29,13 @@ const pages: NavItemType = {
       type: 'item',
       url: '/roles-permissions',
       icon: 'IconShieldLock'
+    },
+    {
+      id: 'profile',
+      title: 'Meu Perfil',
+      type: 'item',
+      url: '/profile',
+      icon: 'IconUserCircle'
     }
   ]
 };

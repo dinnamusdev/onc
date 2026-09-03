@@ -14,12 +14,7 @@ export default function ForgotPassword() {
     <Stack sx={{ height: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
       <Box sx={{ width: 1, maxWidth: 560, px: { xs: 3, sm: 2 } }}>
         <Stack sx={{ gap: { xs: 1, sm: 1.5 }, textAlign: 'center', mb: { xs: 2, sm: 3 } }}>
-          <Box
-            component="img"
-            src="/assets/images/auth/onc-logo.png"
-            alt="ONC"
-            sx={{ width: 240, height: 'auto', mx: 'auto', mb: 1 }}
-          />
+          <Box component="img" src="/assets/images/auth/onc-logo.png" alt="ONC" sx={{ width: 240, height: 'auto', mx: 'auto', mb: 1 }} />
           <Typography
             sx={{
               fontSize: { xs: 18, sm: 20 },

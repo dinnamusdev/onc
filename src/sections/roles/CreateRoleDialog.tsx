@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+
 // @mui
+import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -16,19 +19,36 @@ import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 
 // @third-party
 import { Controller, useForm, SubmitHandler } from 'react-hook-form';
+import useSWR from 'swr';
 
 // @icons
 import { IconPlus, IconX } from '@tabler/icons-react';
 
-/***************************  MOCK - OPÇÕES  ***************************/
-// TODO: substituir por dados vindos da API (GET /api/authz/permissions, GET /api/users)
+// @project
+import { getPermissions, createRole, assignPermission, assignRolesToUser } from '@/utils/api/rbac';
+import { getUsers } from '@/utils/api/users';
+import { Permission } from '@/types/rbac';
 
-const permissionOptions = ['Visualizar', 'Criar', 'Deletar', 'Atualizar', 'Dar Desconto'];
+/***************************  HELPERS  ***************************/
 
-const userOptions = ['Stacy Reichel', 'Roderick Rohan', 'Audrey Leffler MD', 'Allison Mosciski', 'Maureen Aufderhar'];
+// Representa um usuário no formato retornado pelo backend (UserResponseDTO).
+interface UserOption {
+  id: string;
+  label: string;
+}
+
+// Gera um rótulo estável para a permissão. O backend novo modela permissões como
+// subject + action (o campo `name` pode vir vazio), então priorizamos essa combinação.
+const permissionLabel = (p: Permission): string => {
+  if (p.subject || p.action) {
+    return [p.subject, p.action].filter(Boolean).join('.');
+  }
+  return p.name ?? String(p.id);
+};
 
 /***************************  TYPES  ***************************/
 
@@ -48,6 +68,9 @@ interface CreateRoleDialogProps {
 /***************************  ROLES - CREATE DIALOG  ***************************/
 
 export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRoleDialogProps) {
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const {
     control,
     handleSubmit,
@@ -63,14 +86,84 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
     }
   });
 
+  // Buscar permissions da API
+  const {
+    data: permissions,
+    error: permissionsError,
+    isLoading: permissionsLoading
+  } = useSWR<Permission[]>('/api/rbac/permissions', async () => {
+    const { data, error } = await getPermissions();
+    if (error) throw new Error(error);
+    return (data ?? []) as Permission[];
+  });
+
+  // Buscar usuários da API para permitir atribuição ao papel.
+  const { data: userOptions, isLoading: usersLoading } = useSWR<UserOption[]>('/api/users', async () => {
+    const { data, error } = await getUsers();
+    if (error) throw new Error(error);
+    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    return list.map((u) => ({
+      id: String(u.id ?? ''),
+      label: String(u.nomeCompleto || u.userName || u.email || u.id || '')
+    }));
+  });
+
   const handleClose = () => {
     reset();
+    setSubmitError('');
     onClose();
   };
 
-  const onSubmit: SubmitHandler<CreateRoleFormInput> = (data) => {
-    // TODO: enviar para API (POST /api/authz/roles)
-    onCreate?.(data);
+  const onSubmit: SubmitHandler<CreateRoleFormInput> = async (data) => {
+    setSubmitError('');
+    setIsSubmitting(true);
+
+    // 1) Cria o papel (POST /auth/api/Permission/roles).
+    const { data: created, error: createError } = await createRole({
+      name: data.name,
+      description: data.description
+    });
+
+    if (createError) {
+      setIsSubmitting(false);
+      setSubmitError(createError || 'Não foi possível criar o papel.');
+      return;
+    }
+
+    // 2) Se houver permissões selecionadas, associa ao papel recém-criado.
+    const roleId = (created as { id?: string | number } | null)?.id;
+    const selectedPermissionIds = (permissions ?? []).filter((p) => data.permissions.includes(permissionLabel(p))).map((p) => p.id);
+
+    if (roleId != null && selectedPermissionIds.length > 0) {
+      const { error: assignError } = await assignPermission({
+        roleId,
+        permissions: selectedPermissionIds
+      });
+
+      if (assignError) {
+        setIsSubmitting(false);
+        setSubmitError(assignError || 'Papel criado, mas falhou ao associar permissões.');
+        return;
+      }
+    }
+
+    // 3) Se houver usuários selecionados, vincula o papel a cada um deles
+    //    (PUT /auth/api/Permission/user-roles).
+    const selectedUserIds = (userOptions ?? []).filter((u) => data.users.includes(u.label)).map((u) => u.id);
+
+    if (roleId != null && selectedUserIds.length > 0) {
+      const results = await Promise.all(selectedUserIds.map((userId) => assignRolesToUser({ userId, roles: [roleId] })));
+
+      const firstUserError = results.find((r) => r.error)?.error;
+      if (firstUserError) {
+        setIsSubmitting(false);
+        setSubmitError(firstUserError || 'Papel criado, mas falhou ao associar usuários.');
+        return;
+      }
+    }
+
+    setIsSubmitting(false);
+    onCreate?.(created ?? data);
     handleClose();
   };
 
@@ -113,69 +206,90 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
 
             <Box>
               <InputLabel sx={{ mb: 1 }}>Permissão (Opcional)</InputLabel>
-              <Controller
-                name="permissions"
-                control={control}
-                render={({ field }) => (
-                  <Autocomplete
-                    multiple
-                    options={permissionOptions}
-                    value={field.value}
-                    onChange={(_event, value) => field.onChange(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder={field.value.length ? '' : '+ Atribuir Permissões'}
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment:
-                            field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
+              {permissionsLoading ? (
+                <CircularProgress size={20} />
+              ) : permissionsError ? (
+                <Typography color="error">Erro ao carregar permissões</Typography>
+              ) : (
+                <Controller
+                  name="permissions"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      multiple
+                      options={permissions?.map((p) => permissionLabel(p)) || []}
+                      value={field.value}
+                      onChange={(_event, value) => field.onChange(value)}
+                      noOptionsText="Nenhuma permissão encontrada"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder={field.value.length ? '' : '+ Atribuir Permissões'}
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment:
+                              field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
             </Box>
 
             <Box>
               <InputLabel sx={{ mb: 1 }}>Usuários (Opcional)</InputLabel>
-              <Controller
-                name="users"
-                control={control}
-                render={({ field }) => (
-                  <Autocomplete
-                    multiple
-                    options={userOptions}
-                    value={field.value}
-                    onChange={(_event, value) => field.onChange(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder={field.value.length ? '' : '+ Atribuir Usuários'}
-                        InputProps={{
-                          ...params.InputProps,
-                          startAdornment:
-                            field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
-                        }}
-                      />
-                    )}
-                  />
-                )}
-              />
+              {usersLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <Controller
+                  name="users"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      multiple
+                      options={(userOptions ?? []).map((u) => u.label)}
+                      value={field.value}
+                      onChange={(_event, value) => field.onChange(value)}
+                      noOptionsText="Nenhum usuário encontrado"
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder={field.value.length ? '' : '+ Atribuir Usuários'}
+                          InputProps={{
+                            ...params.InputProps,
+                            startAdornment:
+                              field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                          }}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
             </Box>
           </Stack>
         </DialogContent>
 
         <Divider />
 
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={handleClose} color="secondary" variant="outlined">
-            Cancelar
-          </Button>
-          <Button type="submit" variant="contained" color="error">
-            Criar Papel
-          </Button>
+        <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', alignItems: 'stretch', gap: 1.5 }}>
+          {submitError && <Alert severity="error">{submitError}</Alert>}
+          <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
+            <Button onClick={handleClose} color="secondary" variant="outlined" disabled={isSubmitting}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="error"
+              disabled={isSubmitting}
+              startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+            >
+              {isSubmitting ? 'Criando...' : 'Criar Papel'}
+            </Button>
+          </Stack>
         </DialogActions>
       </form>
     </Dialog>

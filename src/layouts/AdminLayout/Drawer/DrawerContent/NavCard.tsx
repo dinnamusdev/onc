@@ -1,8 +1,5 @@
 import { Activity, ReactElement, useState } from 'react';
 
-// @next
-import Link from 'next/link';
-
 // @mui
 import { useTheme, CSSObject, Theme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -42,7 +39,8 @@ interface CardProps {
 
 const data = {
   title: 'Você recebeu um novo aviso',
-  description: 'O sistema foi atualizado com novas funcionalidades e melhorias de segurança. Por favor, confirme o recebimento desta notificação.',
+  description:
+    'O sistema foi atualizado com novas funcionalidades e melhorias de segurança. Por favor, confirme o recebimento desta notificação.',
   icon: <IconBolt size={16} />
 };
 
@@ -104,10 +102,7 @@ function CardContent({ title, description, icon }: CardProps) {
         <Typography variant="caption" color="text.secondary">
           {description}
         </Typography>
-        <Button
-          variant="contained"
-          sx={{ mt: 0.5 }}
-        >
+        <Button variant="contained" sx={{ mt: 0.5 }}>
           Confirmação de visto
         </Button>
       </Stack>

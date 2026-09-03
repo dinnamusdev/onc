@@ -53,9 +53,7 @@ export default function AuthForgotPassword({ inputSx, redirectTo, doRedirect = f
 
     const payload: Record<string, string> = { email: formData.email };
     const redirectUrl =
-      redirectTo && attachEmail
-        ? `${redirectTo}?email=${encodeURIComponent(formData.email)}&verify=recovery`
-        : redirectTo;
+      redirectTo && attachEmail ? `${redirectTo}?email=${encodeURIComponent(formData.email)}&verify=recovery` : redirectTo;
 
     if (redirectUrl) {
       payload.redirectTo = redirectUrl;

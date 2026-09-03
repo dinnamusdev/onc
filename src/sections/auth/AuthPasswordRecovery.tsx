@@ -101,13 +101,13 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
   return (
     <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
       <input
-  type="password"
-  name="fake-password"
-  autoComplete="new-password"
-  style={{ display: 'none' }}
-  tabIndex={-1}
-  aria-hidden="true"
-/>
+        type="password"
+        name="fake-password"
+        autoComplete="new-password"
+        style={{ display: 'none' }}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
       <Stack gap={2}>
         <Box>
           <InputLabel>Nova Senha</InputLabel>
@@ -119,7 +119,7 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
             autoComplete="new-password"
             data-lpignore="true"
             data-1p-ignore="true"
-            data-form-type="other" 
+            data-form-type="other"
             error={Boolean(errors.password)}
             endAdornment={
               <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsOpen(!isOpen)}>
@@ -127,20 +127,20 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
               </InputAdornment>
             }
             sx={{
-  ...inputSx,
-  '& input:-webkit-autofill': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
-    WebkitTextFillColor: '#000',                 // cor do texto
-    caretColor: '#000',                           // cor do cursor
-    borderRadius: 'inherit'
-  },
-  '& input:-webkit-autofill:hover': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset'
-  },
-  '& input:-webkit-autofill:focus': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset'
-  }
-}}
+              ...inputSx,
+              '& input:-webkit-autofill': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
+                WebkitTextFillColor: '#000', // cor do texto
+                caretColor: '#000', // cor do cursor
+                borderRadius: 'inherit'
+              },
+              '& input:-webkit-autofill:hover': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset'
+              },
+              '& input:-webkit-autofill:focus': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset'
+              }
+            }}
           />
           {errors.password?.message && <FormHelperText error>{errors.password?.message}</FormHelperText>}
         </Box>
@@ -162,20 +162,20 @@ export default function AuthPasswordRecovery({ inputSx }: CommonAuthComponentPro
               </InputAdornment>
             }
             sx={{
-  ...inputSx,
-  '& input:-webkit-autofill': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
-    WebkitTextFillColor: '#000',                 // cor do texto
-    caretColor: '#000',                           // cor do cursor
-    borderRadius: 'inherit'
-  },
-  '& input:-webkit-autofill:hover': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset'
-  },
-  '& input:-webkit-autofill:focus': {
-    WebkitBoxShadow: '0 0 0 1000px #fff inset'
-  }
-}}
+              ...inputSx,
+              '& input:-webkit-autofill': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset', // cor de fundo desejada
+                WebkitTextFillColor: '#000', // cor do texto
+                caretColor: '#000', // cor do cursor
+                borderRadius: 'inherit'
+              },
+              '& input:-webkit-autofill:hover': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset'
+              },
+              '& input:-webkit-autofill:focus': {
+                WebkitBoxShadow: '0 0 0 1000px #fff inset'
+              }
+            }}
           />
           {errors.confirmPassword?.message && <FormHelperText error>{errors.confirmPassword?.message}</FormHelperText>}
         </Box>

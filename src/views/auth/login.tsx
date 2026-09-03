@@ -14,12 +14,7 @@ export default function Login() {
     <Stack sx={{ height: 1, width: 1, alignItems: 'center', justifyContent: 'space-between', gap: 3 }}>
       <Box sx={{ width: '100%', maxWidth: 560, px: { xs: 3, sm: 2 } }}>
         <Stack sx={{ gap: { xs: 1, sm: 1.5 }, textAlign: 'center', mb: { xs: 3, sm: 8 } }}>
-          <Box
-            component="img"
-            src="/assets/images/auth/onc-logo.png"
-            alt="ONC"
-            sx={{ width: 250, height: 'auto', mx: 'auto', mb: 1 }}
-          />
+          <Box component="img" src="/assets/images/auth/onc-logo.png" alt="ONC" sx={{ width: 250, height: 'auto', mx: 'auto', mb: 1 }} />
           <Typography
             sx={{
               fontSize: 22,
@@ -43,10 +38,10 @@ export default function Login() {
         <AuthLogin />
       </Box>
 
-     {/* Copyright section*/}
-<Box sx={{ mb: { xs: 3, sm: 5 } }}>
-  <Copyright />
-</Box>
+      {/* Copyright section*/}
+      <Box sx={{ mb: { xs: 3, sm: 5 } }}>
+        <Copyright />
+      </Box>
     </Stack>
   );
 }

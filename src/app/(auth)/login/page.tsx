@@ -1,11 +1,9 @@
 // @mui
-import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
 // @project
-import { NextLink } from '@/components/routes';
 import AuthLogin from '@/sections/auth/AuthLogin';
 import Copyright from '@/sections/auth/Copyright';
 

@@ -42,8 +42,6 @@ const errorMessagesMap: Record<string, string> = {
   'Invalid email or password': 'Email ou senha inválidos'
 };
 
-const translateError = (message: string) => errorMessagesMap[message] || message;
-
 /***************************  AUTH - LOGIN  ***************************/
 
 export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
@@ -60,7 +58,7 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
     handleSubmit,
     formState: { errors }
   } = useForm<LoginFormInput>({ defaultValues: { email: '', password: '' } });
-    /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
+  /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
 
   useEffect(() => {
     if (!loginError) {
@@ -103,14 +101,14 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
             fullWidth
             error={Boolean(errors.email)}
             sx={{
-  ...inputSx,
-  '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
-    WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
-    WebkitTextFillColor: '#000000 !important',
-    caretColor: '#000000',
-    transition: 'background-color 5000s ease-in-out 0s !important'
-  }
-}}
+              ...inputSx,
+              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+                WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
+                WebkitTextFillColor: '#000000 !important',
+                caretColor: '#000000',
+                transition: 'background-color 5000s ease-in-out 0s !important'
+              }
+            }}
           />
           {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
         </Box>
@@ -129,14 +127,14 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
               </InputAdornment>
             }
             sx={{
-  ...inputSx,
-  '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
-    WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
-    WebkitTextFillColor: '#000000 !important',
-    caretColor: '#000000',
-    transition: 'background-color 5000s ease-in-out 0s !important'
-  }
-}}
+              ...inputSx,
+              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
+                WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
+                WebkitTextFillColor: '#000000 !important',
+                caretColor: '#000000',
+                transition: 'background-color 5000s ease-in-out 0s !important'
+              }
+            }}
           />
           <Stack direction="row" sx={{ alignItems: 'center', justifyContent: errors.password ? 'space-between' : 'flex-end', width: 1 }}>
             {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
@@ -155,19 +153,19 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
       </Stack>
 
       <Button
-  type="submit"
-  color="primary"
-  variant="contained"
-  fullWidth
-  disabled={isProcessing}
-  endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
-  sx={{
-    mt: { xs: 1, sm: 4 },
-    '& .MuiButton-endIcon': { ml: 1 }
-  }}
->
-  Login
-</Button>
+        type="submit"
+        color="primary"
+        variant="contained"
+        fullWidth
+        disabled={isProcessing}
+        endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
+        sx={{
+          mt: { xs: 1, sm: 4 },
+          '& .MuiButton-endIcon': { ml: 1 }
+        }}
+      >
+        Login
+      </Button>
       {loginError && (
         <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
           {loginError}

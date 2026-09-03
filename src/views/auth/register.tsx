@@ -23,7 +23,6 @@ export default function Register() {
           </Typography>
         </Stack>
 
-
         <Divider sx={{ my: { xs: 4, sm: 5 } }}>
           <Typography variant="body2" color="text.secondary">
             or continue with email

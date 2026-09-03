@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, SyntheticEvent } from 'react';
+import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
 
 // @mui
 import Avatar from '@mui/material/Avatar';
@@ -54,6 +54,9 @@ import UsersView from '@/views/admin/users';
 import CreateUserDialog from '@/sections/users/CreateUserDialog';
 import CreatePermissionDialog from '@/sections/permissions/CreatePermissionDialog';
 import CreateRoleDialog from '@/sections/roles/CreateRoleDialog';
+import { getRoles, getPermissions, deleteRole, createPermission, updatePermission, deletePermission } from '@/utils/api/rbac';
+import { openSnackbar } from '@/states/snackbar';
+import { Role as ApiRole, Permission as ApiPermission } from '@/types/rbac';
 
 /*************************** TYPES ***************************/
 
@@ -82,6 +85,7 @@ interface RoleRow {
 
 interface PermissionRow {
   id: string;
+  subject: string;
   action: string;
   description: string;
   roles: string[];
@@ -94,6 +98,8 @@ interface CreateRoleData {
 }
 
 interface CreatePermissionData {
+  target?: string;
+  actions?: string[];
   action?: string;
   name?: string;
   permission?: string;
@@ -107,56 +113,47 @@ const mockPermissionsForRole: PermissionItem[] = [
   {
     id: 'account.delete',
     name: 'account.delete',
-    description:
-      'Permite aos usuários remover permanentemente registros da conta, incluindo os dados associados.'
+    description: 'Permite aos usuários remover permanentemente registros da conta, incluindo os dados associados.'
   },
   {
     id: 'account.view',
     name: 'account.view',
-    description:
-      'Permite aos usuários visualizar detalhes da conta, informações do perfil e registros de atividade.'
+    description: 'Permite aos usuários visualizar detalhes da conta, informações do perfil e registros de atividade.'
   },
   {
     id: 'account.update',
     name: 'account.update',
-    description:
-      'Permite aos usuários modificar informações da conta, como dados de contato e preferências.'
+    description: 'Permite aos usuários modificar informações da conta, como dados de contato e preferências.'
   },
   {
     id: 'account.edit',
     name: 'account.edit',
-    description:
-      'Permite aos usuários editar registros existentes da conta e atualizar campos específicos.'
+    description: 'Permite aos usuários editar registros existentes da conta e atualizar campos específicos.'
   },
   {
     id: 'account.user',
     name: 'account.user',
-    description:
-      'Permite aos usuários gerenciar contas de usuários, incluindo criação e atribuição de papéis.'
+    description: 'Permite aos usuários gerenciar contas de usuários, incluindo criação e atribuição de papéis.'
   },
   {
     id: 'invoice.create',
     name: 'invoice.create',
-    description:
-      'Permite aos usuários criar e gerar novas faturas para cobranças e transações.'
+    description: 'Permite aos usuários criar e gerar novas faturas para cobranças e transações.'
   },
   {
     id: 'invoice.view',
     name: 'invoice.view',
-    description:
-      'Permite aos usuários visualizar faturas atuais e históricas, incluindo o status dos pagamentos.'
+    description: 'Permite aos usuários visualizar faturas atuais e históricas, incluindo o status dos pagamentos.'
   },
   {
     id: 'invoice.delete',
     name: 'invoice.delete',
-    description:
-      'Permite aos usuários excluir faturas do sistema quando possuem autorização.'
+    description: 'Permite aos usuários excluir faturas do sistema quando possuem autorização.'
   },
   {
     id: 'invoice.send',
     name: 'invoice.send',
-    description:
-      'Permite aos usuários enviar faturas geradas para clientes ou responsáveis por e-mail.'
+    description: 'Permite aos usuários enviar faturas geradas para clientes ou responsáveis por e-mail.'
   }
 ];
 
@@ -182,8 +179,7 @@ const mockRoles: RoleRow[] = [
   {
     id: '1',
     name: 'Super Admin',
-    description:
-      'Responsável por gerenciar as atividades e permissões relacionadas à função de Super Admin.',
+    description: 'Responsável por gerenciar as atividades e permissões relacionadas à função de Super Admin.',
     assignedUsers: ['A', 'B', 'C', 'D'],
     extraUsersCount: 2,
     permissionCount: 32,
@@ -193,8 +189,7 @@ const mockRoles: RoleRow[] = [
   {
     id: '2',
     name: 'Gestor',
-    description:
-      'Responsável por gerenciar as atividades e permissões relacionadas à função de Gestor.',
+    description: 'Responsável por gerenciar as atividades e permissões relacionadas à função de Gestor.',
     assignedUsers: ['A', 'B', 'C', 'D'],
     extraUsersCount: 2,
     permissionCount: 24,
@@ -204,8 +199,7 @@ const mockRoles: RoleRow[] = [
   {
     id: '3',
     name: 'Gerente',
-    description:
-      'Responsável por gerenciar as atividades e permissões relacionadas à função de Gerente.',
+    description: 'Responsável por gerenciar as atividades e permissões relacionadas à função de Gerente.',
     assignedUsers: ['A', 'B', 'C', 'D'],
     extraUsersCount: 2,
     permissionCount: 23,
@@ -215,8 +209,7 @@ const mockRoles: RoleRow[] = [
   {
     id: '4',
     name: 'Atendente',
-    description:
-      'Responsável por gerenciar as atividades e permissões relacionadas à função de Atendente.',
+    description: 'Responsável por gerenciar as atividades e permissões relacionadas à função de Atendente.',
     assignedUsers: ['A', 'B', 'C', 'D'],
     extraUsersCount: 2,
     permissionCount: 12,
@@ -228,58 +221,46 @@ const mockRoles: RoleRow[] = [
 const mockPermissions: PermissionRow[] = [
   {
     id: '1',
+    subject: 'account',
     action: 'account.delete',
-    description:
-      'Permite aos usuários remover permanentemente registros da conta, incluindo os dados associados.',
+    description: 'Permite aos usuários remover permanentemente registros da conta, incluindo os dados associados.',
     roles: ['Super Admin', 'Admin']
   },
   {
     id: '2',
+    subject: 'account',
     action: 'account.view',
-    description:
-      'Permite aos usuários visualizar detalhes da conta, informações do perfil e registros de atividade.',
+    description: 'Permite aos usuários visualizar detalhes da conta, informações do perfil e registros de atividade.',
     roles: ['Gestor', 'Admin']
   },
   {
     id: '3',
+    subject: 'account',
     action: 'account.update',
-    description:
-      'Permite aos usuários modificar informações da conta, como dados de contato e preferências.',
+    description: 'Permite aos usuários modificar informações da conta, como dados de contato e preferências.',
     roles: ['Product Designer']
   },
   {
     id: '4',
+    subject: 'account',
     action: 'account.edit',
-    description:
-      'Permite aos usuários editar registros existentes da conta e atualizar campos específicos.',
+    description: 'Permite aos usuários editar registros existentes da conta e atualizar campos específicos.',
     roles: ['Developers', 'Tester']
   },
   {
     id: '5',
+    subject: 'account',
     action: 'account.user',
-    description:
-      'Permite aos usuários gerenciar contas de usuários, incluindo criação e atribuição de papéis.',
+    description: 'Permite aos usuários gerenciar contas de usuários, incluindo criação e atribuição de papéis.',
     roles: ['Super Admin', 'Admin']
   }
 ];
 
 /*************************** FILTER DATA ***************************/
 
-const filterPermissions = [
-  'account.delete',
-  'account.view',
-  'account.update',
-  'account.edit',
-  'account.user'
-];
+const filterPermissions = ['account.delete', 'account.view', 'account.update', 'account.edit', 'account.user'];
 
-const filterRoles = [
-  'Super Admin',
-  'Billing Admin',
-  'Admin',
-  'Developer',
-  'Product Designer'
-];
+const filterRoles = ['Super Admin', 'Billing Admin', 'Admin', 'Developer', 'Product Designer'];
 
 /*************************** VIEW ***************************/
 
@@ -295,8 +276,52 @@ export default function RolesPermissionsView() {
   const minimumPages = 10;
 
   const [roles, setRoles] = useState<RoleRow[]>(mockRoles);
-  const [permissions, setPermissions] =
-    useState<PermissionRow[]>(mockPermissions);
+  const [permissions, setPermissions] = useState<PermissionRow[]>(mockPermissions);
+
+  /*************************** DATA LOADING (BACKEND) ***************************/
+
+  // Carrega papéis e permissões reais do backend, mapeando para o
+  // formato das linhas exibidas na tabela. Em caso de erro, mantém o mock.
+  const reloadData = useCallback(async () => {
+    const [rolesRes, permsRes] = await Promise.all([getRoles(), getPermissions()]);
+
+    if (!rolesRes.error && Array.isArray(rolesRes.data)) {
+      const mapped: RoleRow[] = (rolesRes.data as ApiRole[]).map((role) => {
+        const rolePermissions = (role.permissions ?? []).map((p) => ({
+          id: String(p.id),
+          name: p.name ?? '',
+          description: p.description ?? ''
+        }));
+
+        return {
+          id: String(role.id),
+          name: role.name,
+          description: role.description ?? '',
+          assignedUsers: [],
+          extraUsersCount: 0,
+          permissionCount: rolePermissions.length,
+          permissions: rolePermissions,
+          users: []
+        };
+      });
+      setRoles(mapped);
+    }
+
+    if (!permsRes.error && Array.isArray(permsRes.data)) {
+      const mapped: PermissionRow[] = (permsRes.data as ApiPermission[]).map((perm) => ({
+        id: String(perm.id),
+        subject: perm.subject ?? '',
+        action: perm.action ?? perm.name ?? '',
+        description: perm.description ?? '',
+        roles: []
+      }));
+      setPermissions(mapped);
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadData();
+  }, [reloadData]);
 
   /*************************** SEARCH ***************************/
 
@@ -304,107 +329,80 @@ export default function RolesPermissionsView() {
 
   /*************************** CREATE ***************************/
 
-  const [openCreateRoleDialog, setOpenCreateRoleDialog] =
-    useState(false);
+  const [openCreateRoleDialog, setOpenCreateRoleDialog] = useState(false);
 
-  const [openCreatePermissionDialog, setOpenCreatePermissionDialog] =
-    useState(false);
+  const [openCreatePermissionDialog, setOpenCreatePermissionDialog] = useState(false);
 
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
 
   /*************************** ROLE MENU ***************************/
 
-  const [menuAnchorEl, setMenuAnchorEl] =
-    useState<null | HTMLElement>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-  const [menuRole, setMenuRole] =
-    useState<RoleRow | null>(null);
+  const [menuRole, setMenuRole] = useState<RoleRow | null>(null);
 
   /*************************** PERMISSION MENU ***************************/
 
-  const [permissionMenuAnchorEl, setPermissionMenuAnchorEl] =
-    useState<null | HTMLElement>(null);
+  const [permissionMenuAnchorEl, setPermissionMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-  const [menuPermission, setMenuPermission] =
-    useState<PermissionRow | null>(null);
+  const [menuPermission, setMenuPermission] = useState<PermissionRow | null>(null);
 
   /*************************** EDIT ROLE ***************************/
 
-  const [openEditRoleDialog, setOpenEditRoleDialog] =
-    useState(false);
+  const [openEditRoleDialog, setOpenEditRoleDialog] = useState(false);
 
   const [editRoleName, setEditRoleName] = useState('');
 
-  const [editRoleDescription, setEditRoleDescription] =
-    useState('');
+  const [editRoleDescription, setEditRoleDescription] = useState('');
 
-  const [editPermissions, setEditPermissions] =
-    useState<PermissionItem[]>([]);
+  const [editPermissions, setEditPermissions] = useState<PermissionItem[]>([]);
 
-  const [editUsers, setEditUsers] =
-    useState<AssignedUser[]>([]);
+  const [editUsers, setEditUsers] = useState<AssignedUser[]>([]);
 
   /*************************** DELETE ROLE ***************************/
 
-  const [openDeleteRoleDialog, setOpenDeleteRoleDialog] =
-    useState(false);
+  const [openDeleteRoleDialog, setOpenDeleteRoleDialog] = useState(false);
 
   /*************************** EDIT PERMISSION ***************************/
 
-  const [openEditPermissionDialog, setOpenEditPermissionDialog] =
-    useState(false);
+  const [openEditPermissionDialog, setOpenEditPermissionDialog] = useState(false);
 
-  const [editPermissionAction, setEditPermissionAction] =
-    useState('');
+  const [editPermissionAction, setEditPermissionAction] = useState('');
 
-  const [editPermissionDescription, setEditPermissionDescription] =
-    useState('');
+  const [editPermissionDescription, setEditPermissionDescription] = useState('');
 
-  const [editPermissionRoles, setEditPermissionRoles] =
-    useState<string[]>([]);
+  const [editPermissionRoles, setEditPermissionRoles] = useState<string[]>([]);
 
   /*************************** DELETE PERMISSION ***************************/
 
-  const [openDeletePermissionDialog, setOpenDeletePermissionDialog] =
-    useState(false);
+  const [openDeletePermissionDialog, setOpenDeletePermissionDialog] = useState(false);
 
   /*************************** FILTER ***************************/
 
-  const [openFilterDialog, setOpenFilterDialog] =
-    useState(false);
+  const [openFilterDialog, setOpenFilterDialog] = useState(false);
 
-  const [permissionFilterSearch, setPermissionFilterSearch] =
-    useState('');
+  const [permissionFilterSearch, setPermissionFilterSearch] = useState('');
 
-  const [roleFilterSearch, setRoleFilterSearch] =
-    useState('');
+  const [roleFilterSearch, setRoleFilterSearch] = useState('');
 
-  const [selectedFilterPermissions, setSelectedFilterPermissions] =
-    useState<string[]>([]);
+  const [selectedFilterPermissions, setSelectedFilterPermissions] = useState<string[]>([]);
 
-  const [selectedFilterRoles, setSelectedFilterRoles] =
-    useState<string[]>([]);
+  const [selectedFilterRoles, setSelectedFilterRoles] = useState<string[]>([]);
 
-  const [appliedPermissionFilters, setAppliedPermissionFilters] =
-    useState<string[]>([]);
+  const [appliedPermissionFilters, setAppliedPermissionFilters] = useState<string[]>([]);
 
-  const [appliedRoleFilters, setAppliedRoleFilters] =
-    useState<string[]>([]);
+  const [appliedRoleFilters, setAppliedRoleFilters] = useState<string[]>([]);
 
   /*************************** TAB ***************************/
 
-  const handleTabChange = (
-    _event: SyntheticEvent,
-    value: number
-  ) => {
+  const handleTabChange = (_event: SyntheticEvent, value: number) => {
     setTab(value);
     setSearch('');
     setRolesPage(1);
     setPermissionsPage(1);
   };
 
-  const addButtonLabel =
-    tab === 0 ? 'Novo Papel' : 'Nova Permissão';
+  const addButtonLabel = tab === 0 ? 'Novo Papel' : 'Nova Permissão';
 
   const handleAddClick = () => {
     if (tab === 0) {
@@ -419,9 +417,7 @@ export default function RolesPermissionsView() {
 
   /*************************** SEARCH ***************************/
 
-  const handleSearchChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(event.target.value);
 
     if (tab === 0) {
@@ -437,13 +433,9 @@ export default function RolesPermissionsView() {
     setPermissionFilterSearch('');
     setRoleFilterSearch('');
 
-    setSelectedFilterPermissions(
-      appliedPermissionFilters
-    );
+    setSelectedFilterPermissions(appliedPermissionFilters);
 
-    setSelectedFilterRoles(
-      appliedRoleFilters
-    );
+    setSelectedFilterRoles(appliedRoleFilters);
 
     setOpenFilterDialog(true);
   };
@@ -452,24 +444,14 @@ export default function RolesPermissionsView() {
     setOpenFilterDialog(false);
   };
 
-  const handleTogglePermissionFilter = (
-    permission: string
-  ) => {
+  const handleTogglePermissionFilter = (permission: string) => {
     setSelectedFilterPermissions((current) =>
-      current.includes(permission)
-        ? current.filter((item) => item !== permission)
-        : [...current, permission]
+      current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission]
     );
   };
 
-  const handleToggleRoleFilter = (
-    role: string
-  ) => {
-    setSelectedFilterRoles((current) =>
-      current.includes(role)
-        ? current.filter((item) => item !== role)
-        : [...current, role]
-    );
+  const handleToggleRoleFilter = (role: string) => {
+    setSelectedFilterRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
   };
 
   const handleResetFilter = () => {
@@ -482,18 +464,11 @@ export default function RolesPermissionsView() {
     setOpenFilterDialog(false);
   };
 
-  const handleRemoveIndividualFilter = (
-    filter: string,
-    type: 'permission' | 'role'
-  ) => {
+  const handleRemoveIndividualFilter = (filter: string, type: 'permission' | 'role') => {
     if (type === 'permission') {
-      setAppliedPermissionFilters((current) =>
-        current.filter((item) => item !== filter)
-      );
+      setAppliedPermissionFilters((current) => current.filter((item) => item !== filter));
     } else {
-      setAppliedRoleFilters((current) =>
-        current.filter((item) => item !== filter)
-      );
+      setAppliedRoleFilters((current) => current.filter((item) => item !== filter));
     }
     setRolesPage(1);
     setPermissionsPage(1);
@@ -507,38 +482,23 @@ export default function RolesPermissionsView() {
     setPermissionsPage(1);
   };
 
-  const hasActiveFilters =
-    search.trim() !== '' ||
-    appliedPermissionFilters.length > 0 ||
-    appliedRoleFilters.length > 0;
+  const hasActiveFilters = search.trim() !== '' || appliedPermissionFilters.length > 0 || appliedRoleFilters.length > 0;
 
   const handleApplyFilter = () => {
-    setAppliedPermissionFilters(
-      selectedFilterPermissions
-    );
+    setAppliedPermissionFilters(selectedFilterPermissions);
 
-    setAppliedRoleFilters(
-      selectedFilterRoles
-    );
+    setAppliedRoleFilters(selectedFilterRoles);
 
     setRolesPage(1);
     setPermissionsPage(1);
     setOpenFilterDialog(false);
   };
 
-  const filteredPermissionOptions =
-    filterPermissions.filter((permission) =>
-      permission
-        .toLowerCase()
-        .includes(permissionFilterSearch.toLowerCase())
-    );
+  const filteredPermissionOptions = filterPermissions.filter((permission) =>
+    permission.toLowerCase().includes(permissionFilterSearch.toLowerCase())
+  );
 
-  const filteredRoleOptions =
-    filterRoles.filter((role) =>
-      role
-        .toLowerCase()
-        .includes(roleFilterSearch.toLowerCase())
-    );
+  const filteredRoleOptions = filterRoles.filter((role) => role.toLowerCase().includes(roleFilterSearch.toLowerCase()));
 
   /*************************** VISIBLE ROLES ***************************/
 
@@ -558,70 +518,43 @@ export default function RolesPermissionsView() {
       return true;
     }
 
-    return appliedPermissionFilters.some((permission) =>
-      role.permissions.some(
-        (item) => item.id === permission
-      )
-    );
+    return appliedPermissionFilters.some((permission) => role.permissions.some((item) => item.id === permission));
   });
 
   /*************************** VISIBLE PERMISSIONS ***************************/
 
-  const visiblePermissions = permissions.filter(
-    (permission) => {
-      const normalizedSearch = search.trim().toLowerCase();
+  const visiblePermissions = permissions.filter((permission) => {
+    const normalizedSearch = search.trim().toLowerCase();
 
-      const matchesSearch =
-        normalizedSearch === '' ||
-        permission.action
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        permission.description
-          .toLowerCase()
-          .includes(normalizedSearch);
+    const matchesSearch =
+      normalizedSearch === '' ||
+      permission.action.toLowerCase().includes(normalizedSearch) ||
+      permission.description.toLowerCase().includes(normalizedSearch);
 
-      if (!matchesSearch) {
-        return false;
-      }
-
-      if (appliedRoleFilters.length === 0) {
-        return true;
-      }
-
-      return appliedRoleFilters.some((role) =>
-        permission.roles.includes(role)
-      );
+    if (!matchesSearch) {
+      return false;
     }
-  );
+
+    if (appliedRoleFilters.length === 0) {
+      return true;
+    }
+
+    return appliedRoleFilters.some((role) => permission.roles.includes(role));
+  });
 
   /*************************** PAGINAÇÃO ***************************/
 
-  const totalRolePages = Math.max(
-    minimumPages,
-    Math.ceil(visibleRoles.length / rowsPerPage)
-  );
+  const totalRolePages = Math.max(minimumPages, Math.ceil(visibleRoles.length / rowsPerPage));
 
-  const totalPermissionPages = Math.max(
-    minimumPages,
-    Math.ceil(visiblePermissions.length / rowsPerPage)
-  );
+  const totalPermissionPages = Math.max(minimumPages, Math.ceil(visiblePermissions.length / rowsPerPage));
 
-  const paginatedRoles = visibleRoles.slice(
-    (rolesPage - 1) * rowsPerPage,
-    rolesPage * rowsPerPage
-  );
+  const paginatedRoles = visibleRoles.slice((rolesPage - 1) * rowsPerPage, rolesPage * rowsPerPage);
 
-  const paginatedPermissions = visiblePermissions.slice(
-    (permissionsPage - 1) * rowsPerPage,
-    permissionsPage * rowsPerPage
-  );
+  const paginatedPermissions = visiblePermissions.slice((permissionsPage - 1) * rowsPerPage, permissionsPage * rowsPerPage);
 
   /*************************** ROLE MENU ***************************/
 
-  const handleMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    role: RoleRow
-  ) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, role: RoleRow) => {
     setMenuAnchorEl(event.currentTarget);
     setMenuRole(role);
   };
@@ -650,22 +583,12 @@ export default function RolesPermissionsView() {
     setOpenEditRoleDialog(false);
   };
 
-  const handleRemovePermission = (
-    permissionId: string
-  ) => {
-    setEditPermissions((current) =>
-      current.filter(
-        (permission) => permission.id !== permissionId
-      )
-    );
+  const handleRemovePermission = (permissionId: string) => {
+    setEditPermissions((current) => current.filter((permission) => permission.id !== permissionId));
   };
 
-  const handleRemoveUser = (
-    userId: string
-  ) => {
-    setEditUsers((current) =>
-      current.filter((user) => user.id !== userId)
-    );
+  const handleRemoveUser = (userId: string) => {
+    setEditUsers((current) => current.filter((user) => user.id !== userId));
   };
 
   const handleEditRoleSave = () => {
@@ -678,23 +601,12 @@ export default function RolesPermissionsView() {
         role.id === menuRole.id
           ? {
               ...role,
-              name:
-                editRoleName.trim() || role.name,
-              description:
-                editRoleDescription.trim() ||
-                role.description,
+              name: editRoleName.trim() || role.name,
+              description: editRoleDescription.trim() || role.description,
               permissions: editPermissions,
-              permissionCount:
-                editPermissions.length,
+              permissionCount: editPermissions.length,
               users: editUsers,
-              assignedUsers:
-                editUsers.length > 0
-                  ? editUsers.map((user) =>
-                      user.name
-                        .charAt(0)
-                        .toUpperCase()
-                    )
-                  : [],
+              assignedUsers: editUsers.length > 0 ? editUsers.map((user) => user.name.charAt(0).toUpperCase()) : [],
               extraUsersCount: 0
             }
           : role
@@ -716,16 +628,25 @@ export default function RolesPermissionsView() {
     setOpenDeleteRoleDialog(false);
   };
 
-  const handleDeleteRoleConfirm = () => {
+  const handleDeleteRoleConfirm = async () => {
     if (!menuRole) {
       return;
     }
 
-    setRoles((current) =>
-      current.filter(
-        (role) => role.id !== menuRole.id
-      )
-    );
+    const { error } = await deleteRole(menuRole.id);
+
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    } else {
+      openSnackbar({
+        open: true,
+        message: 'Papel excluído com sucesso!',
+        variant: 'alert',
+        severity: 'success',
+        alert: { color: 'success' }
+      } as never);
+      await reloadData();
+    }
 
     setOpenDeleteRoleDialog(false);
     setMenuRole(null);
@@ -733,13 +654,8 @@ export default function RolesPermissionsView() {
 
   /*************************** PERMISSION MENU ***************************/
 
-  const handlePermissionMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    permission: PermissionRow
-  ) => {
-    setPermissionMenuAnchorEl(
-      event.currentTarget
-    );
+  const handlePermissionMenuOpen = (event: React.MouseEvent<HTMLElement>, permission: PermissionRow) => {
+    setPermissionMenuAnchorEl(event.currentTarget);
 
     setMenuPermission(permission);
   };
@@ -755,53 +671,48 @@ export default function RolesPermissionsView() {
       return;
     }
 
-    setEditPermissionAction(
-      menuPermission.action
-    );
+    setEditPermissionAction(menuPermission.action);
 
-    setEditPermissionDescription(
-      menuPermission.description
-    );
+    setEditPermissionDescription(menuPermission.description);
 
-    setEditPermissionRoles(
-      menuPermission.roles
-    );
+    setEditPermissionRoles(menuPermission.roles);
 
     handlePermissionMenuClose();
     setOpenEditPermissionDialog(true);
   };
 
   const handleEditPermissionClose = () => {
-  setOpenEditPermissionDialog(false);
-};
+    setOpenEditPermissionDialog(false);
+  };
 
-const handleRemovePermissionRole = (role: string) => {
-  setEditPermissionRoles((current) =>
-    current.filter((item) => item !== role)
-  );
-};
+  const handleRemovePermissionRole = (role: string) => {
+    setEditPermissionRoles((current) => current.filter((item) => item !== role));
+  };
 
-  const handleEditPermissionSave = () => {
+  const handleEditPermissionSave = async () => {
     if (!menuPermission) {
       return;
     }
 
-    setPermissions((current) =>
-      current.map((permission) =>
-        permission.id === menuPermission.id
-          ? {
-              ...permission,
-              action:
-                editPermissionAction.trim() ||
-                permission.action,
-              description:
-                editPermissionDescription.trim() ||
-                permission.description,
-              roles: editPermissionRoles
-            }
-          : permission
-      )
-    );
+    const { error } = await updatePermission({
+      id: menuPermission.id,
+      subject: menuPermission.subject,
+      action: editPermissionAction.trim() || menuPermission.action,
+      description: editPermissionDescription.trim() || menuPermission.description
+    });
+
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    } else {
+      openSnackbar({
+        open: true,
+        message: 'Permissão atualizada com sucesso!',
+        variant: 'alert',
+        severity: 'success',
+        alert: { color: 'success' }
+      } as never);
+      await reloadData();
+    }
 
     setOpenEditPermissionDialog(false);
     setMenuPermission(null);
@@ -818,17 +729,25 @@ const handleRemovePermissionRole = (role: string) => {
     setOpenDeletePermissionDialog(false);
   };
 
-  const handleDeletePermissionConfirm = () => {
+  const handleDeletePermissionConfirm = async () => {
     if (!menuPermission) {
       return;
     }
 
-    setPermissions((current) =>
-      current.filter(
-        (permission) =>
-          permission.id !== menuPermission.id
-      )
-    );
+    const { error } = await deletePermission(menuPermission.id);
+
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    } else {
+      openSnackbar({
+        open: true,
+        message: 'Permissão excluída com sucesso!',
+        variant: 'alert',
+        severity: 'success',
+        alert: { color: 'success' }
+      } as never);
+      await reloadData();
+    }
 
     setOpenDeletePermissionDialog(false);
     setMenuPermission(null);
@@ -836,52 +755,51 @@ const handleRemovePermissionRole = (role: string) => {
 
   /*************************** CREATE ROLE ***************************/
 
-  const handleCreateRole = (
-    data: CreateRoleData
-  ) => {
-    const newRole: RoleRow = {
-      id: Date.now().toString(),
-      name:
-        data.name ||
-        data.roleName ||
-        'Novo Papel',
-      description: data.description || '',
-      assignedUsers: [],
-      extraUsersCount: 0,
-      permissionCount: 0,
-      permissions: [],
-      users: []
-    };
-
-    setRoles((current) => [
-      ...current,
-      newRole
-    ]);
-
+  const handleCreateRole = (_data: CreateRoleData) => {
+    // O papel já foi persistido no backend pelo CreateRoleDialog.
+    // Aqui apenas recarregamos a lista e fechamos o modal.
+    reloadData();
     setRolesPage(1);
     setOpenCreateRoleDialog(false);
   };
 
   /*************************** CREATE PERMISSION ***************************/
 
-  const handleCreatePermission = (
-    data: CreatePermissionData
-  ) => {
-    const newPermission: PermissionRow = {
-      id: Date.now().toString(),
-      action:
-        data.action ||
-        data.name ||
-        data.permission ||
-        'nova.permissao',
-      description: data.description || '',
-      roles: data.roles || []
-    };
+  const handleCreatePermission = async (data: CreatePermissionData) => {
+    const subject = data.target || data.name || '';
+    const actions = data.actions && data.actions.length > 0 ? data.actions : data.action ? [data.action] : [];
 
-    setPermissions((current) => [
-      ...current,
-      newPermission
-    ]);
+    if (!subject || actions.length === 0) {
+      setOpenCreatePermissionDialog(false);
+      return;
+    }
+
+    // O backend modela cada permissão como um par subject + action.
+    // Quando várias ações são selecionadas, criamos uma permissão para cada.
+    const results = await Promise.all(
+      actions.map((action) =>
+        createPermission({
+          subject,
+          action,
+          description: data.description || ''
+        })
+      )
+    );
+
+    const firstError = results.find((r) => r.error)?.error;
+
+    if (firstError) {
+      openSnackbar({ open: true, message: firstError, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    } else {
+      openSnackbar({
+        open: true,
+        message: 'Permissão criada com sucesso!',
+        variant: 'alert',
+        severity: 'success',
+        alert: { color: 'success' }
+      } as never);
+      await reloadData();
+    }
 
     setPermissionsPage(1);
     setOpenCreatePermissionDialog(false);
@@ -891,7 +809,6 @@ const handleRemovePermissionRole = (role: string) => {
 
   return (
     <Stack sx={{ gap: 2.5 }}>
-
       {/* CABEÇALHO */}
 
       <Stack
@@ -915,9 +832,7 @@ const handleRemovePermissionRole = (role: string) => {
         {tab !== 2 && (
           <Button
             variant="contained"
-            startIcon={
-              <IconPlus size={16} />
-            }
+            startIcon={<IconPlus size={16} />}
             onClick={handleAddClick}
             sx={{
               minWidth: 150,
@@ -951,7 +866,6 @@ const handleRemovePermissionRole = (role: string) => {
           overflow: 'hidden'
         }}
       >
-
         {/* ABAS */}
 
         <Tabs
@@ -1015,9 +929,7 @@ const handleRemovePermissionRole = (role: string) => {
               <Button
                 variant="outlined"
                 color="secondary"
-                startIcon={
-                  <IconFilter size={16} />
-                }
+                startIcon={<IconFilter size={16} />}
                 onClick={handleFilterOpen}
                 sx={{
                   minWidth: 108,
@@ -1069,9 +981,7 @@ const handleRemovePermissionRole = (role: string) => {
                       key={filter}
                       label={filter}
                       size="small"
-                      onDelete={() =>
-                        handleRemoveIndividualFilter(filter, 'permission')
-                      }
+                      onDelete={() => handleRemoveIndividualFilter(filter, 'permission')}
                       sx={{
                         height: 28,
                         fontSize: 13
@@ -1084,9 +994,7 @@ const handleRemovePermissionRole = (role: string) => {
                       key={filter}
                       label={filter}
                       size="small"
-                      onDelete={() =>
-                        handleRemoveIndividualFilter(filter, 'role')
-                      }
+                      onDelete={() => handleRemoveIndividualFilter(filter, 'role')}
                       sx={{
                         height: 28,
                         fontSize: 13
@@ -1118,319 +1026,254 @@ const handleRemovePermissionRole = (role: string) => {
 
         {tab === 0 && (
           <>
-          <TableContainer
-            sx={{
-              overflowX: 'auto'
-            }}
-          >
-            <Table
+            <TableContainer
               sx={{
-                tableLayout: 'fixed',
-                minWidth: 900
+                overflowX: 'auto'
               }}
             >
-              <TableHead>
-                <TableRow>
-
-                  <TableCell
-                    padding="checkbox"
-                    sx={{ width: 52 }}
-                  >
-                    <Checkbox />
-                  </TableCell>
-
-                  <TableCell
-                    sx={{ width: '16%' }}
-                  >
-                    Papel
-                  </TableCell>
-
-                  <TableCell
-                    sx={{ width: '38%' }}
-                  >
-                    Descrição
-                  </TableCell>
-
-                  <TableCell
-                    sx={{ width: '20%' }}
-                  >
-                    Usuário atribuído
-                  </TableCell>
-
-                  <TableCell
-                    sx={{ width: '10%' }}
-                  >
-                    Permissão
-                  </TableCell>
-
-                  <TableCell
-                    align="right"
-                    sx={{ width: 60 }}
-                  />
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {paginatedRoles.map((role) => (
-                  <TableRow
-                    key={role.id}
-                    hover
-                  >
-                    <TableCell padding="checkbox">
+              <Table
+                sx={{
+                  tableLayout: 'fixed',
+                  minWidth: 900
+                }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" sx={{ width: 52 }}>
                       <Checkbox />
                     </TableCell>
 
-                    <TableCell
-                      sx={{ overflow: 'hidden' }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        noWrap
-                      >
-                        {role.name}
-                      </Typography>
-                    </TableCell>
+                    <TableCell sx={{ width: '16%' }}>Papel</TableCell>
 
-                    <TableCell
-                      sx={{ overflow: 'hidden' }}
-                    >
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          display: 'block',
-                          width: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title={role.description}
-                      >
-                        {role.description}
-                      </Typography>
-                    </TableCell>
+                    <TableCell sx={{ width: '38%' }}>Descrição</TableCell>
 
-                    <TableCell>
-                      <Stack
-                        direction="row"
-                        sx={{
-                          alignItems: 'center',
-                          gap: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <AvatarGroup
-                          max={4}
+                    <TableCell sx={{ width: '20%' }}>Usuário atribuído</TableCell>
+
+                    <TableCell sx={{ width: '10%' }}>Permissão</TableCell>
+
+                    <TableCell align="right" sx={{ width: 60 }} />
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {paginatedRoles.map((role) => (
+                    <TableRow key={role.id} hover>
+                      <TableCell padding="checkbox">
+                        <Checkbox />
+                      </TableCell>
+
+                      <TableCell sx={{ overflow: 'hidden' }}>
+                        <Typography variant="subtitle2" noWrap>
+                          {role.name}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell sx={{ overflow: 'hidden' }}>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
                           sx={{
-                            '& .MuiAvatar-root': {
-                              width: 28,
-                              height: 28,
-                              fontSize: 12
-                            }
+                            display: 'block',
+                            width: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title={role.description}
+                        >
+                          {role.description}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Stack
+                          direction="row"
+                          sx={{
+                            alignItems: 'center',
+                            gap: 1,
+                            minWidth: 0
                           }}
                         >
-                          {role.assignedUsers.map(
-                            (initial, index) => (
-                              <Avatar
-                                key={index}
-                              >
-                                {initial}
-                              </Avatar>
-                            )
+                          <AvatarGroup
+                            max={4}
+                            sx={{
+                              '& .MuiAvatar-root': {
+                                width: 28,
+                                height: 28,
+                                fontSize: 12
+                              }
+                            }}
+                          >
+                            {role.assignedUsers.map((initial, index) => (
+                              <Avatar key={index}>{initial}</Avatar>
+                            ))}
+                          </AvatarGroup>
+
+                          {role.extraUsersCount > 0 && (
+                            <Typography variant="caption" color="text.secondary" noWrap>
+                              +{role.extraUsersCount}
+                            </Typography>
                           )}
-                        </AvatarGroup>
+                        </Stack>
+                      </TableCell>
 
-                        {role.extraUsersCount > 0 && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            noWrap
-                          >
-                            +{role.extraUsersCount}
-                          </Typography>
-                        )}
-                      </Stack>
-                    </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" noWrap>
+                          {role.permissionCount}
+                        </Typography>
+                      </TableCell>
 
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        noWrap
-                      >
-                        {role.permissionCount}
-                      </Typography>
-                    </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={(event) => handleMenuOpen(event, role)}>
+                          <IconDotsVertical size={18} />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
 
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={(event) =>
-                          handleMenuOpen(
-                            event,
-                            role
-                          )
-                        }
-                      >
-                        <IconDotsVertical
-                          size={18}
-                        />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  {paginatedRoles.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                          Nenhum papel encontrado.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-                {paginatedRoles.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      align="center"
-                    >
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ py: 4 }}
-                      >
-                        Nenhum papel encontrado.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          <Stack
-            direction="row"
-            sx={{
-              justifyContent: 'center',
-              alignItems: 'center',
-              p: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <Pagination
-              count={totalRolePages}
-              page={rolesPage}
-              onChange={(_, value) => setRolesPage(value)}
-              color="primary"
-              siblingCount={1}
-              boundaryCount={1}
-              getItemAriaLabel={(type, page) => {
-                switch (type) {
-                  case 'page':
-                    return `Ir para página ${page}`;
-                  case 'first':
-                    return 'Ir para a primeira página';
-                  case 'last':
-                    return 'Ir para a última página';
-                  case 'next':
-                    return 'Ir para a próxima página';
-                  case 'previous':
-                    return 'Ir para a página anterior';
-                  default:
-                    return '';
-                }
-              }}
-              renderItem={(item) => {
-                if (item.type === 'previous') {
-                  return (
-                    <PaginationItem
-                      {...item}
-                      slots={{
-                        previous: () => (
-                          <Stack
-                            direction="row"
-                            sx={{
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 0.5,
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <IconChevronLeft size={16} />
-                            <span>Anterior</span>
-                          </Stack>
-                        )
-                      }}
-                      sx={{
-                        width: 82,
-                        minWidth: 82,
-                        height: 32,
-                        px: 1,
-                        borderRadius: 1,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        '&.Mui-disabled': {
-                          opacity: 0.45
-                        }
-                      }}
-                    />
-                  );
-                }
-
-                if (item.type === 'next') {
-                  return (
-                    <PaginationItem
-                      {...item}
-                      slots={{
-                        next: () => (
-                          <Stack
-                            direction="row"
-                            sx={{
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 0.5,
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <span>Próximo</span>
-                            <IconChevronRight size={16} />
-                          </Stack>
-                        )
-                      }}
-                      sx={{
-                        width: 82,
-                        minWidth: 82,
-                        height: 32,
-                        px: 1,
-                        borderRadius: 1,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        '&.Mui-disabled': {
-                          opacity: 0.45
-                        }
-                      }}
-                    />
-                  );
-                }
-
-                return (
-                  <PaginationItem
-                    {...item}
-                    sx={{
-                      width:
-                        item.type === 'page' ? 32 : 'auto',
-                      minWidth:
-                        item.type === 'page' ? 32 : 32,
-                      height: 32,
-                      borderRadius: 1,
-                      fontSize: '14px',
-                      flexShrink: 0
-                    }}
-                  />
-                );
-              }}
+            <Stack
+              direction="row"
               sx={{
-                '& .MuiPagination-ul': {
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 0.5,
-                  flexWrap: 'nowrap'
-                }
+                justifyContent: 'center',
+                alignItems: 'center',
+                p: 2,
+                borderTop: '1px solid',
+                borderColor: 'divider'
               }}
-            />
-          </Stack>
+            >
+              <Pagination
+                count={totalRolePages}
+                page={rolesPage}
+                onChange={(_, value) => setRolesPage(value)}
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
+                getItemAriaLabel={(type, page) => {
+                  switch (type) {
+                    case 'page':
+                      return `Ir para página ${page}`;
+                    case 'first':
+                      return 'Ir para a primeira página';
+                    case 'last':
+                      return 'Ir para a última página';
+                    case 'next':
+                      return 'Ir para a próxima página';
+                    case 'previous':
+                      return 'Ir para a página anterior';
+                    default:
+                      return '';
+                  }
+                }}
+                renderItem={(item) => {
+                  if (item.type === 'previous') {
+                    return (
+                      <PaginationItem
+                        {...item}
+                        slots={{
+                          previous: () => (
+                            <Stack
+                              direction="row"
+                              sx={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <IconChevronLeft size={16} />
+                              <span>Anterior</span>
+                            </Stack>
+                          )
+                        }}
+                        sx={{
+                          width: 82,
+                          minWidth: 82,
+                          height: 32,
+                          px: 1,
+                          borderRadius: 1,
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          '&.Mui-disabled': {
+                            opacity: 0.45
+                          }
+                        }}
+                      />
+                    );
+                  }
+
+                  if (item.type === 'next') {
+                    return (
+                      <PaginationItem
+                        {...item}
+                        slots={{
+                          next: () => (
+                            <Stack
+                              direction="row"
+                              sx={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span>Próximo</span>
+                              <IconChevronRight size={16} />
+                            </Stack>
+                          )
+                        }}
+                        sx={{
+                          width: 82,
+                          minWidth: 82,
+                          height: 32,
+                          px: 1,
+                          borderRadius: 1,
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          '&.Mui-disabled': {
+                            opacity: 0.45
+                          }
+                        }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <PaginationItem
+                      {...item}
+                      sx={{
+                        width: item.type === 'page' ? 32 : 'auto',
+                        minWidth: item.type === 'page' ? 32 : 32,
+                        height: 32,
+                        borderRadius: 1,
+                        fontSize: '14px',
+                        flexShrink: 0
+                      }}
+                    />
+                  );
+                }}
+                sx={{
+                  '& .MuiPagination-ul': {
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.5,
+                    flexWrap: 'nowrap'
+                  }
+                }}
+              />
+            </Stack>
           </>
         )}
 
@@ -1440,59 +1283,36 @@ const handleRemovePermissionRole = (role: string) => {
 
         {tab === 1 && (
           <>
-          <TableContainer
-            sx={{
-              overflowX: 'auto'
-            }}
-          >
-            <Table
+            <TableContainer
               sx={{
-                tableLayout: 'fixed',
-                minWidth: 950
+                overflowX: 'auto'
               }}
             >
-              <TableHead>
-                <TableRow>
+              <Table
+                sx={{
+                  tableLayout: 'fixed',
+                  minWidth: 950
+                }}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox" sx={{ width: 52 }}>
+                      <Checkbox />
+                    </TableCell>
 
-                  <TableCell
-                    padding="checkbox"
-                    sx={{ width: 52 }}
-                  >
-                    <Checkbox />
-                  </TableCell>
+                    <TableCell sx={{ width: '17%' }}>Permissões</TableCell>
 
-                  <TableCell
-                    sx={{ width: '17%' }}
-                  >
-                    Permissões
-                  </TableCell>
+                    <TableCell sx={{ width: '44%' }}>Descrição</TableCell>
 
-                  <TableCell
-                    sx={{ width: '44%' }}
-                  >
-                    Descrição
-                  </TableCell>
+                    <TableCell sx={{ width: '29%' }}>Papéis</TableCell>
 
-                  <TableCell
-                    sx={{ width: '29%' }}
-                  >
-                    Papéis
-                  </TableCell>
+                    <TableCell align="right" sx={{ width: 60 }} />
+                  </TableRow>
+                </TableHead>
 
-                  <TableCell
-                    align="right"
-                    sx={{ width: 60 }}
-                  />
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {paginatedPermissions.map(
-                  (permission) => (
-                    <TableRow
-                      key={permission.id}
-                      hover
-                    >
+                <TableBody>
+                  {paginatedPermissions.map((permission) => (
+                    <TableRow key={permission.id} hover>
                       <TableCell padding="checkbox">
                         <Checkbox />
                       </TableCell>
@@ -1502,10 +1322,7 @@ const handleRemovePermissionRole = (role: string) => {
                           overflow: 'hidden'
                         }}
                       >
-                        <Typography
-                          variant="subtitle2"
-                          noWrap
-                        >
+                        <Typography variant="subtitle2" noWrap>
                           {permission.action}
                         </Typography>
                       </TableCell>
@@ -1525,9 +1342,7 @@ const handleRemovePermissionRole = (role: string) => {
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
                           }}
-                          title={
-                            permission.description
-                          }
+                          title={permission.description}
                         >
                           {permission.description}
                         </Typography>
@@ -1542,193 +1357,171 @@ const handleRemovePermissionRole = (role: string) => {
                             overflow: 'hidden'
                           }}
                         >
-                          {permission.roles.map(
-                            (role) => (
-                              <Chip
-                                key={role}
-                                label={role}
-                                size="small"
-                                variant="outlined"
-                                sx={{
-                                  flexShrink: 0
-                                }}
-                              />
-                            )
-                          )}
+                          {permission.roles.map((role) => (
+                            <Chip
+                              key={role}
+                              label={role}
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                flexShrink: 0
+                              }}
+                            />
+                          ))}
                         </Stack>
                       </TableCell>
 
                       <TableCell align="right">
-                        <IconButton
-                          size="small"
-                          onClick={(event) =>
-                            handlePermissionMenuOpen(
-                              event,
-                              permission
-                            )
-                          }
-                        >
-                          <IconDotsVertical
-                            size={18}
-                          />
+                        <IconButton size="small" onClick={(event) => handlePermissionMenuOpen(event, permission)}>
+                          <IconDotsVertical size={18} />
                         </IconButton>
                       </TableCell>
                     </TableRow>
-                  )
-                )}
+                  ))}
 
-                {paginatedPermissions.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      align="center"
-                    >
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ py: 4 }}
-                      >
-                        Nenhuma permissão encontrada.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  {paginatedPermissions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                          Nenhuma permissão encontrada.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-          <Stack
-            direction="row"
-            sx={{
-              justifyContent: 'center',
-              alignItems: 'center',
-              p: 2,
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <Pagination
-              count={totalPermissionPages}
-              page={permissionsPage}
-              onChange={(_, value) => setPermissionsPage(value)}
-              color="primary"
-              siblingCount={1}
-              boundaryCount={1}
-              getItemAriaLabel={(type, page) => {
-                switch (type) {
-                  case 'page':
-                    return `Ir para página ${page}`;
-                  case 'first':
-                    return 'Ir para a primeira página';
-                  case 'last':
-                    return 'Ir para a última página';
-                  case 'next':
-                    return 'Ir para a próxima página';
-                  case 'previous':
-                    return 'Ir para a página anterior';
-                  default:
-                    return '';
-                }
-              }}
-              renderItem={(item) => {
-                if (item.type === 'previous') {
-                  return (
-                    <PaginationItem
-                      {...item}
-                      slots={{
-                        previous: () => (
-                          <Stack
-                            direction="row"
-                            sx={{
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 0.5,
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <IconChevronLeft size={16} />
-                            <span>Anterior</span>
-                          </Stack>
-                        )
-                      }}
-                      sx={{
-                        width: 82,
-                        minWidth: 82,
-                        height: 32,
-                        px: 1,
-                        borderRadius: 1,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        '&.Mui-disabled': {
-                          opacity: 0.45
-                        }
-                      }}
-                    />
-                  );
-                }
-
-                if (item.type === 'next') {
-                  return (
-                    <PaginationItem
-                      {...item}
-                      slots={{
-                        next: () => (
-                          <Stack
-                            direction="row"
-                            sx={{
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 0.5,
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <span>Próximo</span>
-                            <IconChevronRight size={16} />
-                          </Stack>
-                        )
-                      }}
-                      sx={{
-                        width: 82,
-                        minWidth: 82,
-                        height: 32,
-                        px: 1,
-                        borderRadius: 1,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        '&.Mui-disabled': {
-                          opacity: 0.45
-                        }
-                      }}
-                    />
-                  );
-                }
-
-                return (
-                  <PaginationItem
-                    {...item}
-                    sx={{
-                      width:
-                        item.type === 'page' ? 32 : 'auto',
-                      minWidth:
-                        item.type === 'page' ? 32 : 32,
-                      height: 32,
-                      borderRadius: 1,
-                      fontSize: '14px',
-                      flexShrink: 0
-                    }}
-                  />
-                );
-              }}
+            <Stack
+              direction="row"
               sx={{
-                '& .MuiPagination-ul': {
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 0.5,
-                  flexWrap: 'nowrap'
-                }
+                justifyContent: 'center',
+                alignItems: 'center',
+                p: 2,
+                borderTop: '1px solid',
+                borderColor: 'divider'
               }}
-            />
-          </Stack>
+            >
+              <Pagination
+                count={totalPermissionPages}
+                page={permissionsPage}
+                onChange={(_, value) => setPermissionsPage(value)}
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
+                getItemAriaLabel={(type, page) => {
+                  switch (type) {
+                    case 'page':
+                      return `Ir para página ${page}`;
+                    case 'first':
+                      return 'Ir para a primeira página';
+                    case 'last':
+                      return 'Ir para a última página';
+                    case 'next':
+                      return 'Ir para a próxima página';
+                    case 'previous':
+                      return 'Ir para a página anterior';
+                    default:
+                      return '';
+                  }
+                }}
+                renderItem={(item) => {
+                  if (item.type === 'previous') {
+                    return (
+                      <PaginationItem
+                        {...item}
+                        slots={{
+                          previous: () => (
+                            <Stack
+                              direction="row"
+                              sx={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <IconChevronLeft size={16} />
+                              <span>Anterior</span>
+                            </Stack>
+                          )
+                        }}
+                        sx={{
+                          width: 82,
+                          minWidth: 82,
+                          height: 32,
+                          px: 1,
+                          borderRadius: 1,
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          '&.Mui-disabled': {
+                            opacity: 0.45
+                          }
+                        }}
+                      />
+                    );
+                  }
+
+                  if (item.type === 'next') {
+                    return (
+                      <PaginationItem
+                        {...item}
+                        slots={{
+                          next: () => (
+                            <Stack
+                              direction="row"
+                              sx={{
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 0.5,
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <span>Próximo</span>
+                              <IconChevronRight size={16} />
+                            </Stack>
+                          )
+                        }}
+                        sx={{
+                          width: 82,
+                          minWidth: 82,
+                          height: 32,
+                          px: 1,
+                          borderRadius: 1,
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          '&.Mui-disabled': {
+                            opacity: 0.45
+                          }
+                        }}
+                      />
+                    );
+                  }
+
+                  return (
+                    <PaginationItem
+                      {...item}
+                      sx={{
+                        width: item.type === 'page' ? 32 : 'auto',
+                        minWidth: item.type === 'page' ? 32 : 32,
+                        height: 32,
+                        borderRadius: 1,
+                        fontSize: '14px',
+                        flexShrink: 0
+                      }}
+                    />
+                  );
+                }}
+                sx={{
+                  '& .MuiPagination-ul': {
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 0.5,
+                    flexWrap: 'nowrap'
+                  }
+                }}
+              />
+            </Stack>
           </>
         )}
 
@@ -1812,20 +1605,13 @@ const handleRemovePermissionRole = (role: string) => {
                   justifyContent: 'space-between'
                 }}
               >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography variant="body2" color="text.secondary">
                   Permissão
                 </Typography>
 
                 <Chip
                   size="small"
-                  label={`${selectedFilterPermissions.length} ${
-                    selectedFilterPermissions.length === 1
-                      ? 'Permissão'
-                      : 'Permissões'
-                  }`}
+                  label={`${selectedFilterPermissions.length} ${selectedFilterPermissions.length === 1 ? 'Permissão' : 'Permissões'}`}
                   variant="outlined"
                 />
               </Stack>
@@ -1842,11 +1628,7 @@ const handleRemovePermissionRole = (role: string) => {
                 size="small"
                 placeholder="Pesquisar permissão"
                 value={permissionFilterSearch}
-                onChange={(event) =>
-                  setPermissionFilterSearch(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setPermissionFilterSearch(event.target.value)}
                 startAdornment={
                   <InputAdornment position="start">
                     <IconSearch size={18} />
@@ -1862,43 +1644,29 @@ const handleRemovePermissionRole = (role: string) => {
                 overflowY: 'auto'
               }}
             >
-              {filteredPermissionOptions.map(
-                (permission) => (
-                  <Box
-                    key={permission}
-                    onClick={() =>
-                      handleTogglePermissionFilter(
-                        permission
-                      )
+              {filteredPermissionOptions.map((permission) => (
+                <Box
+                  key={permission}
+                  onClick={() => handleTogglePermissionFilter(permission)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    px: 1,
+                    py: 0.35,
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: 'action.hover'
                     }
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      px: 1,
-                      py: 0.35,
-                      borderRadius: 1,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'action.hover'
-                      }
-                    }}
-                  >
-                    <Checkbox
-                      checked={selectedFilterPermissions.includes(
-                        permission
-                      )}
-                      size="small"
-                    />
+                  }}
+                >
+                  <Checkbox checked={selectedFilterPermissions.includes(permission)} size="small" />
 
-                    <Typography
-                      variant="body2"
-                      sx={{ fontSize: 16 }}
-                    >
-                      {permission}
-                    </Typography>
-                  </Box>
-                )
-              )}
+                  <Typography variant="body2" sx={{ fontSize: 16 }}>
+                    {permission}
+                  </Typography>
+                </Box>
+              ))}
             </Box>
           </>
         )}
@@ -1921,20 +1689,13 @@ const handleRemovePermissionRole = (role: string) => {
                   justifyContent: 'space-between'
                 }}
               >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography variant="body2" color="text.secondary">
                   Papéis
                 </Typography>
 
                 <Chip
                   size="small"
-                  label={`${selectedFilterRoles.length} ${
-                    selectedFilterRoles.length === 1
-                      ? 'Papel'
-                      : 'Papéis'
-                  }`}
+                  label={`${selectedFilterRoles.length} ${selectedFilterRoles.length === 1 ? 'Papel' : 'Papéis'}`}
                   variant="outlined"
                 />
               </Stack>
@@ -1951,11 +1712,7 @@ const handleRemovePermissionRole = (role: string) => {
                 size="small"
                 placeholder="Pesquisar papel"
                 value={roleFilterSearch}
-                onChange={(event) =>
-                  setRoleFilterSearch(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setRoleFilterSearch(event.target.value)}
                 startAdornment={
                   <InputAdornment position="start">
                     <IconSearch size={18} />
@@ -1974,9 +1731,7 @@ const handleRemovePermissionRole = (role: string) => {
               {filteredRoleOptions.map((role) => (
                 <Box
                   key={role}
-                  onClick={() =>
-                    handleToggleRoleFilter(role)
-                  }
+                  onClick={() => handleToggleRoleFilter(role)}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -1989,17 +1744,9 @@ const handleRemovePermissionRole = (role: string) => {
                     }
                   }}
                 >
-                  <Checkbox
-                    checked={selectedFilterRoles.includes(
-                      role
-                    )}
-                    size="small"
-                  />
+                  <Checkbox checked={selectedFilterRoles.includes(role)} size="small" />
 
-                  <Typography
-                    variant="body2"
-                    sx={{ fontSize: 16 }}
-                  >
+                  <Typography variant="body2" sx={{ fontSize: 16 }}>
                     {role}
                   </Typography>
                 </Box>
@@ -2066,8 +1813,7 @@ const handleRemovePermissionRole = (role: string) => {
               mt: 0.5,
               minWidth: 185,
               borderRadius: 2,
-              boxShadow:
-                '0px 6px 20px rgba(0, 0, 0, 0.12)',
+              boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.12)',
               overflow: 'hidden'
             }
           }
@@ -2083,9 +1829,7 @@ const handleRemovePermissionRole = (role: string) => {
         >
           <IconEdit size={18} />
 
-          <Typography variant="body2">
-            Editar
-          </Typography>
+          <Typography variant="body2">Editar</Typography>
         </MenuItem>
 
         <MenuItem
@@ -2099,9 +1843,7 @@ const handleRemovePermissionRole = (role: string) => {
         >
           <IconTrash size={18} />
 
-          <Typography variant="body2">
-            Deletar
-          </Typography>
+          <Typography variant="body2">Deletar</Typography>
         </MenuItem>
       </Menu>
 
@@ -2127,8 +1869,7 @@ const handleRemovePermissionRole = (role: string) => {
               mt: 0.5,
               minWidth: 185,
               borderRadius: 2,
-              boxShadow:
-                '0px 6px 20px rgba(0, 0, 0, 0.12)',
+              boxShadow: '0px 6px 20px rgba(0, 0, 0, 0.12)',
               overflow: 'hidden'
             }
           }
@@ -2144,9 +1885,7 @@ const handleRemovePermissionRole = (role: string) => {
         >
           <IconEdit size={18} />
 
-          <Typography variant="body2">
-            Editar
-          </Typography>
+          <Typography variant="body2">Editar</Typography>
         </MenuItem>
 
         <MenuItem
@@ -2160,9 +1899,7 @@ const handleRemovePermissionRole = (role: string) => {
         >
           <IconTrash size={18} />
 
-          <Typography variant="body2">
-            Deletar
-          </Typography>
+          <Typography variant="body2">Deletar</Typography>
         </MenuItem>
       </Menu>
 
@@ -2202,20 +1939,12 @@ const handleRemovePermissionRole = (role: string) => {
               Editar Papel
             </DialogTitle>
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 0.5 }}
-            >
-              Edite as informações, permissões e
-              usuários atribuídos a este papel.
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Edite as informações, permissões e usuários atribuídos a este papel.
             </Typography>
           </Box>
 
-          <IconButton
-            onClick={handleEditRoleClose}
-            size="small"
-          >
+          <IconButton onClick={handleEditRoleClose} size="small">
             <IconX size={18} />
           </IconButton>
         </Stack>
@@ -2230,7 +1959,6 @@ const handleRemovePermissionRole = (role: string) => {
           }}
         >
           <Stack sx={{ gap: 2.5 }}>
-
             <Box>
               <Typography
                 variant="body2"
@@ -2242,15 +1970,7 @@ const handleRemovePermissionRole = (role: string) => {
                 Nome do papel
               </Typography>
 
-              <OutlinedInput
-                value={editRoleName}
-                onChange={(event) =>
-                  setEditRoleName(
-                    event.target.value
-                  )
-                }
-                fullWidth
-              />
+              <OutlinedInput value={editRoleName} onChange={(event) => setEditRoleName(event.target.value)} fullWidth />
             </Box>
 
             <Box>
@@ -2266,11 +1986,7 @@ const handleRemovePermissionRole = (role: string) => {
 
               <TextField
                 value={editRoleDescription}
-                onChange={(event) =>
-                  setEditRoleDescription(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setEditRoleDescription(event.target.value)}
                 fullWidth
                 multiline
                 minRows={3}
@@ -2286,96 +2002,81 @@ const handleRemovePermissionRole = (role: string) => {
                 }}
               >
                 Permissões{' '}
-                <Typography
-                  component="span"
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography component="span" variant="body2" color="text.secondary">
                   (Opcional)
                 </Typography>
               </Typography>
 
               <Stack sx={{ gap: 1 }}>
-                {editPermissions.map(
-                  (permission) => (
-                    <Stack
-                      key={permission.id}
-                      direction="row"
+                {editPermissions.map((permission) => (
+                  <Stack
+                    key={permission.id}
+                    direction="row"
+                    sx={{
+                      alignItems: 'center',
+                      gap: 1,
+                      p: 1
+                    }}
+                  >
+                    <Box
                       sx={{
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        display: 'flex',
                         alignItems: 'center',
-                        gap: 1,
-                        p: 1
+                        justifyContent: 'center',
+                        borderRadius: 1.5,
+                        bgcolor: 'primary.light',
+                        color: 'primary.main'
                       }}
                     >
-                      <Box
+                      <IconShield size={20} />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: 0
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {permission.name}
+                      </Typography>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
                         sx={{
-                          width: 44,
-                          height: 44,
-                          flexShrink: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 1.5,
-                          bgcolor: 'primary.light',
-                          color: 'primary.main'
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
                         }}
                       >
-                        <IconShield size={20} />
-                      </Box>
+                        {permission.description}
+                      </Typography>
+                    </Box>
 
-                      <Box
-                        sx={{
-                          flex: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 500 }}
-                        >
-                          {permission.name}
-                        </Typography>
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          {permission.description}
-                        </Typography>
-                      </Box>
-
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          handleRemovePermission(
-                            permission.id
-                          )
-                        }
-                        sx={{
-                          color: 'error.main',
-                          border: '1px solid',
-                          borderColor: 'error.light',
-                          flexShrink: 0
-                        }}
-                      >
-                        <IconTrash size={17} />
-                      </IconButton>
-                    </Stack>
-                  )
-                )}
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemovePermission(permission.id)}
+                      sx={{
+                        color: 'error.main',
+                        border: '1px solid',
+                        borderColor: 'error.light',
+                        flexShrink: 0
+                      }}
+                    >
+                      <IconTrash size={17} />
+                    </IconButton>
+                  </Stack>
+                ))}
 
                 <Button
                   variant="outlined"
                   fullWidth
-                  startIcon={
-                    <IconPlus size={17} />
-                  }
+                  startIcon={<IconPlus size={17} />}
                   sx={{
                     height: 44,
                     mt: 0.5
@@ -2395,11 +2096,7 @@ const handleRemovePermissionRole = (role: string) => {
                 }}
               >
                 Usuários{' '}
-                <Typography
-                  component="span"
-                  variant="body2"
-                  color="text.secondary"
-                >
+                <Typography component="span" variant="body2" color="text.secondary">
                   (Opcional)
                 </Typography>
               </Typography>
@@ -2421,9 +2118,7 @@ const handleRemovePermissionRole = (role: string) => {
                         height: 40
                       }}
                     >
-                      {user.name
-                        .charAt(0)
-                        .toUpperCase()}
+                      {user.name.charAt(0).toUpperCase()}
                     </Avatar>
 
                     <Box
@@ -2432,26 +2127,18 @@ const handleRemovePermissionRole = (role: string) => {
                         minWidth: 0
                       }}
                     >
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 500 }}
-                      >
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
                         {user.name}
                       </Typography>
 
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                      >
+                      <Typography variant="caption" color="text.secondary">
                         {user.username}
                       </Typography>
                     </Box>
 
                     <IconButton
                       size="small"
-                      onClick={() =>
-                        handleRemoveUser(user.id)
-                      }
+                      onClick={() => handleRemoveUser(user.id)}
                       sx={{
                         color: 'error.main',
                         border: '1px solid',
@@ -2466,9 +2153,7 @@ const handleRemovePermissionRole = (role: string) => {
                 <Button
                   variant="outlined"
                   fullWidth
-                  startIcon={
-                    <IconPlus size={17} />
-                  }
+                  startIcon={<IconPlus size={17} />}
                   sx={{
                     height: 44,
                     mt: 0.5
@@ -2491,18 +2176,11 @@ const handleRemovePermissionRole = (role: string) => {
             gap: 1
           }}
         >
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={handleEditRoleClose}
-          >
+          <Button variant="outlined" color="secondary" onClick={handleEditRoleClose}>
             Cancelar
           </Button>
 
-          <Button
-            variant="contained"
-            onClick={handleEditRoleSave}
-          >
+          <Button variant="contained" onClick={handleEditRoleSave}>
             Atualizar Papel
           </Button>
         </DialogActions>
@@ -2535,11 +2213,7 @@ const handleRemovePermissionRole = (role: string) => {
           }}
         >
           Deletar papel
-
-          <IconButton
-            size="small"
-            onClick={handleDeleteRoleClose}
-          >
+          <IconButton size="small" onClick={handleDeleteRoleClose}>
             <IconX size={18} />
           </IconButton>
         </DialogTitle>
@@ -2571,43 +2245,24 @@ const handleRemovePermissionRole = (role: string) => {
                 color: 'error.main'
               }}
             >
-              <IconTrash
-                size={72}
-                stroke={1.2}
-              />
+              <IconTrash size={72} stroke={1.2} />
             </Box>
 
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 600 }}
-            >
-              Tem certeza que deseja
-              deletar?
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Tem certeza que deseja deletar?
             </Typography>
 
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ maxWidth: 500 }}
-            >
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500 }}>
               {menuRole ? (
                 <>
                   Ao deletar o papel{' '}
-                  <Typography
-                    component="span"
-                    color="primary.main"
-                    fontWeight={500}
-                  >
+                  <Typography component="span" color="primary.main" fontWeight={500}>
                     {menuRole.name}
                   </Typography>
-                  , todas as permissões e associações
-                  relacionadas a ele serão removidas.
-
+                  , todas as permissões e associações relacionadas a ele serão removidas.
                   <br />
                   <br />
-
-                  Tenha cuidado com esta ação, pois ela
-                  não poderá ser desfeita.
+                  Tenha cuidado com esta ação, pois ela não poderá ser desfeita.
                 </>
               ) : (
                 'Esta ação não poderá ser desfeita.'
@@ -2625,393 +2280,369 @@ const handleRemovePermissionRole = (role: string) => {
             py: 2
           }}
         >
-          <Button
-            variant="outlined"
-            onClick={handleDeleteRoleClose}
-          >
+          <Button variant="outlined" onClick={handleDeleteRoleClose}>
             Cancelar
           </Button>
 
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={
-              <IconTrash size={18} />
-            }
-            onClick={handleDeleteRoleConfirm}
-          >
+          <Button variant="contained" color="error" startIcon={<IconTrash size={18} />} onClick={handleDeleteRoleConfirm}>
             Deletar
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ===================================================== */}
-{/* MODAL EDITAR PERMISSÃO                               */}
-{/* ===================================================== */}
+      {/* MODAL EDITAR PERMISSÃO                               */}
+      {/* ===================================================== */}
 
-<Dialog
-  open={openEditPermissionDialog}
-  onClose={handleEditPermissionClose}
-  maxWidth={false}
-  fullWidth
-  PaperProps={{
-    sx: {
-      width: 644,
-      maxWidth: 'calc(100vw - 32px)',
-      borderRadius: 2.5,
-      overflow: 'hidden',
-      m: 2
-    }
-  }}
->
-  {/* ================================================= */}
-  {/* CABEÇALHO                                        */}
-  {/* ================================================= */}
-
-  <Box
-    sx={{
-      px: 3,
-      pt: 3,
-      pb: 2.5
-    }}
-  >
-    <Stack
-      direction="row"
-      sx={{
-        alignItems: 'flex-start',
-        justifyContent: 'space-between'
-      }}
-    >
-      <Box>
-        <Typography
-          sx={{
-            fontSize: 22,
-            lineHeight: 1.3,
-            fontWeight: 600,
-            color: 'text.primary'
-          }}
-        >
-          Editar Permissão
-        </Typography>
-
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mt: 0.5,
-            fontSize: 15
-          }}
-        >
-          Edite as informações desta permissão.
-        </Typography>
-      </Box>
-
-      <IconButton
-        onClick={handleEditPermissionClose}
-        sx={{
-          width: 44,
-          height: 44,
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 1.5,
-          flexShrink: 0,
-          ml: 2
+      <Dialog
+        open={openEditPermissionDialog}
+        onClose={handleEditPermissionClose}
+        maxWidth={false}
+        fullWidth
+        PaperProps={{
+          sx: {
+            width: 644,
+            maxWidth: 'calc(100vw - 32px)',
+            borderRadius: 2.5,
+            overflow: 'hidden',
+            m: 2
+          }
         }}
       >
-        <IconX size={20} />
-      </IconButton>
-    </Stack>
-  </Box>
+        {/* ================================================= */}
+        {/* CABEÇALHO                                        */}
+        {/* ================================================= */}
 
-  <Divider />
-
-  {/* ================================================= */}
-  {/* CONTEÚDO                                         */}
-  {/* ================================================= */}
-
-  <DialogContent
-    sx={{
-      px: 3,
-      py: 2.5,
-      overflowY: 'auto'
-    }}
-  >
-    <Stack sx={{ gap: 2.75 }}>
-
-      {/* ============================================= */}
-      {/* GENERAL INFORMATION                           */}
-      {/* ============================================= */}
-
-      <Box>
-        <Typography
+        <Box
           sx={{
-            fontSize: 17,
-            fontWeight: 600,
-            mb: 2
+            px: 3,
+            pt: 3,
+            pb: 2.5
           }}
         >
-          General Information
-        </Typography>
-
-        {/* NOME DA PERMISSÃO */}
-
-        <Box sx={{ mb: 2.25 }}>
-          <Typography
-            variant="body2"
+          <Stack
+            direction="row"
             sx={{
-              mb: 0.75,
-              fontWeight: 500,
-              fontSize: 15
+              alignItems: 'flex-start',
+              justifyContent: 'space-between'
             }}
           >
-            Nome da permissão
-          </Typography>
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: 22,
+                  lineHeight: 1.3,
+                  fontWeight: 600,
+                  color: 'text.primary'
+                }}
+              >
+                Editar Permissão
+              </Typography>
 
-          <OutlinedInput
-            fullWidth
-            value={editPermissionAction}
-            onChange={(event) =>
-              setEditPermissionAction(
-                event.target.value
-              )
-            }
-            sx={{
-              height: 40,
-              fontSize: 14,
-              borderRadius: 1.5
-            }}
-          />
-        </Box>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  mt: 0.5,
+                  fontSize: 15
+                }}
+              >
+                Edite as informações desta permissão.
+              </Typography>
+            </Box>
 
-        {/* DESCRIÇÃO */}
-
-        <Box>
-          <Typography
-            variant="body2"
-            sx={{
-              mb: 0.75,
-              fontWeight: 500,
-              fontSize: 15
-            }}
-          >
-            Descrição
-          </Typography>
-
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            value={editPermissionDescription}
-            onChange={(event) =>
-              setEditPermissionDescription(
-                event.target.value
-              )
-            }
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: 1.5,
-                alignItems: 'flex-start'
-              },
-              '& .MuiInputBase-input': {
-                fontSize: 14,
-                lineHeight: 1.45
-              }
-            }}
-          />
-        </Box>
-      </Box>
-
-      {/* ============================================= */}
-      {/* ROLES                                         */}
-      {/* ============================================= */}
-
-      <Box>
-        <Typography
-          variant="body2"
-          sx={{
-            mb: 1.5,
-            fontWeight: 500,
-            fontSize: 15
-          }}
-        >
-          Papéis{' '}
-          <Typography
-            component="span"
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              fontSize: 14
-            }}
-          >
-            (Opcional)
-          </Typography>
-        </Typography>
-
-        <Stack sx={{ gap: 1 }}>
-
-          {/* PAPÉIS ATRIBUÍDOS */}
-
-          {editPermissionRoles.map((role) => (
-            <Stack
-              key={role}
-              direction="row"
+            <IconButton
+              onClick={handleEditPermissionClose}
               sx={{
-                alignItems: 'center',
-                gap: 1.25,
-                minHeight: 58,
-                px: 1.25,
-                py: 0.75,
+                width: 44,
+                height: 44,
                 border: '1px solid',
                 borderColor: 'divider',
-                borderRadius: 1.5
+                borderRadius: 1.5,
+                flexShrink: 0,
+                ml: 2
               }}
             >
-              {/* ÍCONE */}
+              <IconX size={20} />
+            </IconButton>
+          </Stack>
+        </Box>
 
-              <Box
+        <Divider />
+
+        {/* ================================================= */}
+        {/* CONTEÚDO                                         */}
+        {/* ================================================= */}
+
+        <DialogContent
+          sx={{
+            px: 3,
+            py: 2.5,
+            overflowY: 'auto'
+          }}
+        >
+          <Stack sx={{ gap: 2.75 }}>
+            {/* ============================================= */}
+            {/* GENERAL INFORMATION                           */}
+            {/* ============================================= */}
+
+            <Box>
+              <Typography
                 sx={{
-                  width: 40,
-                  height: 40,
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 1.25,
-                  bgcolor: 'grey.50',
-                  color: 'text.secondary'
+                  fontSize: 17,
+                  fontWeight: 600,
+                  mb: 2
                 }}
               >
-                <IconUsers size={20} />
-              </Box>
+                General Information
+              </Typography>
 
-              {/* INFORMAÇÕES */}
+              {/* NOME DA PERMISSÃO */}
 
-              <Box
-                sx={{
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
+              <Box sx={{ mb: 2.25 }}>
                 <Typography
                   variant="body2"
                   sx={{
-                    fontWeight: 600,
+                    mb: 0.75,
+                    fontWeight: 500,
+                    fontSize: 15
+                  }}
+                >
+                  Nome da permissão
+                </Typography>
+
+                <OutlinedInput
+                  fullWidth
+                  value={editPermissionAction}
+                  onChange={(event) => setEditPermissionAction(event.target.value)}
+                  sx={{
+                    height: 40,
+                    fontSize: 14,
+                    borderRadius: 1.5
+                  }}
+                />
+              </Box>
+
+              {/* DESCRIÇÃO */}
+
+              <Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 0.75,
+                    fontWeight: 500,
+                    fontSize: 15
+                  }}
+                >
+                  Descrição
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  value={editPermissionDescription}
+                  onChange={(event) => setEditPermissionDescription(event.target.value)}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1.5,
+                      alignItems: 'flex-start'
+                    },
+                    '& .MuiInputBase-input': {
+                      fontSize: 14,
+                      lineHeight: 1.45
+                    }
+                  }}
+                />
+              </Box>
+            </Box>
+
+            {/* ============================================= */}
+            {/* ROLES                                         */}
+            {/* ============================================= */}
+
+            <Box>
+              <Typography
+                variant="body2"
+                sx={{
+                  mb: 1.5,
+                  fontWeight: 500,
+                  fontSize: 15
+                }}
+              >
+                Papéis{' '}
+                <Typography
+                  component="span"
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
                     fontSize: 14
                   }}
                 >
-                  {role}
+                  (Opcional)
                 </Typography>
+              </Typography>
 
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
+              <Stack sx={{ gap: 1 }}>
+                {/* PAPÉIS ATRIBUÍDOS */}
+
+                {editPermissionRoles.map((role) => (
+                  <Stack
+                    key={role}
+                    direction="row"
+                    sx={{
+                      alignItems: 'center',
+                      gap: 1.25,
+                      minHeight: 58,
+                      px: 1.25,
+                      py: 0.75,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1.5
+                    }}
+                  >
+                    {/* ÍCONE */}
+
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 1.25,
+                        bgcolor: 'grey.50',
+                        color: 'text.secondary'
+                      }}
+                    >
+                      <IconUsers size={20} />
+                    </Box>
+
+                    {/* INFORMAÇÕES */}
+
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: 0
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: 14
+                        }}
+                      >
+                        {role}
+                      </Typography>
+
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: 'block',
+                          mt: 0.25,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          fontSize: 12
+                        }}
+                      >
+                        O papel possui permissões e acessos definidos para os usuários do sistema.
+                      </Typography>
+                    </Box>
+
+                    {/* DELETAR PAPEL */}
+
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemovePermissionRole(role)}
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        color: 'error.main',
+                        border: '1px solid',
+                        borderColor: 'error.lighter',
+                        borderRadius: 1.5
+                      }}
+                    >
+                      <IconTrash size={17} />
+                    </IconButton>
+                  </Stack>
+                ))}
+
+                {/* ATRIBUIR PAPÉIS */}
+
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<IconPlus size={17} />}
                   sx={{
-                    display: 'block',
-                    mt: 0.25,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontSize: 12
+                    height: 46,
+                    mt: 0.5,
+                    borderRadius: 1.5,
+                    color: 'text.primary',
+                    borderColor: 'divider',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    '&:hover': {
+                      borderColor: 'text.secondary',
+                      bgcolor: 'action.hover'
+                    }
                   }}
                 >
-                  O papel possui permissões e
-                  acessos definidos para os usuários
-                  do sistema.
-                </Typography>
-              </Box>
+                  Atribuir Papéis
+                </Button>
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
 
-              {/* DELETAR PAPEL */}
+        <Divider />
 
-              <IconButton
-                size="small"
-                onClick={() =>
-                  handleRemovePermissionRole(role)
-                }
-                sx={{
-                  width: 40,
-                  height: 40,
-                  flexShrink: 0,
-                  color: 'error.main',
-                  border: '1px solid',
-                  borderColor: 'error.lighter',
-                  borderRadius: 1.5
-                }}
-              >
-                <IconTrash size={17} />
-              </IconButton>
-            </Stack>
-          ))}
+        {/* ================================================= */}
+        {/* RODAPÉ                                           */}
+        {/* ================================================= */}
 
-          {/* ATRIBUIR PAPÉIS */}
-
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2.25,
+            justifyContent: 'flex-end',
+            gap: 1.25
+          }}
+        >
           <Button
             variant="outlined"
-            fullWidth
-            startIcon={<IconPlus size={17} />}
+            color="secondary"
+            onClick={handleEditPermissionClose}
             sx={{
-              height: 46,
-              mt: 0.5,
+              height: 44,
+              minWidth: 88,
               borderRadius: 1.5,
-              color: 'text.primary',
-              borderColor: 'divider',
-              fontWeight: 500,
-              textTransform: 'none',
-              '&:hover': {
-                borderColor: 'text.secondary',
-                bgcolor: 'action.hover'
-              }
+              textTransform: 'none'
             }}
           >
-            Atribuir Papéis
+            Cancelar
           </Button>
-        </Stack>
-      </Box>
-    </Stack>
-  </DialogContent>
 
-  <Divider />
-
-  {/* ================================================= */}
-  {/* RODAPÉ                                           */}
-  {/* ================================================= */}
-
-  <DialogActions
-    sx={{
-      px: 3,
-      py: 2.25,
-      justifyContent: 'flex-end',
-      gap: 1.25
-    }}
-  >
-    <Button
-      variant="outlined"
-      color="secondary"
-      onClick={handleEditPermissionClose}
-      sx={{
-        height: 44,
-        minWidth: 88,
-        borderRadius: 1.5,
-        textTransform: 'none'
-      }}
-    >
-      Cancelar
-    </Button>
-
-    <Button
-      variant="contained"
-      onClick={handleEditPermissionSave}
-      sx={{
-        height: 44,
-        minWidth: 156,
-        borderRadius: 1.5,
-        textTransform: 'none',
-        fontWeight: 500
-      }}
-    >
-      Atualizar Permissão
-    </Button>
-  </DialogActions>
-</Dialog>
+          <Button
+            variant="contained"
+            onClick={handleEditPermissionSave}
+            sx={{
+              height: 44,
+              minWidth: 156,
+              borderRadius: 1.5,
+              textTransform: 'none',
+              fontWeight: 500
+            }}
+          >
+            Atualizar Permissão
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ===================================================== */}
       {/* MODAL DELETAR PERMISSÃO                              */}
@@ -3040,11 +2671,7 @@ const handleRemovePermissionRole = (role: string) => {
           }}
         >
           Deletar permissão
-
-          <IconButton
-            size="small"
-            onClick={handleDeletePermissionClose}
-          >
+          <IconButton size="small" onClick={handleDeletePermissionClose}>
             <IconX size={18} />
           </IconButton>
         </DialogTitle>
@@ -3076,43 +2703,24 @@ const handleRemovePermissionRole = (role: string) => {
                 color: 'error.main'
               }}
             >
-              <IconTrash
-                size={72}
-                stroke={1.2}
-              />
+              <IconTrash size={72} stroke={1.2} />
             </Box>
 
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 600 }}
-            >
-              Tem certeza que deseja
-              deletar?
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              Tem certeza que deseja deletar?
             </Typography>
 
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{ maxWidth: 500 }}
-            >
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 500 }}>
               {menuPermission ? (
                 <>
                   Ao deletar a permissão{' '}
-                  <Typography
-                    component="span"
-                    color="primary.main"
-                    fontWeight={500}
-                  >
+                  <Typography component="span" color="primary.main" fontWeight={500}>
                     {menuPermission.action}
                   </Typography>
-                  , todas as associações relacionadas a
-                  ela serão removidas.
-
+                  , todas as associações relacionadas a ela serão removidas.
                   <br />
                   <br />
-
-                  Tenha cuidado com esta ação, pois ela
-                  não poderá ser desfeita.
+                  Tenha cuidado com esta ação, pois ela não poderá ser desfeita.
                 </>
               ) : (
                 'Esta ação não poderá ser desfeita.'
@@ -3130,21 +2738,11 @@ const handleRemovePermissionRole = (role: string) => {
             py: 2
           }}
         >
-          <Button
-            variant="outlined"
-            onClick={handleDeletePermissionClose}
-          >
+          <Button variant="outlined" onClick={handleDeletePermissionClose}>
             Cancelar
           </Button>
 
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={
-              <IconTrash size={18} />
-            }
-            onClick={handleDeletePermissionConfirm}
-          >
+          <Button variant="contained" color="error" startIcon={<IconTrash size={18} />} onClick={handleDeletePermissionConfirm}>
             Deletar
           </Button>
         </DialogActions>
@@ -3154,13 +2752,7 @@ const handleRemovePermissionRole = (role: string) => {
       {/* MODAL CRIAR PAPEL                                    */}
       {/* ===================================================== */}
 
-      <CreateRoleDialog
-        open={openCreateRoleDialog}
-        onClose={() =>
-          setOpenCreateRoleDialog(false)
-        }
-        onCreate={handleCreateRole}
-      />
+      <CreateRoleDialog open={openCreateRoleDialog} onClose={() => setOpenCreateRoleDialog(false)} onCreate={handleCreateRole} />
 
       {/* ===================================================== */}
       {/* MODAL CRIAR PERMISSÃO                                */}
@@ -3168,9 +2760,7 @@ const handleRemovePermissionRole = (role: string) => {
 
       <CreatePermissionDialog
         open={openCreatePermissionDialog}
-        onClose={() =>
-          setOpenCreatePermissionDialog(false)
-        }
+        onClose={() => setOpenCreatePermissionDialog(false)}
         onCreate={handleCreatePermission}
       />
 
@@ -3182,11 +2772,10 @@ const handleRemovePermissionRole = (role: string) => {
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
         onCreate={(data) => {
-          // TODO: integrar com API (POST /api/users)
-          console.log('Novo usuário:', data);
+          // O usuário já foi persistido no backend (POST /api/users) pelo diálogo.
+          console.log('Usuário criado:', data);
         }}
       />
-
     </Stack>
   );
 }

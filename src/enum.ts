@@ -77,6 +77,14 @@ export enum AuthType {
   ONC = 'onc'
 }
 
+/** Provider type enum (for multi-provider pattern) */
+export enum ProviderType {
+  MOCK = 'mock',
+  ONC = 'onc',
+  FIREBASE = 'firebase',
+  SUPABASE = 'supabase'
+}
+
 /** Social auth type enum */
 export enum SocialAuthType {
   CORE = 'core'

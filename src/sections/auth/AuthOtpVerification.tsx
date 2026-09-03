@@ -20,11 +20,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
 import CodeVerification from '@/components/CodeVerification';
-import {
-  verifyOtp,
-  requestCodePasswordReset,
-  resendOtp
-} from '@/utils/api/auth';
+import { verifyOtp, requestCodePasswordReset, resendOtp } from '@/utils/api/auth';
 
 // @types
 import { OtpVerificationProps } from '@/types/auth';
@@ -33,7 +29,6 @@ interface OtpFormInput {
   otp: string;
 }
 
-
 const verificationTypes: Record<string, string> = {
   signup: 'signup',
   email_change: 'email_change'
@@ -41,24 +36,21 @@ const verificationTypes: Record<string, string> = {
 
 /***************************  AUTH - OTP VERIFICATION  ***************************/
 
-export default function AuthOtpVerification({
-  email,
-  verify
-}: OtpVerificationProps) {
+export default function AuthOtpVerification({ email, verify }: OtpVerificationProps) {
   const router = useRouter();
 
   const [isProcessing, startTransition] = useTransition();
   const [otpError, setOtpError] = useState('');
 
   // Código de recuperação guardado na etapa de solicitação (App Router não tem navigation state)
-  const [expectedRecoveryCode, setExpectedRecoveryCode] = useState('');
+  const [, setExpectedRecoveryCode] = useState('');
 
   useEffect(() => {
     setExpectedRecoveryCode(sessionStorage.getItem('recovery_code') || '');
   }, []);
 
   // Form starts empty - user must type the code
-   const {
+  const {
     handleSubmit,
     control,
     resetField,
@@ -72,7 +64,7 @@ export default function AuthOtpVerification({
 
   /*************************** CONTADOR ***************************/
 
-    useEffect(() => {
+  useEffect(() => {
     if (seconds <= 0) {
       return;
     }
@@ -150,8 +142,7 @@ export default function AuthOtpVerification({
       return;
     }
 
-    const type =
-      verificationTypes[verify] ?? verificationTypes.signup;
+    const type = verificationTypes[verify] ?? verificationTypes.signup;
 
     const payload = {
       email,
@@ -171,8 +162,7 @@ export default function AuthOtpVerification({
       router.replace('/login');
     });
 
-    const activeElement =
-      document.activeElement as HTMLElement | null;
+    const activeElement = document.activeElement as HTMLElement | null;
 
     activeElement?.blur();
   };
@@ -180,10 +170,7 @@ export default function AuthOtpVerification({
   /*************************** RENDER ***************************/
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      autoComplete="off"
-    >
+    <form onSubmit={handleSubmit(onSubmit)} autoComplete="off">
       {/* CÓDIGO DE VERIFICAÇÃO */}
 
       <InputLabel
@@ -198,11 +185,7 @@ export default function AuthOtpVerification({
 
       <CodeVerification control={control} />
 
-      {errors.otp?.message && (
-        <FormHelperText error>
-          {errors.otp.message}
-        </FormHelperText>
-      )}
+      {errors.otp?.message && <FormHelperText error>{errors.otp.message}</FormHelperText>}
 
       {/* BOTÃO VERIFICAR */}
 
@@ -212,14 +195,7 @@ export default function AuthOtpVerification({
         variant="contained"
         fullWidth
         disabled={isProcessing}
-        endIcon={
-          isProcessing && (
-            <CircularProgress
-              color="inherit"
-              size={15}
-            />
-          )
-        }
+        endIcon={isProcessing && <CircularProgress color="inherit" size={15} />}
         sx={{
           height: 38,
           mt: 2,

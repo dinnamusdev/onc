@@ -1,10 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 
 // @mui
 import FormControlLabel from '@mui/material/FormControlLabel';
-import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -56,6 +55,7 @@ import {
 
 // @project
 import CreateUserDialog from '@/sections/users/CreateUserDialog';
+import { getUsers } from '@/utils/api/users';
 
 /***************************  MOCK DATA  ***************************/
 
@@ -70,10 +70,7 @@ interface UserRow {
   status: 'Ativo' | 'Pendente' | 'Bloqueado' | 'Denunciado';
 }
 
-const statusColorMap: Record<
-  UserRow['status'],
-  'success' | 'warning' | 'error' | 'info'
-> = {
+const statusColorMap: Record<UserRow['status'], 'success' | 'warning' | 'error' | 'info'> = {
   Ativo: 'success',
   Pendente: 'warning',
   Bloqueado: 'error',
@@ -139,10 +136,39 @@ interface UsersViewProps {
   showCreateButton?: boolean;
 }
 
-export default function UsersView({
-  showCreateButton = true
-}: UsersViewProps) {
+export default function UsersView({ showCreateButton = true }: UsersViewProps) {
   const [users, setUsers] = useState<UserRow[]>(mockUsers);
+
+  // Carrega usuários reais do backend, mapeando UserResponseDTO -> UserRow.
+  // Em caso de erro, mantém o mock.
+  const reloadData = useCallback(async () => {
+    const { data, error } = await getUsers();
+
+    if (!error && Array.isArray(data)) {
+      const mapped: UserRow[] = data.map((u: Record<string, unknown>) => {
+        const isAtivo = u.isAtivo;
+        const status: UserRow['status'] =
+          isAtivo === false || isAtivo === 0 ? 'Bloqueado' : 'Ativo';
+        const dataCadastro = u.dataCadastro ? String(u.dataCadastro) : '';
+
+        return {
+          id: String(u.id ?? ''),
+          name: String(u.nomeCompleto || u.userName || u.email || ''),
+          username: String(u.userName || u.email || ''),
+          roles: [],
+          lastActivity: 'Cadastrado',
+          lastActivityDate: '',
+          date: dataCadastro ? new Date(dataCadastro).toLocaleDateString('pt-BR') : '',
+          status
+        };
+      });
+      setUsers(mapped);
+    }
+  }, []);
+
+  useEffect(() => {
+    reloadData();
+  }, [reloadData]);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -155,9 +181,7 @@ export default function UsersView({
   // Filtro
   const [openFilter, setOpenFilter] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<
-    UserRow['status'][]
-  >([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<UserRow['status'][]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -165,21 +189,20 @@ export default function UsersView({
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [menuUser, setMenuUser] = useState<UserRow | null>(null);
 
- // Modal editar
-const [openEditDialog, setOpenEditDialog] = useState(false);
+  // Modal editar
+  const [openEditDialog, setOpenEditDialog] = useState(false);
 
-const [editName, setEditName] = useState('');
-const [editUsername, setEditUsername] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
 
-const [editEmail, setEditEmail] = useState('');
-const [editCountryCode, setEditCountryCode] = useState('BR');
-const [editContact, setEditContact] = useState('');
-const [editAdmissionDate, setEditAdmissionDate] = useState('');
-const [editZipCode, setEditZipCode] = useState('');
-const [editAddress, setEditAddress] = useState('');
-const [editStatus, setEditStatus] =
-  useState<UserRow['status']>('Ativo');
-const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [editEmail, setEditEmail] = useState('');
+  const [editCountryCode, setEditCountryCode] = useState('BR');
+  const [editContact, setEditContact] = useState('');
+  const [editAdmissionDate, setEditAdmissionDate] = useState('');
+  const [editZipCode, setEditZipCode] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editStatus, setEditStatus] = useState<UserRow['status']>('Ativo');
+  const [editRoles, setEditRoles] = useState<string[]>([]);
 
   // Modal bloquear
   const [openBlockDialog, setOpenBlockDialog] = useState(false);
@@ -187,31 +210,15 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
   // Modal deletar
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
-  const roles = [
-    'Gestor',
-    'Admin',
-    'Gerente',
-    'Atendente',
-    'Developer',
-    'Engineer'
-  ];
+  const roles = ['Gestor', 'Admin', 'Gerente', 'Atendente', 'Developer', 'Engineer'];
 
-  const statuses: UserRow['status'][] = [
-    'Ativo',
-    'Pendente',
-    'Denunciado',
-    'Bloqueado'
-  ];
+  const statuses: UserRow['status'][] = ['Ativo', 'Pendente', 'Denunciado', 'Bloqueado'];
 
-  const allSelected =
-    selected.length === users.length && users.length > 0;
+  const allSelected = selected.length === users.length && users.length > 0;
 
   /*************************** MENU ***************************/
 
-  const handleMenuOpen = (
-    event: React.MouseEvent<HTMLElement>,
-    user: UserRow
-  ) => {
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, user: UserRow) => {
     setMenuAnchorEl(event.currentTarget);
     setMenuUser(user);
   };
@@ -223,58 +230,52 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
   /*************************** EDITAR ***************************/
 
   const handleEditOpen = () => {
-  if (!menuUser) return;
+    if (!menuUser) return;
 
-  const nameParts = menuUser.name.trim().split(' ');
+    const nameParts = menuUser.name.trim().split(' ');
 
-  setEditName(nameParts[0] || '');
-  setEditUsername(menuUser.username);
+    setEditName(nameParts[0] || '');
+    setEditUsername(menuUser.username);
 
-  setEditEmail('');
-  setEditCountryCode('BR');
-  setEditContact('');
-  setEditAdmissionDate('');
-  setEditZipCode('');
-  setEditAddress('');
+    setEditEmail('');
+    setEditCountryCode('BR');
+    setEditContact('');
+    setEditAdmissionDate('');
+    setEditZipCode('');
+    setEditAddress('');
 
-  setEditStatus(menuUser.status);
+    setEditStatus(menuUser.status);
 
-  setEditRoles(
-    menuUser.roles.filter((role) => !role.startsWith('+'))
-  );
+    setEditRoles(menuUser.roles.filter((role) => !role.startsWith('+')));
 
-  handleMenuClose();
-  setOpenEditDialog(true);
-};
+    handleMenuClose();
+    setOpenEditDialog(true);
+  };
 
   const handleEditClose = () => {
     setOpenEditDialog(false);
   };
 
   const handleEditSave = () => {
-  if (!menuUser) return;
+    if (!menuUser) return;
 
-  setUsers((current) =>
-    current.map((user) =>
-      user.id === menuUser.id
-        ? {
-            ...user,
-            name: editName.trim() || user.name,
-            username:
-              editUsername.trim() || user.username,
-            status: editStatus,
-            roles:
-              editRoles.length > 0
-                ? editRoles
-                : user.roles
-          }
-        : user
-    )
-  );
+    setUsers((current) =>
+      current.map((user) =>
+        user.id === menuUser.id
+          ? {
+              ...user,
+              name: editName.trim() || user.name,
+              username: editUsername.trim() || user.username,
+              status: editStatus,
+              roles: editRoles.length > 0 ? editRoles : user.roles
+            }
+          : user
+      )
+    );
 
-  setOpenEditDialog(false);
-  setMenuUser(null);
-};
+    setOpenEditDialog(false);
+    setMenuUser(null);
+  };
 
   /*************************** BLOQUEAR ***************************/
 
@@ -319,13 +320,9 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
   const handleDeleteConfirm = () => {
     if (!menuUser) return;
 
-    setUsers((current) =>
-      current.filter((user) => user.id !== menuUser.id)
-    );
+    setUsers((current) => current.filter((user) => user.id !== menuUser.id));
 
-    setSelected((current) =>
-      current.filter((id) => id !== menuUser.id)
-    );
+    setSelected((current) => current.filter((id) => id !== menuUser.id));
 
     setOpenDeleteDialog(false);
     setMenuUser(null);
@@ -342,29 +339,17 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
   };
 
   const handleSelectOne = (id: string) => {
-    setSelected((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id]
-    );
+    setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
   /*************************** FILTROS ***************************/
 
   const toggleRole = (role: string) => {
-    setSelectedRoles((current) =>
-      current.includes(role)
-        ? current.filter((item) => item !== role)
-        : [...current, role]
-    );
+    setSelectedRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
   };
 
   const toggleStatus = (status: UserRow['status']) => {
-    setSelectedStatuses((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status]
-    );
+    setSelectedStatuses((current) => (current.includes(status) ? current.filter((item) => item !== status) : [...current, status]));
   };
 
   const handleResetFilters = () => {
@@ -380,18 +365,11 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
     setOpenFilter(false);
   };
 
-  const handleRemoveIndividualFilter = (
-    filter: string,
-    type: 'role' | 'status' | 'dateFrom' | 'dateTo'
-  ) => {
+  const handleRemoveIndividualFilter = (filter: string, type: 'role' | 'status' | 'dateFrom' | 'dateTo') => {
     if (type === 'role') {
-      setSelectedRoles((current) =>
-        current.filter((item) => item !== filter)
-      );
+      setSelectedRoles((current) => current.filter((item) => item !== filter));
     } else if (type === 'status') {
-      setSelectedStatuses((current) =>
-        current.filter((item) => item !== filter)
-      );
+      setSelectedStatuses((current) => current.filter((item) => item !== filter));
     } else if (type === 'dateFrom') {
       setDateFrom('');
     } else if (type === 'dateTo') {
@@ -410,11 +388,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
   };
 
   const hasActiveFilters =
-    search.trim() !== '' ||
-    selectedRoles.length > 0 ||
-    selectedStatuses.length > 0 ||
-    dateFrom !== '' ||
-    dateTo !== '';
+    search.trim() !== '' || selectedRoles.length > 0 || selectedStatuses.length > 0 || dateFrom !== '' || dateTo !== '';
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -429,81 +403,61 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
         return false;
       }
 
-      const matchesRole =
-        selectedRoles.length === 0 ||
-        user.roles.some((role) => selectedRoles.includes(role));
+      const matchesRole = selectedRoles.length === 0 || user.roles.some((role) => selectedRoles.includes(role));
 
-      const matchesStatus =
-        selectedStatuses.length === 0 ||
-        selectedStatuses.includes(user.status);
+      const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(user.status);
 
       const userDate = new Date(user.date);
 
-      const matchesFrom =
-        !dateFrom ||
-        userDate >= new Date(`${dateFrom}T00:00:00`);
+      const matchesFrom = !dateFrom || userDate >= new Date(`${dateFrom}T00:00:00`);
 
-      const matchesTo =
-        !dateTo ||
-        userDate <= new Date(`${dateTo}T23:59:59`);
+      const matchesTo = !dateTo || userDate <= new Date(`${dateTo}T23:59:59`);
 
-      return (
-        matchesRole &&
-        matchesStatus &&
-        matchesFrom &&
-        matchesTo
-      );
+      return matchesRole && matchesStatus && matchesFrom && matchesTo;
     });
-  }, [
-    users,
-    search,
-    selectedRoles,
-    selectedStatuses,
-    dateFrom,
-    dateTo
-  ]);
+  }, [users, search, selectedRoles, selectedStatuses, dateFrom, dateTo]);
 
   return (
-  <Stack
-    sx={{
-      gap: showCreateButton ? 2.5 : 0,
-      position: 'relative'
-    }}
-  >
- {/* CABEÇALHO */}
- {showCreateButton && (
- <Stack
-  direction="row"
-  sx={{
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    width: '100%',
-    minHeight: 40
-  }}
->
-  <Typography
-    variant="h5"
-    sx={{
-      lineHeight: '40px'
-    }}
-  >
-    Usuários
-  </Typography>
+    <Stack
+      sx={{
+        gap: showCreateButton ? 2.5 : 0,
+        position: 'relative'
+      }}
+    >
+      {/* CABEÇALHO */}
+      {showCreateButton && (
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            width: '100%',
+            minHeight: 40
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
+              lineHeight: '40px'
+            }}
+          >
+            Usuários
+          </Typography>
 
-  <Button
-    variant="contained"
-    startIcon={<IconPlus size={16} />}
-    onClick={() => setOpenCreateDialog(true)}
-    sx={{
-      minWidth: 150,
-      height: 40,
-      mt: 0
-    }}
-  >
-    Adicionar Novo
-  </Button>
-</Stack>
- )}
+          <Button
+            variant="contained"
+            startIcon={<IconPlus size={16} />}
+            onClick={() => setOpenCreateDialog(true)}
+            sx={{
+              minWidth: 150,
+              height: 40,
+              mt: 0
+            }}
+          >
+            Adicionar Novo
+          </Button>
+        </Stack>
+      )}
       <Card sx={{ p: 0 }}>
         {/* PESQUISA + FILTRO */}
         <Stack
@@ -546,12 +500,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
             sx={{ width: 280 }}
           />
 
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<IconFilter size={16} />}
-            onClick={() => setOpenFilter(true)}
-          >
+          <Button variant="outlined" color="primary" startIcon={<IconFilter size={16} />} onClick={() => setOpenFilter(true)}>
             Filtrar
           </Button>
         </Stack>
@@ -596,9 +545,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   key={role}
                   label={role}
                   size="small"
-                  onDelete={() =>
-                    handleRemoveIndividualFilter(role, 'role')
-                  }
+                  onDelete={() => handleRemoveIndividualFilter(role, 'role')}
                   sx={{
                     height: 28,
                     fontSize: 13
@@ -611,9 +558,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   key={status}
                   label={status}
                   size="small"
-                  onDelete={() =>
-                    handleRemoveIndividualFilter(status, 'status')
-                  }
+                  onDelete={() => handleRemoveIndividualFilter(status, 'status')}
                   sx={{
                     height: 28,
                     fontSize: 13
@@ -625,9 +570,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                 <Chip
                   label={`De: ${dateFrom}`}
                   size="small"
-                  onDelete={() =>
-                    handleRemoveIndividualFilter(dateFrom, 'dateFrom')
-                  }
+                  onDelete={() => handleRemoveIndividualFilter(dateFrom, 'dateFrom')}
                   sx={{
                     height: 28,
                     fontSize: 13
@@ -639,9 +582,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                 <Chip
                   label={`Até: ${dateTo}`}
                   size="small"
-                  onDelete={() =>
-                    handleRemoveIndividualFilter(dateTo, 'dateTo')
-                  }
+                  onDelete={() => handleRemoveIndividualFilter(dateTo, 'dateTo')}
                   sx={{
                     height: 28,
                     fontSize: 13
@@ -671,13 +612,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={
-                      filteredUsers.length > 0 &&
-                      selected.length === filteredUsers.length
-                    }
-                    onChange={handleSelectAll}
-                  />
+                  <Checkbox checked={filteredUsers.length > 0 && selected.length === filteredUsers.length} onChange={handleSelectAll} />
                 </TableCell>
 
                 <TableCell>Perfil</TableCell>
@@ -693,10 +628,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               {filteredUsers.map((user) => (
                 <TableRow key={user.id} hover>
                   <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={selected.includes(user.id)}
-                      onChange={() => handleSelectOne(user.id)}
-                    />
+                    <Checkbox checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} />
                   </TableCell>
 
                   <TableCell>
@@ -707,19 +639,12 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                         gap: 1.5
                       }}
                     >
-                      <Avatar sx={{ width: 32, height: 32 }}>
-                        {user.name.charAt(0)}
-                      </Avatar>
+                      <Avatar sx={{ width: 32, height: 32 }}>{user.name.charAt(0)}</Avatar>
 
                       <Box>
-                        <Typography variant="subtitle2">
-                          {user.name}
-                        </Typography>
+                        <Typography variant="subtitle2">{user.name}</Typography>
 
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                        >
+                        <Typography variant="caption" color="text.secondary">
                           {user.username}
                         </Typography>
                       </Box>
@@ -735,51 +660,30 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                       }}
                     >
                       {user.roles.map((role) => (
-                        <Chip
-                          key={role}
-                          label={role}
-                          size="small"
-                          variant="outlined"
-                        />
+                        <Chip key={role} label={role} size="small" variant="outlined" />
                       ))}
                     </Stack>
                   </TableCell>
 
                   <TableCell>
-                    <Typography variant="body2">
-                      {user.lastActivity}
-                    </Typography>
+                    <Typography variant="body2">{user.lastActivity}</Typography>
 
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                    >
+                    <Typography variant="caption" color="text.secondary">
                       {user.lastActivityDate}
                     </Typography>
                   </TableCell>
 
                   <TableCell>
-                    <Typography variant="body2">
-                      {user.date}
-                    </Typography>
+                    <Typography variant="body2">{user.date}</Typography>
                   </TableCell>
 
                   <TableCell>
-                    <Chip
-                      label={user.status}
-                      size="small"
-                      color={statusColorMap[user.status]}
-                    />
+                    <Chip label={user.status} size="small" color={statusColorMap[user.status]} />
                   </TableCell>
 
                   {/* TRÊS PONTINHOS */}
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={(event) =>
-                        handleMenuOpen(event, user)
-                      }
-                    >
+                    <IconButton size="small" onClick={(event) => handleMenuOpen(event, user)}>
                       <IconDotsVertical size={18} />
                     </IconButton>
                   </TableCell>
@@ -789,11 +693,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               {filteredUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ py: 4 }}
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                       Nenhum usuário encontrado.
                     </Typography>
                   </TableCell>
@@ -914,10 +814,8 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                 <PaginationItem
                   {...item}
                   sx={{
-                    width:
-                      item.type === 'page' ? 32 : 'auto',
-                    minWidth:
-                      item.type === 'page' ? 32 : 32,
+                    width: item.type === 'page' ? 32 : 'auto',
+                    minWidth: item.type === 'page' ? 32 : 32,
                     height: 32,
                     borderRadius: 1,
                     fontSize: '14px',
@@ -975,9 +873,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
           }}
         >
           <IconEdit size={18} />
-          <Typography variant="body2">
-            Editar
-          </Typography>
+          <Typography variant="body2">Editar</Typography>
         </MenuItem>
 
         <MenuItem
@@ -989,9 +885,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
           }}
         >
           <IconBan size={18} />
-          <Typography variant="body2">
-            Bloquear
-          </Typography>
+          <Typography variant="body2">Bloquear</Typography>
         </MenuItem>
 
         <MenuItem
@@ -1004,401 +898,306 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
           }}
         >
           <IconTrash size={18} />
-          <Typography variant="body2">
-            Deletar
-          </Typography>
+          <Typography variant="body2">Deletar</Typography>
         </MenuItem>
       </Menu>
 
-{/* ========================================================= */}
-{/* MODAL EDITAR USUÁRIO                                     */}
-{/* ========================================================= */}
+      {/* ========================================================= */}
+      {/* MODAL EDITAR USUÁRIO                                     */}
+      {/* ========================================================= */}
 
-<Dialog
-  open={openEditDialog}
-  onClose={handleEditClose}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    sx: {
-      borderRadius: 2,
-      maxHeight: 'calc(100vh - 32px)'
-    }
-  }}
->
-  {/* CABEÇALHO */}
-  <Stack
-    direction="row"
-    sx={{
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      px: 3,
-      pt: 3
-    }}
-  >
-    <Box>
-      <DialogTitle
-        sx={{
-          p: 0,
-          fontSize: 18,
-          fontWeight: 600
+      <Dialog
+        open={openEditDialog}
+        onClose={handleEditClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: 'calc(100vh - 32px)'
+          }
         }}
       >
-        Editar usuário
-      </DialogTitle>
-
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{
-          mt: 0.5,
-          maxWidth: 430
-        }}
-      >
-        Edite as informações, configurações e permissões
-        personalizadas do usuário.
-      </Typography>
-    </Box>
-
-    <IconButton
-      onClick={handleEditClose}
-      size="small"
-    >
-      <IconX size={18} />
-    </IconButton>
-  </Stack>
-
-  <Divider sx={{ mt: 2 }} />
-
-  <DialogContent
-    sx={{
-      px: 2,
-      py: 2.5,
-      overflowY: 'auto'
-    }}
-  >
-    <Stack sx={{ gap: 2.5 }}>
-
-      {/* DADOS PESSOAIS */}
-      <Box>
-        <Typography
-          variant="subtitle1"
-          sx={{ mb: 1.5 }}
-        >
-          Dados Pessoais
-        </Typography>
-
-        <Box
-          sx={{
-            position: 'relative',
-            width: 64,
-            height: 64
-          }}
-        >
-          <Avatar
-            sx={{
-              width: 64,
-              height: 64,
-              bgcolor: 'error.light',
-              color: 'error.main',
-              fontSize: 22
-            }}
-          >
-            {editName.charAt(0).toUpperCase()}
-          </Avatar>
-
-          <IconButton
-            size="small"
-            sx={{
-              position: 'absolute',
-              bottom: -4,
-              right: -4,
-              width: 34,
-              height: 34,
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              color: 'error.main',
-
-              '&:hover': {
-                bgcolor: 'background.paper'
-              }
-            }}
-          >
-            <IconCamera size={15} />
-          </IconButton>
-        </Box>
-      </Box>
-
-      {/* NOME + SOBRENOME */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        sx={{ gap: 2 }}
-      >
-        <Box sx={{ flex: 1 }}>
-          <InputLabel>Nome</InputLabel>
-
-          <OutlinedInput
-            value={editName}
-            onChange={(event) =>
-              setEditName(event.target.value)
-            }
-            placeholder="ex. John"
-            fullWidth
-          />
-        </Box>
-
-        <Box sx={{ flex: 1 }}>
-          <InputLabel>Sobrenome</InputLabel>
-
-          <OutlinedInput
-            placeholder="ex. Doe"
-            fullWidth
-          />
-        </Box>
-      </Stack>
-
-      {/* NOME DE USUÁRIO */}
-      <Box>
-        <InputLabel>Nome de usuário</InputLabel>
-
-        <OutlinedInput
-          value={editUsername}
-          onChange={(event) =>
-            setEditUsername(event.target.value)
-          }
-          placeholder="ex. john.doe"
-          fullWidth
-        />
-      </Box>
-
-      {/* E-MAIL */}
-      <Box>
-        <InputLabel>E-mail *</InputLabel>
-
-        <OutlinedInput
-          value={editEmail}
-          onChange={(event) =>
-            setEditEmail(event.target.value)
-          }
-          placeholder="exemplo@gmail.com"
-          fullWidth
-        />
-      </Box>
-
-      {/* CONTATO + DATA */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        sx={{ gap: 2 }}
-      >
-        <Box sx={{ flex: 1 }}>
-          <InputLabel>Contato *</InputLabel>
-
-          <Stack
-            direction="row"
-            sx={{ gap: 1 }}
-          >
-            <Select
-              value={editCountryCode}
-              onChange={(event) =>
-                setEditCountryCode(event.target.value)
-              }
-              size="small"
-              sx={{
-                minWidth: 92
-              }}
-            >
-              <MenuItem value="BR">
-                BR +55
-              </MenuItem>
-
-              <MenuItem value="US">
-                US +1
-              </MenuItem>
-
-              <MenuItem value="PT">
-                PT +351
-              </MenuItem>
-            </Select>
-
-            <OutlinedInput
-              value={editContact}
-              onChange={(event) =>
-                setEditContact(event.target.value)
-              }
-              placeholder="ex. 9876x xxxxx"
-              fullWidth
-            />
-          </Stack>
-        </Box>
-
-        <Box sx={{ flex: 1 }}>
-          <InputLabel>
-            Data de Admissão *
-          </InputLabel>
-
-          <OutlinedInput
-            value={editAdmissionDate}
-            onChange={(event) =>
-              setEditAdmissionDate(event.target.value)
-            }
-            type="date"
-            fullWidth
-          />
-        </Box>
-      </Stack>
-
-      {/* CEP */}
-      <Box>
-        <InputLabel>CEP</InputLabel>
-
-        <OutlinedInput
-          value={editZipCode}
-          onChange={(event) =>
-            setEditZipCode(event.target.value)
-          }
-          placeholder="00000-000"
-          fullWidth
-        />
-      </Box>
-
-      {/* ENDEREÇO */}
-      <Box>
-        <InputLabel>Endereço</InputLabel>
-
-        <TextField
-          value={editAddress}
-          onChange={(event) =>
-            setEditAddress(event.target.value)
-          }
-          placeholder="Insira um endereço..."
-          fullWidth
-          multiline
-          minRows={2}
-        />
-      </Box>
-
-      {/* STATUS */}
-      <Box>
-        <InputLabel sx={{ mb: 1 }}>
-          Status
-        </InputLabel>
-
-        <RadioGroup
-          value={editStatus}
-          onChange={(event) =>
-            setEditStatus(
-              event.target.value as UserRow['status']
-            )
-          }
-          row
-          sx={{
-            gap: 1.5,
-            flexWrap: 'wrap'
-          }}
-        >
-          <FormControlLabel
-            value="Ativo"
-            control={<Radio size="small" />}
-            label="Ativo"
-          />
-
-          <FormControlLabel
-            value="Pendente"
-            control={<Radio size="small" />}
-            label="Pendente"
-          />
-
-          <FormControlLabel
-            value="Denunciado"
-            control={<Radio size="small" />}
-            label="Denunciado"
-          />
-
-          <FormControlLabel
-            value="Bloqueado"
-            control={<Radio size="small" />}
-            label="Bloqueado"
-          />
-        </RadioGroup>
-      </Box>
-
-      {/* PAPÉIS */}
-      <Box>
-        <InputLabel sx={{ mb: 1 }}>
-          Papéis (Opcional)
-        </InputLabel>
-
+        {/* CABEÇALHO */}
         <Stack
           direction="row"
           sx={{
-            gap: 0.75,
-            flexWrap: 'wrap'
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            px: 3,
+            pt: 3
           }}
         >
-          {roles.map((role) => {
-            const selectedRole =
-              editRoles.includes(role);
+          <Box>
+            <DialogTitle
+              sx={{
+                p: 0,
+                fontSize: 18,
+                fontWeight: 600
+              }}
+            >
+              Editar usuário
+            </DialogTitle>
 
-            return (
-              <Chip
-                key={role}
-                label={role}
-                size="small"
-                variant={
-                  selectedRole
-                    ? 'filled'
-                    : 'outlined'
-                }
-                onClick={() => {
-                  setEditRoles((current) =>
-                    current.includes(role)
-                      ? current.filter(
-                          (item) => item !== role
-                        )
-                      : [...current, role]
-                  );
-                }}
-                sx={{
-                  cursor: 'pointer'
-                }}
-              />
-            );
-          })}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 0.5,
+                maxWidth: 430
+              }}
+            >
+              Edite as informações, configurações e permissões personalizadas do usuário.
+            </Typography>
+          </Box>
+
+          <IconButton onClick={handleEditClose} size="small">
+            <IconX size={18} />
+          </IconButton>
         </Stack>
-      </Box>
 
-    </Stack>
-  </DialogContent>
+        <Divider sx={{ mt: 2 }} />
 
-  <Divider />
+        <DialogContent
+          sx={{
+            px: 2,
+            py: 2.5,
+            overflowY: 'auto'
+          }}
+        >
+          <Stack sx={{ gap: 2.5 }}>
+            {/* DADOS PESSOAIS */}
+            <Box>
+              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
+                Dados Pessoais
+              </Typography>
 
-  {/* RODAPÉ */}
-  <DialogActions
-    sx={{
-      px: 3,
-      py: 2,
-      justifyContent: 'flex-end',
-      gap: 1
-    }}
-  >
-    <Button
-      variant="outlined"
-      color="secondary"
-      onClick={handleEditClose}
-    >
-      Cancelar
-    </Button>
+              <Box
+                sx={{
+                  position: 'relative',
+                  width: 64,
+                  height: 64
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    bgcolor: 'error.light',
+                    color: 'error.main',
+                    fontSize: 22
+                  }}
+                >
+                  {editName.charAt(0).toUpperCase()}
+                </Avatar>
 
-    <Button
-      variant="contained"
-      color="error"
-      onClick={handleEditSave}
-    >
-      Salvar Alterações
-    </Button>
-  </DialogActions>
-</Dialog>
+                <IconButton
+                  size="small"
+                  sx={{
+                    position: 'absolute',
+                    bottom: -4,
+                    right: -4,
+                    width: 34,
+                    height: 34,
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    color: 'error.main',
+
+                    '&:hover': {
+                      bgcolor: 'background.paper'
+                    }
+                  }}
+                >
+                  <IconCamera size={15} />
+                </IconButton>
+              </Box>
+            </Box>
+
+            {/* NOME + SOBRENOME */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <InputLabel>Nome</InputLabel>
+
+                <OutlinedInput value={editName} onChange={(event) => setEditName(event.target.value)} placeholder="ex. John" fullWidth />
+              </Box>
+
+              <Box sx={{ flex: 1 }}>
+                <InputLabel>Sobrenome</InputLabel>
+
+                <OutlinedInput placeholder="ex. Doe" fullWidth />
+              </Box>
+            </Stack>
+
+            {/* NOME DE USUÁRIO */}
+            <Box>
+              <InputLabel>Nome de usuário</InputLabel>
+
+              <OutlinedInput
+                value={editUsername}
+                onChange={(event) => setEditUsername(event.target.value)}
+                placeholder="ex. john.doe"
+                fullWidth
+              />
+            </Box>
+
+            {/* E-MAIL */}
+            <Box>
+              <InputLabel>E-mail *</InputLabel>
+
+              <OutlinedInput
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                placeholder="exemplo@gmail.com"
+                fullWidth
+              />
+            </Box>
+
+            {/* CONTATO + DATA */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
+              <Box sx={{ flex: 1 }}>
+                <InputLabel>Contato *</InputLabel>
+
+                <Stack direction="row" sx={{ gap: 1 }}>
+                  <Select
+                    value={editCountryCode}
+                    onChange={(event) => setEditCountryCode(event.target.value)}
+                    size="small"
+                    sx={{
+                      minWidth: 92
+                    }}
+                  >
+                    <MenuItem value="BR">BR +55</MenuItem>
+
+                    <MenuItem value="US">US +1</MenuItem>
+
+                    <MenuItem value="PT">PT +351</MenuItem>
+                  </Select>
+
+                  <OutlinedInput
+                    value={editContact}
+                    onChange={(event) => setEditContact(event.target.value)}
+                    placeholder="ex. 9876x xxxxx"
+                    fullWidth
+                  />
+                </Stack>
+              </Box>
+
+              <Box sx={{ flex: 1 }}>
+                <InputLabel>Data de Admissão *</InputLabel>
+
+                <OutlinedInput
+                  value={editAdmissionDate}
+                  onChange={(event) => setEditAdmissionDate(event.target.value)}
+                  type="date"
+                  fullWidth
+                />
+              </Box>
+            </Stack>
+
+            {/* CEP */}
+            <Box>
+              <InputLabel>CEP</InputLabel>
+
+              <OutlinedInput
+                value={editZipCode}
+                onChange={(event) => setEditZipCode(event.target.value)}
+                placeholder="00000-000"
+                fullWidth
+              />
+            </Box>
+
+            {/* ENDEREÇO */}
+            <Box>
+              <InputLabel>Endereço</InputLabel>
+
+              <TextField
+                value={editAddress}
+                onChange={(event) => setEditAddress(event.target.value)}
+                placeholder="Insira um endereço..."
+                fullWidth
+                multiline
+                minRows={2}
+              />
+            </Box>
+
+            {/* STATUS */}
+            <Box>
+              <InputLabel sx={{ mb: 1 }}>Status</InputLabel>
+
+              <RadioGroup
+                value={editStatus}
+                onChange={(event) => setEditStatus(event.target.value as UserRow['status'])}
+                row
+                sx={{
+                  gap: 1.5,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <FormControlLabel value="Ativo" control={<Radio size="small" />} label="Ativo" />
+
+                <FormControlLabel value="Pendente" control={<Radio size="small" />} label="Pendente" />
+
+                <FormControlLabel value="Denunciado" control={<Radio size="small" />} label="Denunciado" />
+
+                <FormControlLabel value="Bloqueado" control={<Radio size="small" />} label="Bloqueado" />
+              </RadioGroup>
+            </Box>
+
+            {/* PAPÉIS */}
+            <Box>
+              <InputLabel sx={{ mb: 1 }}>Papéis (Opcional)</InputLabel>
+
+              <Stack
+                direction="row"
+                sx={{
+                  gap: 0.75,
+                  flexWrap: 'wrap'
+                }}
+              >
+                {roles.map((role) => {
+                  const selectedRole = editRoles.includes(role);
+
+                  return (
+                    <Chip
+                      key={role}
+                      label={role}
+                      size="small"
+                      variant={selectedRole ? 'filled' : 'outlined'}
+                      onClick={() => {
+                        setEditRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
+                      }}
+                      sx={{
+                        cursor: 'pointer'
+                      }}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+          </Stack>
+        </DialogContent>
+
+        <Divider />
+
+        {/* RODAPÉ */}
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            justifyContent: 'flex-end',
+            gap: 1
+          }}
+        >
+          <Button variant="outlined" color="secondary" onClick={handleEditClose}>
+            Cancelar
+          </Button>
+
+          <Button variant="contained" color="error" onClick={handleEditSave}>
+            Salvar Alterações
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ========================================================= */}
       {/* MODAL BLOQUEAR USUÁRIO                                   */}
@@ -1423,11 +1222,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
           }}
         >
           Bloquear usuário
-
-          <IconButton
-            size="small"
-            onClick={handleBlockClose}
-          >
+          <IconButton size="small" onClick={handleBlockClose}>
             <IconX size={18} />
           </IconButton>
         </DialogTitle>
@@ -1453,20 +1248,12 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               <IconBan size={28} />
             </Avatar>
 
-            <Typography variant="h6">
-              Tem certeza que deseja bloquear?
-            </Typography>
+            <Typography variant="h6">Tem certeza que deseja bloquear?</Typography>
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
+            <Typography variant="body2" color="text.secondary">
               {menuUser && (
                 <>
-                  O usuário{' '}
-                  <strong>{menuUser.name}</strong>{' '}
-                  será bloqueado e não poderá acessar o
-                  sistema.
+                  O usuário <strong>{menuUser.name}</strong> será bloqueado e não poderá acessar o sistema.
                 </>
               )}
             </Typography>
@@ -1482,18 +1269,11 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
             py: 2
           }}
         >
-          <Button
-            variant="outlined"
-            onClick={handleBlockClose}
-          >
+          <Button variant="outlined" onClick={handleBlockClose}>
             Cancelar
           </Button>
 
-          <Button
-            variant="contained"
-            color="warning"
-            onClick={handleBlockConfirm}
-          >
+          <Button variant="contained" color="warning" onClick={handleBlockConfirm}>
             Bloquear
           </Button>
         </DialogActions>
@@ -1526,11 +1306,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
           }}
         >
           Deletar usuário
-
-          <IconButton
-            size="small"
-            onClick={handleDeleteClose}
-          >
+          <IconButton size="small" onClick={handleDeleteClose}>
             <IconX size={18} />
           </IconButton>
         </DialogTitle>
@@ -1556,11 +1332,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                 bgcolor: 'grey.50'
               }}
             >
-              <IconTrash
-                size={72}
-                stroke={1.2}
-                color="currentColor"
-              />
+              <IconTrash size={72} stroke={1.2} color="currentColor" />
             </Box>
 
             <Typography
@@ -1582,15 +1354,10 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               {menuUser ? (
                 <>
                   Ao deletar o usuário{' '}
-                  <Typography
-                    component="span"
-                    color="primary.main"
-                    fontWeight={500}
-                  >
+                  <Typography component="span" color="primary.main" fontWeight={500}>
                     {menuUser.name}
                   </Typography>{' '}
-                  todos os registros relacionados serão
-                  removidos. Tenha cuidado com esta ação.
+                  todos os registros relacionados serão removidos. Tenha cuidado com esta ação.
                 </>
               ) : (
                 'Esta ação não poderá ser desfeita.'
@@ -1608,19 +1375,11 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
             py: 2
           }}
         >
-          <Button
-            variant="outlined"
-            onClick={handleDeleteClose}
-          >
+          <Button variant="outlined" onClick={handleDeleteClose}>
             Cancelar
           </Button>
 
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={<IconTrash size={18} />}
-            onClick={handleDeleteConfirm}
-          >
+          <Button variant="contained" color="error" startIcon={<IconTrash size={18} />} onClick={handleDeleteConfirm}>
             Deletar
           </Button>
         </DialogActions>
@@ -1652,14 +1411,9 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               py: 1.5
             }}
           >
-            <Typography variant="subtitle1">
-              Filtrar
-            </Typography>
+            <Typography variant="subtitle1">Filtrar</Typography>
 
-            <IconButton
-              size="small"
-              onClick={() => setOpenFilter(false)}
-            >
+            <IconButton size="small" onClick={() => setOpenFilter(false)}>
               <IconX size={18} />
             </IconButton>
           </Stack>
@@ -1688,18 +1442,13 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   alignItems: 'center'
                 }}
               >
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                >
+                <Typography variant="caption" color="text.secondary">
                   Papel
                 </Typography>
 
                 {selectedRoles.length > 0 && (
                   <Chip
-                    label={`${selectedRoles.length} selecionado${
-                      selectedRoles.length > 1 ? 's' : ''
-                    }`}
+                    label={`${selectedRoles.length} selecionado${selectedRoles.length > 1 ? 's' : ''}`}
                     size="small"
                     variant="outlined"
                     sx={{ height: 22 }}
@@ -1751,9 +1500,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                     sx={{ p: 0.5 }}
                   />
 
-                  <Typography variant="body2">
-                    {role}
-                  </Typography>
+                  <Typography variant="body2">{role}</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -1767,18 +1514,13 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   alignItems: 'center'
                 }}
               >
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                >
+                <Typography variant="caption" color="text.secondary">
                   Status
                 </Typography>
 
                 {selectedStatuses.length > 0 && (
                   <Chip
-                    label={`${selectedStatuses.length} selecionado${
-                      selectedStatuses.length > 1 ? 's' : ''
-                    }`}
+                    label={`${selectedStatuses.length} selecionado${selectedStatuses.length > 1 ? 's' : ''}`}
                     size="small"
                     variant="outlined"
                     sx={{ height: 22 }}
@@ -1830,19 +1572,14 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                     sx={{ p: 0.5 }}
                   />
 
-                  <Typography variant="body2">
-                    {status}
-                  </Typography>
+                  <Typography variant="body2">{status}</Typography>
                 </Stack>
               ))}
             </Stack>
 
             {/* DATA */}
             <Stack sx={{ gap: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-              >
+              <Typography variant="caption" color="text.secondary">
                 Data
               </Typography>
 
@@ -1853,9 +1590,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   label="De"
                   type="date"
                   value={dateFrom}
-                  onChange={(event) =>
-                    setDateFrom(event.target.value)
-                  }
+                  onChange={(event) => setDateFrom(event.target.value)}
                   slotProps={{
                     inputLabel: {
                       shrink: true
@@ -1876,9 +1611,7 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
                   label="Até"
                   type="date"
                   value={dateTo}
-                  onChange={(event) =>
-                    setDateTo(event.target.value)
-                  }
+                  onChange={(event) => setDateTo(event.target.value)}
                   slotProps={{
                     inputLabel: {
                       shrink: true
@@ -1907,18 +1640,11 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
               p: 1.5
             }}
           >
-            <Button
-              variant="text"
-              color="secondary"
-              onClick={handleResetFilters}
-            >
+            <Button variant="text" color="secondary" onClick={handleResetFilters}>
               Resetar
             </Button>
 
-            <Button
-              variant="contained"
-              onClick={handleApplyFilters}
-            >
+            <Button variant="contained" onClick={handleApplyFilters}>
               Aplicar
             </Button>
           </Stack>
@@ -1933,8 +1659,9 @@ const [editRoles, setEditRoles] = useState<string[]>([]);
         open={openCreateDialog}
         onClose={() => setOpenCreateDialog(false)}
         onCreate={(data) => {
-          // TODO: integrar com API (POST /api/users)
-          console.log('Novo usuário:', data);
+          // O usuário já foi persistido no backend (POST /api/users) pelo diálogo.
+          // Aqui apenas recebemos o retorno para eventual atualização de UI.
+          console.log('Usuário criado:', data);
         }}
       />
     </Stack>

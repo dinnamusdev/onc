@@ -22,12 +22,12 @@ export default function PasswordRecovery() {
       }}
     >
       <Box
-  sx={{
-    width: '100%',
-    maxWidth: 640,
-    px: { xs: 3, sm: 2 }
-  }}
->
+        sx={{
+          width: '100%',
+          maxWidth: 640,
+          px: { xs: 3, sm: 2 }
+        }}
+      >
         <Stack
           sx={{
             gap: { xs: 1, sm: 1.5 },
@@ -74,10 +74,7 @@ export default function PasswordRecovery() {
           </Typography>
 
           {/* DESCRIÇÃO */}
-          <Typography
-            variant="body1"
-            color="text.secondary"
-          >
+          <Typography variant="body1" color="text.secondary">
             Redefina sua senha digitando uma nova
           </Typography>
         </Stack>
