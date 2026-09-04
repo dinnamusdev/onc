@@ -33,8 +33,8 @@ const profileData = [
 ];
 
 const listCotent = [
-  { title: 'Role', items: ['Applican', 'App User'] },
-  { title: 'Files', items: ['Applican', 'Applican'] }
+  { title: 'Papel', items: ['Applican', 'App User'] },
+  { title: 'Arquivos', items: ['Applican', 'Applican'] }
 ];
 
 /***************************  HEADER - SEARCH BAR  ***************************/
@@ -122,7 +122,7 @@ export default function SearchBar() {
     <>
       <OutlinedInput
         inputRef={inputRef}
-        placeholder="Search here"
+        placeholder="Pesquise aqui"
         startAdornment={
           <InputAdornment position="start">
             <IconSearch />
@@ -136,8 +136,8 @@ export default function SearchBar() {
             </Stack>
           </InputAdornment>
         }
-        aria-describedby="Search"
-        slotProps={{ input: { 'aria-label': 'search' } }}
+        aria-describedby="Pesquisa"
+        slotProps={{ input: { 'aria-label': 'pesquisa' } }}
         onClick={handleActionClick}
         onKeyDown={handleKeyDown}
         onChange={handleInputChange}
@@ -175,7 +175,7 @@ export default function SearchBar() {
                   <EmptySearch />
                 ) : (
                   <List disablePadding>
-                    {renderSubheader('Users')}
+                    {renderSubheader('Usuários')}
                     {profileData.map((user, index) => (
                       <ListItemButton sx={buttonStyle} key={index} onClick={handleActionClick}>
                         <NotificationItem

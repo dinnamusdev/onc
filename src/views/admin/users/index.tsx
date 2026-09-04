@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 
 // @mui
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Grid from '@mui/material/Grid';
 import InputLabel from '@mui/material/InputLabel';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
@@ -172,6 +173,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const rowsPerPage = 10;
 
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
 
@@ -417,6 +419,13 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     });
   }, [users, search, selectedRoles, selectedStatuses, dateFrom, dateTo]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+  const paginatedUsers = filteredUsers.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages));
+  }, [totalPages]);
+
   return (
     <Stack
       sx={{
@@ -625,7 +634,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
             </TableHead>
 
             <TableBody>
-              {filteredUsers.map((user) => (
+              {paginatedUsers.map((user) => (
                 <TableRow key={user.id} hover>
                   <TableCell padding="checkbox">
                     <Checkbox checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} />
@@ -639,7 +648,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                         gap: 1.5
                       }}
                     >
-                      <Avatar sx={{ width: 32, height: 32 }}>{user.name.charAt(0)}</Avatar>
+                      <Avatar sx={{ width: 32, height: 32 }}>{user.name?.charAt(0) || 'U'}</Avatar>
 
                       <Box>
                         <Typography variant="subtitle2">{user.name}</Typography>
@@ -690,7 +699,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                 </TableRow>
               ))}
 
-              {filteredUsers.length === 0 && (
+              {paginatedUsers.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
@@ -715,7 +724,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
           }}
         >
           <Pagination
-            count={10}
+            count={totalPages}
             page={page}
             onChange={(_, value) => setPage(value)}
             color="primary"
@@ -909,7 +918,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
       <Dialog
         open={openEditDialog}
         onClose={handleEditClose}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
@@ -988,7 +997,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                     fontSize: 22
                   }}
                 >
-                  {editName.charAt(0).toUpperCase()}
+                  {editName?.charAt(0)?.toUpperCase() || 'U'}
                 </Avatar>
 
                 <IconButton
@@ -1029,29 +1038,31 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
               </Box>
             </Stack>
 
-            {/* NOME DE USUÁRIO */}
-            <Box>
-              <InputLabel>Nome de usuário</InputLabel>
+            <Grid container spacing={2}>
+              {/* NOME DE USUÁRIO */}
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Nome de usuário</InputLabel>
 
-              <OutlinedInput
-                value={editUsername}
-                onChange={(event) => setEditUsername(event.target.value)}
-                placeholder="ex. john.doe"
-                fullWidth
-              />
-            </Box>
+                <OutlinedInput
+                  value={editUsername}
+                  onChange={(event) => setEditUsername(event.target.value)}
+                  placeholder="ex. john.doe"
+                  fullWidth
+                />
+              </Grid>
 
-            {/* E-MAIL */}
-            <Box>
-              <InputLabel>E-mail *</InputLabel>
+              {/* E-MAIL */}
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>E-mail *</InputLabel>
 
-              <OutlinedInput
-                value={editEmail}
-                onChange={(event) => setEditEmail(event.target.value)}
-                placeholder="exemplo@gmail.com"
-                fullWidth
-              />
-            </Box>
+                <OutlinedInput
+                  value={editEmail}
+                  onChange={(event) => setEditEmail(event.target.value)}
+                  placeholder="exemplo@gmail.com"
+                  fullWidth
+                />
+              </Grid>
+            </Grid>
 
             {/* CONTATO + DATA */}
             <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
@@ -1095,31 +1106,33 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
               </Box>
             </Stack>
 
-            {/* CEP */}
-            <Box>
-              <InputLabel>CEP</InputLabel>
+            <Grid container spacing={2}>
+              {/* CEP */}
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <InputLabel>CEP</InputLabel>
 
-              <OutlinedInput
-                value={editZipCode}
-                onChange={(event) => setEditZipCode(event.target.value)}
-                placeholder="00000-000"
-                fullWidth
-              />
-            </Box>
+                <OutlinedInput
+                  value={editZipCode}
+                  onChange={(event) => setEditZipCode(event.target.value)}
+                  placeholder="00000-000"
+                  fullWidth
+                />
+              </Grid>
 
-            {/* ENDEREÇO */}
-            <Box>
-              <InputLabel>Endereço</InputLabel>
+              {/* ENDEREÇO */}
+              <Grid size={{ xs: 12, sm: 8 }}>
+                <InputLabel>Endereço</InputLabel>
 
-              <TextField
-                value={editAddress}
-                onChange={(event) => setEditAddress(event.target.value)}
-                placeholder="Insira um endereço..."
-                fullWidth
-                multiline
-                minRows={2}
-              />
-            </Box>
+                <TextField
+                  value={editAddress}
+                  onChange={(event) => setEditAddress(event.target.value)}
+                  placeholder="Insira um endereço..."
+                  fullWidth
+                  multiline
+                  minRows={2}
+                />
+              </Grid>
+            </Grid>
 
             {/* STATUS */}
             <Box>

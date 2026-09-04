@@ -6,6 +6,7 @@ export interface Role {
   description?: string;
   isSystem?: boolean;
   permissions?: Permission[];
+  users?: Array<{ id: string | number; name: string; username?: string }>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -19,6 +20,7 @@ export interface Permission {
   conditions?: string;
   fields?: string;
   description?: string;
+  roles?: string[];
   createdAt?: string;
 }
 
@@ -32,11 +34,13 @@ export interface CreatePermissionRequest {
 
 export interface UpdatePermissionRequest {
   id: string | number;
+  name?: string;
   subject?: string;
   action?: string;
   conditions?: string;
   fields?: string;
   description?: string;
+  roles?: string[];
 }
 
 export interface CreateRoleRequest {

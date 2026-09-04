@@ -35,19 +35,11 @@ import { ProfileProps } from '@/types/profile';
 // @assets
 import { IconChevronRight, IconLanguage, IconLogout, IconSettings, IconTextDirectionLtr } from '@tabler/icons-react';
 
-/***************************  HEADER - PROFILE DATA  ***************************/
-
-const profileData: ProfileProps = {
-  avatar: { src: '/assets/images/users/avatar-1.png', size: AvatarSize.XS },
-  title: 'Erika Collins',
-  caption: 'Super Admin'
-};
-
 const languageList: { key: ThemeI18n; value: string }[] = [
-  { key: ThemeI18n.EN, value: 'English' },
-  { key: ThemeI18n.FR, value: 'French' },
-  { key: ThemeI18n.RO, value: 'Romanian' },
-  { key: ThemeI18n.ZH, value: 'Chinese' }
+  { key: ThemeI18n.EN, value: 'Inglês' },
+  { key: ThemeI18n.FR, value: 'Francês' },
+  { key: ThemeI18n.RO, value: 'Romeno' },
+  { key: ThemeI18n.ZH, value: 'Chinês' }
 ];
 
 const RoleTitles: Record<AuthRole, string> = {
@@ -75,11 +67,17 @@ export default function ProfileSection() {
   const innerId = innerOpen ? 'profile-inner-popper' : undefined;
   const buttonStyle = { borderRadius: 2, p: 1 };
 
-  if (userData && Object.keys(userData).length > 0) {
-    const name = `${userData?.firstname ?? ''} ${userData?.lastname ?? ''}`.trim();
-    profileData.caption = userData?.role ? RoleTitles[userData.role] : undefined;
-    profileData.title = name;
-  }
+  const profileData: ProfileProps = {
+    avatar: { src: userData?.fotoURL || undefined, size: AvatarSize.XS },
+    title:
+      `${userData?.firstname ?? ''} ${userData?.lastname ?? ''}`.trim() ||
+      userData?.nomeCompleto ||
+      userData?.userName ||
+      userData?.email ||
+      'Usuário',
+    caption: userData?.role ? RoleTitles[userData.role] : undefined,
+    placeholderIfEmpty: true
+  };
 
   const handleActionClick = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(anchorEl ? null : event.currentTarget);
@@ -155,7 +153,7 @@ export default function ProfileSection() {
                       <ListItemIcon>
                         <IconLanguage size={16} />
                       </ListItemIcon>
-                      <ListItemText primary="Language" />
+                      <ListItemText primary="Idioma" />
                       <Chip
                         label={languageList.filter((item) => item.key === i18n)[0]?.value.slice(0, 3)}
                         variant="text"
@@ -209,7 +207,7 @@ export default function ProfileSection() {
                       <ListItemIcon>
                         <IconSettings size={16} />
                       </ListItemIcon>
-                      <ListItemText primary="Settings" />
+                      <ListItemText primary="Configurações" />
                     </ListItemButton>
                     <ListItem disablePadding>
                       <Button
@@ -220,7 +218,7 @@ export default function ProfileSection() {
                         endIcon={<IconLogout size={16} />}
                         onClick={logoutAccount}
                       >
-                        Logout
+                        Sair
                       </Button>
                     </ListItem>
                   </List>

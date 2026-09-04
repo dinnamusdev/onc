@@ -13,6 +13,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormHelperText from '@mui/material/FormHelperText';
+import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -168,7 +169,7 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3 }}>
         <Box>
           <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Adicionar Papéis</DialogTitle>
@@ -188,87 +189,89 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
           <Stack sx={{ gap: 2.5 }}>
             <Typography variant="subtitle1">Informação Geral</Typography>
 
-            <Box>
-              <InputLabel>Papel</InputLabel>
-              <OutlinedInput
-                {...register('name', { required: 'O nome do papel é obrigatório' })}
-                placeholder="Insira o nome do papel ex. Super Admin"
-                fullWidth
-                error={Boolean(errors.name)}
-              />
-              {errors.name?.message && <FormHelperText error>{errors.name.message}</FormHelperText>}
-            </Box>
-
-            <Box>
-              <InputLabel>Descrição</InputLabel>
-              <TextField {...register('description')} placeholder="Adicione uma descrição" fullWidth multiline minRows={3} />
-            </Box>
-
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>Permissão (Opcional)</InputLabel>
-              {permissionsLoading ? (
-                <CircularProgress size={20} />
-              ) : permissionsError ? (
-                <Typography color="error">Erro ao carregar permissões</Typography>
-              ) : (
-                <Controller
-                  name="permissions"
-                  control={control}
-                  render={({ field }) => (
-                    <Autocomplete
-                      multiple
-                      options={permissions?.map((p) => permissionLabel(p)) || []}
-                      value={field.value}
-                      onChange={(_event, value) => field.onChange(value)}
-                      noOptionsText="Nenhuma permissão encontrada"
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder={field.value.length ? '' : '+ Atribuir Permissões'}
-                          InputProps={{
-                            ...params.InputProps,
-                            startAdornment:
-                              field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
-                          }}
-                        />
-                      )}
-                    />
-                  )}
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Papel</InputLabel>
+                <OutlinedInput
+                  {...register('name', { required: 'O nome do papel é obrigatório' })}
+                  placeholder="Insira o nome do papel ex. Super Admin"
+                  fullWidth
+                  error={Boolean(errors.name)}
                 />
-              )}
-            </Box>
+                {errors.name?.message && <FormHelperText error>{errors.name.message}</FormHelperText>}
+              </Grid>
 
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>Usuários (Opcional)</InputLabel>
-              {usersLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Controller
-                  name="users"
-                  control={control}
-                  render={({ field }) => (
-                    <Autocomplete
-                      multiple
-                      options={(userOptions ?? []).map((u) => u.label)}
-                      value={field.value}
-                      onChange={(_event, value) => field.onChange(value)}
-                      noOptionsText="Nenhum usuário encontrado"
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder={field.value.length ? '' : '+ Atribuir Usuários'}
-                          InputProps={{
-                            ...params.InputProps,
-                            startAdornment:
-                              field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
-                          }}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
-            </Box>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Descrição</InputLabel>
+                <TextField {...register('description')} placeholder="Adicione uma descrição" fullWidth multiline minRows={3} />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel sx={{ mb: 1 }}>Permissão (Opcional)</InputLabel>
+                {permissionsLoading ? (
+                  <CircularProgress size={20} />
+                ) : permissionsError ? (
+                  <Typography color="error">Erro ao carregar permissões</Typography>
+                ) : (
+                  <Controller
+                    name="permissions"
+                    control={control}
+                    render={({ field }) => (
+                      <Autocomplete
+                        multiple
+                        options={permissions?.map((p) => permissionLabel(p)) || []}
+                        value={field.value}
+                        onChange={(_event, value) => field.onChange(value)}
+                        noOptionsText="Nenhuma permissão encontrada"
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder={field.value.length ? '' : '+ Atribuir Permissões'}
+                            InputProps={{
+                              ...params.InputProps,
+                              startAdornment:
+                                field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                            }}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                )}
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel sx={{ mb: 1 }}>Usuários (Opcional)</InputLabel>
+                {usersLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <Controller
+                    name="users"
+                    control={control}
+                    render={({ field }) => (
+                      <Autocomplete
+                        multiple
+                        options={(userOptions ?? []).map((u) => u.label)}
+                        value={field.value}
+                        onChange={(_event, value) => field.onChange(value)}
+                        noOptionsText="Nenhum usuário encontrado"
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder={field.value.length ? '' : '+ Atribuir Usuários'}
+                            InputProps={{
+                              ...params.InputProps,
+                              startAdornment:
+                                field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                            }}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                )}
+              </Grid>
+            </Grid>
           </Stack>
         </DialogContent>
 

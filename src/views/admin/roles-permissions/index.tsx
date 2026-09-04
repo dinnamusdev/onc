@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
 // @mui
 import Avatar from '@mui/material/Avatar';
 import AvatarGroup from '@mui/material/AvatarGroup';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -33,6 +34,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 
 // @icons
 import {
@@ -45,16 +47,30 @@ import {
   IconSearch,
   IconShield,
   IconTrash,
-  IconUsers,
+  IconUser,
   IconX
 } from '@tabler/icons-react';
+
+// @third-party
+import useSWR, { mutate } from 'swr';
 
 // @project
 import UsersView from '@/views/admin/users';
 import CreateUserDialog from '@/sections/users/CreateUserDialog';
-import CreatePermissionDialog from '@/sections/permissions/CreatePermissionDialog';
+import CreatePermissionDialog, { PermissionData } from '@/sections/permissions/CreatePermissionDialog';
 import CreateRoleDialog from '@/sections/roles/CreateRoleDialog';
-import { getRoles, getPermissions, deleteRole, createPermission, updatePermission, deletePermission } from '@/utils/api/rbac';
+import {
+  getRoles,
+  getPermissions,
+  deleteRole,
+  createPermission,
+  updatePermission,
+  deletePermission,
+  updateRole,
+  assignPermission,
+  assignRolesToUser
+} from '@/utils/api/rbac';
+import { getUsers } from '@/utils/api/users';
 import { openSnackbar } from '@/states/snackbar';
 import { Role as ApiRole, Permission as ApiPermission } from '@/types/rbac';
 
@@ -273,7 +289,6 @@ export default function RolesPermissionsView() {
   // Mantém a paginação com o mesmo padrão visual do Figma.
   // Os dados reais podem ultrapassar 10 páginas quando conectados à API.
   const rowsPerPage = 10;
-  const minimumPages = 10;
 
   const [roles, setRoles] = useState<RoleRow[]>(mockRoles);
   const [permissions, setPermissions] = useState<PermissionRow[]>(mockPermissions);
@@ -293,15 +308,25 @@ export default function RolesPermissionsView() {
           description: p.description ?? ''
         }));
 
+        // Processa usuários atribuídos ao role
+        const roleUsers = (role.users ?? []).map((u: any) => ({
+          id: String(u.id ?? ''),
+          name: String(u.name || u.userName || u.email || 'Usuário'),
+          username: String(u.userName || u.email || '')
+        }));
+
+        const assignedUserNames = roleUsers.map((u) => u.name?.charAt(0)?.toUpperCase() || 'U');
+        const extraUsersCount = Math.max(0, roleUsers.length - 4);
+
         return {
           id: String(role.id),
           name: role.name,
           description: role.description ?? '',
-          assignedUsers: [],
-          extraUsersCount: 0,
+          assignedUsers: assignedUserNames,
+          extraUsersCount,
           permissionCount: rolePermissions.length,
           permissions: rolePermissions,
-          users: []
+          users: roleUsers
         };
       });
       setRoles(mapped);
@@ -311,9 +336,9 @@ export default function RolesPermissionsView() {
       const mapped: PermissionRow[] = (permsRes.data as ApiPermission[]).map((perm) => ({
         id: String(perm.id),
         subject: perm.subject ?? '',
-        action: perm.action ?? perm.name ?? '',
+        action: Array.isArray(perm.action) ? perm.action.join(', ') : (perm.action ?? perm.name ?? ''),
         description: perm.description ?? '',
-        roles: []
+        roles: (perm.roles ?? []).map(String)
       }));
       setPermissions(mapped);
     }
@@ -359,6 +384,37 @@ export default function RolesPermissionsView() {
 
   const [editUsers, setEditUsers] = useState<AssignedUser[]>([]);
 
+  const [openPermissionSelectDialog, setOpenPermissionSelectDialog] = useState(false);
+
+  const [openUserSelectDialog, setOpenUserSelectDialog] = useState(false);
+
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
+
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+
+  // Buscar permissões disponíveis para seleção
+  const {
+    data: availablePermissions,
+    error: permissionsError,
+    isLoading: permissionsLoading
+  } = useSWR<ApiPermission[]>('/api/rbac/permissions', async () => {
+    const { data, error } = await getPermissions();
+    if (error) throw new Error(error);
+    return (data ?? []) as ApiPermission[];
+  });
+
+  // Buscar usuários disponíveis para seleção
+  const { data: availableUsers, isLoading: usersLoading } = useSWR('/api/users', async () => {
+    const { data, error } = await getUsers();
+    if (error) throw new Error(error);
+    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    return list.map((u) => ({
+      id: String(u.id ?? ''),
+      name: String(u.nomeCompleto || u.userName || u.email || u.id || 'Usuário'),
+      username: String(u.userName || u.email || '')
+    }));
+  });
+
   /*************************** DELETE ROLE ***************************/
 
   const [openDeleteRoleDialog, setOpenDeleteRoleDialog] = useState(false);
@@ -367,11 +423,7 @@ export default function RolesPermissionsView() {
 
   const [openEditPermissionDialog, setOpenEditPermissionDialog] = useState(false);
 
-  const [editPermissionAction, setEditPermissionAction] = useState('');
-
-  const [editPermissionDescription, setEditPermissionDescription] = useState('');
-
-  const [editPermissionRoles, setEditPermissionRoles] = useState<string[]>([]);
+  const [editPermissionData, setEditPermissionData] = useState<PermissionData | null>(null);
 
   /*************************** DELETE PERMISSION ***************************/
 
@@ -528,6 +580,7 @@ export default function RolesPermissionsView() {
 
     const matchesSearch =
       normalizedSearch === '' ||
+      permission.subject.toLowerCase().includes(normalizedSearch) ||
       permission.action.toLowerCase().includes(normalizedSearch) ||
       permission.description.toLowerCase().includes(normalizedSearch);
 
@@ -544,13 +597,21 @@ export default function RolesPermissionsView() {
 
   /*************************** PAGINAÇÃO ***************************/
 
-  const totalRolePages = Math.max(minimumPages, Math.ceil(visibleRoles.length / rowsPerPage));
+  const totalRolePages = Math.max(1, Math.ceil(visibleRoles.length / rowsPerPage));
 
-  const totalPermissionPages = Math.max(minimumPages, Math.ceil(visiblePermissions.length / rowsPerPage));
+  const totalPermissionPages = Math.max(1, Math.ceil(visiblePermissions.length / rowsPerPage));
 
   const paginatedRoles = visibleRoles.slice((rolesPage - 1) * rowsPerPage, rolesPage * rowsPerPage);
 
   const paginatedPermissions = visiblePermissions.slice((permissionsPage - 1) * rowsPerPage, permissionsPage * rowsPerPage);
+
+  useEffect(() => {
+    setRolesPage((currentPage) => Math.min(currentPage, totalRolePages));
+  }, [totalRolePages]);
+
+  useEffect(() => {
+    setPermissionsPage((currentPage) => Math.min(currentPage, totalPermissionPages));
+  }, [totalPermissionPages]);
 
   /*************************** ROLE MENU ***************************/
 
@@ -574,6 +635,8 @@ export default function RolesPermissionsView() {
     setEditRoleDescription(menuRole.description);
     setEditPermissions(menuRole.permissions);
     setEditUsers(menuRole.users);
+    setSelectedPermissionIds([]);
+    setSelectedUserIds([]);
 
     handleMenuClose();
     setOpenEditRoleDialog(true);
@@ -591,27 +654,123 @@ export default function RolesPermissionsView() {
     setEditUsers((current) => current.filter((user) => user.id !== userId));
   };
 
-  const handleEditRoleSave = () => {
+  const handleAddPermissions = (permissionIds: string[]) => {
+    setSelectedPermissionIds(permissionIds);
+  };
+
+  const handleConfirmAddPermissions = () => {
+    const newPermissions = (availablePermissions ?? [])
+      .filter((p) => selectedPermissionIds.includes(String(p.id)))
+      .map((p) => ({
+        id: String(p.id),
+        name: p.name || `${p.subject}.${p.action}`,
+        description: p.description || ''
+      }));
+
+    setEditPermissions((current) => {
+      const existingIds = new Set(current.map((p) => p.id));
+      const filtered = newPermissions.filter((p) => !existingIds.has(p.id));
+      return [...current, ...filtered];
+    });
+
+    setSelectedPermissionIds([]);
+    setOpenPermissionSelectDialog(false);
+  };
+
+  const handleAddUsers = (userIds: string[]) => {
+    setSelectedUserIds(userIds);
+  };
+
+  const handleConfirmAddUsers = () => {
+    const newUsers = (availableUsers ?? []).filter((u) => selectedUserIds.includes(u.id));
+    setEditUsers((current) => {
+      const existingIds = new Set(current.map((u) => u.id));
+      const filtered = newUsers.filter((u) => !existingIds.has(u.id));
+      return [...current, ...filtered];
+    });
+
+    setSelectedUserIds([]);
+    setOpenUserSelectDialog(false);
+  };
+
+  const handleEditRoleSave = async () => {
     if (!menuRole) {
       return;
     }
 
-    setRoles((current) =>
-      current.map((role) =>
-        role.id === menuRole.id
-          ? {
-              ...role,
-              name: editRoleName.trim() || role.name,
-              description: editRoleDescription.trim() || role.description,
-              permissions: editPermissions,
-              permissionCount: editPermissions.length,
-              users: editUsers,
-              assignedUsers: editUsers.length > 0 ? editUsers.map((user) => user.name.charAt(0).toUpperCase()) : [],
-              extraUsersCount: 0
-            }
-          : role
+    console.log('handleEditRoleSave - Iniciando salvamento do papel:', menuRole.id);
+    console.log('handleEditRoleSave - Dados do papel:', { name: editRoleName, description: editRoleDescription });
+    console.log('handleEditRoleSave - Permissões:', editPermissions.map(p => p.id));
+    console.log('handleEditRoleSave - Usuários:', editUsers.map(u => u.id));
+
+    // 1) Atualiza o papel na API
+    console.log('handleEditRoleSave - Chamando updateRole...');
+    const { error: updateError } = await updateRole({
+      id: String(menuRole.id),
+      name: editRoleName.trim() || menuRole.name,
+      description: editRoleDescription.trim() || menuRole.description
+    });
+
+    if (updateError) {
+      console.error('handleEditRoleSave - Erro no updateRole:', updateError);
+      openSnackbar({ open: true, message: updateError, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return;
+    }
+    console.log('handleEditRoleSave - updateRole concluído com sucesso');
+
+    // 2) Atualiza as permissões do papel
+    const selectedPermissionIds = editPermissions.map((p) => p.id);
+    console.log('handleEditRoleSave - Permissões selecionadas:', selectedPermissionIds);
+    console.log('handleEditRoleSave - Chamando assignPermission...');
+    const { error: assignError } = await assignPermission({
+      roleId: String(menuRole.id),
+      permissions: selectedPermissionIds
+    });
+
+    if (assignError) {
+      console.error('handleEditRoleSave - Erro no assignPermission:', assignError);
+      openSnackbar({ open: true, message: assignError, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return;
+    }
+    console.log('handleEditRoleSave - assignPermission concluído com sucesso');
+
+    // 3) Atualiza os usuários atribuídos ao papel
+    const selectedUserIds = editUsers.map((u) => u.id);
+    console.log('handleEditRoleSave - Usuários selecionados:', selectedUserIds);
+    console.log('handleEditRoleSave - Chamando assignRolesToUser para cada usuário...');
+    const results = await Promise.all(
+      selectedUserIds.map((userId) =>
+        assignRolesToUser({
+          userId: String(userId),
+          roles: [String(menuRole.id)]
+        })
       )
     );
+
+    console.log('handleEditRoleSave - Resultados assignRolesToUser:', results);
+
+    const firstUserError = results.find((r) => r.error)?.error;
+    if (firstUserError) {
+      console.error('handleEditRoleSave - Erro ao atribuir usuários:', results);
+      openSnackbar({ open: true, message: firstUserError || 'Erro ao atribuir usuários', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return;
+    }
+    console.log('handleEditRoleSave - assignRolesToUser concluído com sucesso');
+
+    openSnackbar({
+      open: true,
+      message: 'Papel atualizado com sucesso!',
+      variant: 'alert',
+      severity: 'success',
+      alert: { color: 'success' }
+    } as never);
+
+    // Invalida o cache do SWR para forçar recarregamento
+    await mutate('/api/rbac/roles');
+    await mutate('/api/rbac/permissions');
+
+    // Recarrega os dados
+    await reloadData();
 
     setOpenEditRoleDialog(false);
     setMenuRole(null);
@@ -645,6 +804,11 @@ export default function RolesPermissionsView() {
         severity: 'success',
         alert: { color: 'success' }
       } as never);
+
+      // Invalida o cache do SWR para forçar recarregamento
+      await mutate('/api/rbac/roles');
+      await mutate('/api/rbac/permissions');
+
       await reloadData();
     }
 
@@ -671,11 +835,17 @@ export default function RolesPermissionsView() {
       return;
     }
 
-    setEditPermissionAction(menuPermission.action);
+    // Prepara os dados no formato esperado pelo CreatePermissionDialog
+    const permissionData: PermissionData = {
+      id: menuPermission.id,
+      name: menuPermission.action, // Usando action como nome para compatibilidade
+      target: menuPermission.subject, // Subject é o alvo
+      actions: menuPermission.action.split(', ').filter(Boolean), // Converte action string para array
+      description: menuPermission.description,
+      roles: menuPermission.roles
+    };
 
-    setEditPermissionDescription(menuPermission.description);
-
-    setEditPermissionRoles(menuPermission.roles);
+    setEditPermissionData(permissionData);
 
     handlePermissionMenuClose();
     setOpenEditPermissionDialog(true);
@@ -683,22 +853,23 @@ export default function RolesPermissionsView() {
 
   const handleEditPermissionClose = () => {
     setOpenEditPermissionDialog(false);
+    setEditPermissionData(null);
   };
 
-  const handleRemovePermissionRole = (role: string) => {
-    setEditPermissionRoles((current) => current.filter((item) => item !== role));
-  };
-
-  const handleEditPermissionSave = async () => {
+  const handleEditPermissionSave = async (data: { name?: string; target: string; actions: string[]; description: string; roles: string[] }) => {
     if (!menuPermission) {
       return;
     }
 
+    console.log('handleEditPermissionSave - Dados recebidos:', data);
+
     const { error } = await updatePermission({
       id: menuPermission.id,
-      subject: menuPermission.subject,
-      action: editPermissionAction.trim() || menuPermission.action,
-      description: editPermissionDescription.trim() || menuPermission.description
+      name: data.name || menuPermission.action,
+      subject: data.target, // target é o subject
+      action: data.actions.join(', '), // Junta as ações em uma string
+      description: data.description,
+      roles: data.roles
     });
 
     if (error) {
@@ -711,6 +882,11 @@ export default function RolesPermissionsView() {
         severity: 'success',
         alert: { color: 'success' }
       } as never);
+
+      // Invalida o cache do SWR para forçar recarregamento
+      await mutate('/api/rbac/permissions');
+      await mutate('/api/rbac/roles');
+
       await reloadData();
     }
 
@@ -746,6 +922,11 @@ export default function RolesPermissionsView() {
         severity: 'success',
         alert: { color: 'success' }
       } as never);
+
+      // Invalida o cache do SWR para forçar recarregamento
+      await mutate('/api/rbac/permissions');
+      await mutate('/api/rbac/roles');
+
       await reloadData();
     }
 
@@ -755,10 +936,15 @@ export default function RolesPermissionsView() {
 
   /*************************** CREATE ROLE ***************************/
 
-  const handleCreateRole = (_data: CreateRoleData) => {
+  const handleCreateRole = async (_data: CreateRoleData) => {
     // O papel já foi persistido no backend pelo CreateRoleDialog.
     // Aqui apenas recarregamos a lista e fechamos o modal.
-    reloadData();
+
+    // Invalida o cache do SWR para forçar recarregamento
+    await mutate('/api/rbac/roles');
+    await mutate('/api/rbac/permissions');
+
+    await reloadData();
     setRolesPage(1);
     setOpenCreateRoleDialog(false);
   };
@@ -798,6 +984,11 @@ export default function RolesPermissionsView() {
         severity: 'success',
         alert: { color: 'success' }
       } as never);
+
+      // Invalida o cache do SWR para forçar recarregamento
+      await mutate('/api/rbac/permissions');
+      await mutate('/api/rbac/roles');
+
       await reloadData();
     }
 
@@ -1291,7 +1482,7 @@ export default function RolesPermissionsView() {
               <Table
                 sx={{
                   tableLayout: 'fixed',
-                  minWidth: 950
+                  minWidth: 1100
                 }}
               >
                 <TableHead>
@@ -1300,11 +1491,13 @@ export default function RolesPermissionsView() {
                       <Checkbox />
                     </TableCell>
 
-                    <TableCell sx={{ width: '17%' }}>Permissões</TableCell>
+                    <TableCell sx={{ width: '12%' }}>Alvo</TableCell>
 
-                    <TableCell sx={{ width: '44%' }}>Descrição</TableCell>
+                    <TableCell sx={{ width: '15%' }}>Ações</TableCell>
 
-                    <TableCell sx={{ width: '29%' }}>Papéis</TableCell>
+                    <TableCell sx={{ width: '38%' }}>Descrição</TableCell>
+
+                    <TableCell sx={{ width: '25%' }}>Papéis</TableCell>
 
                     <TableCell align="right" sx={{ width: 60 }} />
                   </TableRow>
@@ -1315,6 +1508,16 @@ export default function RolesPermissionsView() {
                     <TableRow key={permission.id} hover>
                       <TableCell padding="checkbox">
                         <Checkbox />
+                      </TableCell>
+
+                      <TableCell
+                        sx={{
+                          overflow: 'hidden'
+                        }}
+                      >
+                        <Typography variant="subtitle2" noWrap>
+                          {permission.subject}
+                        </Typography>
                       </TableCell>
 
                       <TableCell
@@ -1381,7 +1584,7 @@ export default function RolesPermissionsView() {
 
                   {paginatedPermissions.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={6} align="center">
                         <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                           Nenhuma permissão encontrada.
                         </Typography>
@@ -2014,8 +2217,13 @@ export default function RolesPermissionsView() {
                     direction="row"
                     sx={{
                       alignItems: 'center',
-                      gap: 1,
-                      p: 1
+                      gap: 1.25,
+                      minHeight: 58,
+                      px: 1,
+                      py: 0.75,
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider'
                     }}
                   >
                     <Box
@@ -2027,7 +2235,7 @@ export default function RolesPermissionsView() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 1.5,
-                        bgcolor: 'primary.light',
+                        bgcolor: 'primary.lighter',
                         color: 'primary.main'
                       }}
                     >
@@ -2040,7 +2248,13 @@ export default function RolesPermissionsView() {
                         minWidth: 0
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          lineHeight: 1.4
+                        }}
+                      >
                         {permission.name}
                       </Typography>
 
@@ -2049,9 +2263,10 @@ export default function RolesPermissionsView() {
                         color="text.secondary"
                         sx={{
                           display: '-webkit-box',
-                          WebkitLineClamp: 2,
+                          WebkitLineClamp: 1,
                           WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          lineHeight: 1.4
                         }}
                       >
                         {permission.description}
@@ -2062,9 +2277,12 @@ export default function RolesPermissionsView() {
                       size="small"
                       onClick={() => handleRemovePermission(permission.id)}
                       sx={{
+                        width: 40,
+                        height: 40,
                         color: 'error.main',
                         border: '1px solid',
-                        borderColor: 'error.light',
+                        borderColor: 'error.lighter',
+                        borderRadius: 1.5,
                         flexShrink: 0
                       }}
                     >
@@ -2077,6 +2295,7 @@ export default function RolesPermissionsView() {
                   variant="outlined"
                   fullWidth
                   startIcon={<IconPlus size={17} />}
+                  onClick={() => setOpenPermissionSelectDialog(true)}
                   sx={{
                     height: 44,
                     mt: 0.5
@@ -2109,17 +2328,29 @@ export default function RolesPermissionsView() {
                     sx={{
                       alignItems: 'center',
                       gap: 1.25,
-                      p: 1
+                      minHeight: 58,
+                      px: 1,
+                      py: 0.75,
+                      borderRadius: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider'
                     }}
                   >
-                    <Avatar
+                    <Box
                       sx={{
-                        width: 40,
-                        height: 40
+                        width: 44,
+                        height: 44,
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 1.5,
+                        bgcolor: 'primary.lighter',
+                        color: 'primary.main'
                       }}
                     >
-                      {user.name.charAt(0).toUpperCase()}
-                    </Avatar>
+                      <IconUser size={20} />
+                    </Box>
 
                     <Box
                       sx={{
@@ -2127,11 +2358,27 @@ export default function RolesPermissionsView() {
                         minWidth: 0
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          lineHeight: 1.4
+                        }}
+                      >
                         {user.name}
                       </Typography>
 
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          lineHeight: 1.4
+                        }}
+                      >
                         {user.username}
                       </Typography>
                     </Box>
@@ -2140,9 +2387,13 @@ export default function RolesPermissionsView() {
                       size="small"
                       onClick={() => handleRemoveUser(user.id)}
                       sx={{
+                        width: 40,
+                        height: 40,
                         color: 'error.main',
                         border: '1px solid',
-                        borderColor: 'error.light'
+                        borderColor: 'error.lighter',
+                        borderRadius: 1.5,
+                        flexShrink: 0
                       }}
                     >
                       <IconTrash size={17} />
@@ -2154,6 +2405,7 @@ export default function RolesPermissionsView() {
                   variant="outlined"
                   fullWidth
                   startIcon={<IconPlus size={17} />}
+                  onClick={() => setOpenUserSelectDialog(true)}
                   sx={{
                     height: 44,
                     mt: 0.5
@@ -2294,355 +2546,12 @@ export default function RolesPermissionsView() {
       {/* MODAL EDITAR PERMISSÃO                               */}
       {/* ===================================================== */}
 
-      <Dialog
+      <CreatePermissionDialog
         open={openEditPermissionDialog}
         onClose={handleEditPermissionClose}
-        maxWidth={false}
-        fullWidth
-        PaperProps={{
-          sx: {
-            width: 644,
-            maxWidth: 'calc(100vw - 32px)',
-            borderRadius: 2.5,
-            overflow: 'hidden',
-            m: 2
-          }
-        }}
-      >
-        {/* ================================================= */}
-        {/* CABEÇALHO                                        */}
-        {/* ================================================= */}
-
-        <Box
-          sx={{
-            px: 3,
-            pt: 3,
-            pb: 2.5
-          }}
-        >
-          <Stack
-            direction="row"
-            sx={{
-              alignItems: 'flex-start',
-              justifyContent: 'space-between'
-            }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: 22,
-                  lineHeight: 1.3,
-                  fontWeight: 600,
-                  color: 'text.primary'
-                }}
-              >
-                Editar Permissão
-              </Typography>
-
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mt: 0.5,
-                  fontSize: 15
-                }}
-              >
-                Edite as informações desta permissão.
-              </Typography>
-            </Box>
-
-            <IconButton
-              onClick={handleEditPermissionClose}
-              sx={{
-                width: 44,
-                height: 44,
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 1.5,
-                flexShrink: 0,
-                ml: 2
-              }}
-            >
-              <IconX size={20} />
-            </IconButton>
-          </Stack>
-        </Box>
-
-        <Divider />
-
-        {/* ================================================= */}
-        {/* CONTEÚDO                                         */}
-        {/* ================================================= */}
-
-        <DialogContent
-          sx={{
-            px: 3,
-            py: 2.5,
-            overflowY: 'auto'
-          }}
-        >
-          <Stack sx={{ gap: 2.75 }}>
-            {/* ============================================= */}
-            {/* GENERAL INFORMATION                           */}
-            {/* ============================================= */}
-
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: 17,
-                  fontWeight: 600,
-                  mb: 2
-                }}
-              >
-                General Information
-              </Typography>
-
-              {/* NOME DA PERMISSÃO */}
-
-              <Box sx={{ mb: 2.25 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mb: 0.75,
-                    fontWeight: 500,
-                    fontSize: 15
-                  }}
-                >
-                  Nome da permissão
-                </Typography>
-
-                <OutlinedInput
-                  fullWidth
-                  value={editPermissionAction}
-                  onChange={(event) => setEditPermissionAction(event.target.value)}
-                  sx={{
-                    height: 40,
-                    fontSize: 14,
-                    borderRadius: 1.5
-                  }}
-                />
-              </Box>
-
-              {/* DESCRIÇÃO */}
-
-              <Box>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mb: 0.75,
-                    fontWeight: 500,
-                    fontSize: 15
-                  }}
-                >
-                  Descrição
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  value={editPermissionDescription}
-                  onChange={(event) => setEditPermissionDescription(event.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 1.5,
-                      alignItems: 'flex-start'
-                    },
-                    '& .MuiInputBase-input': {
-                      fontSize: 14,
-                      lineHeight: 1.45
-                    }
-                  }}
-                />
-              </Box>
-            </Box>
-
-            {/* ============================================= */}
-            {/* ROLES                                         */}
-            {/* ============================================= */}
-
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 1.5,
-                  fontWeight: 500,
-                  fontSize: 15
-                }}
-              >
-                Papéis{' '}
-                <Typography
-                  component="span"
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    fontSize: 14
-                  }}
-                >
-                  (Opcional)
-                </Typography>
-              </Typography>
-
-              <Stack sx={{ gap: 1 }}>
-                {/* PAPÉIS ATRIBUÍDOS */}
-
-                {editPermissionRoles.map((role) => (
-                  <Stack
-                    key={role}
-                    direction="row"
-                    sx={{
-                      alignItems: 'center',
-                      gap: 1.25,
-                      minHeight: 58,
-                      px: 1.25,
-                      py: 0.75,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      borderRadius: 1.5
-                    }}
-                  >
-                    {/* ÍCONE */}
-
-                    <Box
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 1.25,
-                        bgcolor: 'grey.50',
-                        color: 'text.secondary'
-                      }}
-                    >
-                      <IconUsers size={20} />
-                    </Box>
-
-                    {/* INFORMAÇÕES */}
-
-                    <Box
-                      sx={{
-                        flex: 1,
-                        minWidth: 0
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          fontSize: 14
-                        }}
-                      >
-                        {role}
-                      </Typography>
-
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          display: 'block',
-                          mt: 0.25,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontSize: 12
-                        }}
-                      >
-                        O papel possui permissões e acessos definidos para os usuários do sistema.
-                      </Typography>
-                    </Box>
-
-                    {/* DELETAR PAPEL */}
-
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemovePermissionRole(role)}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        flexShrink: 0,
-                        color: 'error.main',
-                        border: '1px solid',
-                        borderColor: 'error.lighter',
-                        borderRadius: 1.5
-                      }}
-                    >
-                      <IconTrash size={17} />
-                    </IconButton>
-                  </Stack>
-                ))}
-
-                {/* ATRIBUIR PAPÉIS */}
-
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<IconPlus size={17} />}
-                  sx={{
-                    height: 46,
-                    mt: 0.5,
-                    borderRadius: 1.5,
-                    color: 'text.primary',
-                    borderColor: 'divider',
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    '&:hover': {
-                      borderColor: 'text.secondary',
-                      bgcolor: 'action.hover'
-                    }
-                  }}
-                >
-                  Atribuir Papéis
-                </Button>
-              </Stack>
-            </Box>
-          </Stack>
-        </DialogContent>
-
-        <Divider />
-
-        {/* ================================================= */}
-        {/* RODAPÉ                                           */}
-        {/* ================================================= */}
-
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2.25,
-            justifyContent: 'flex-end',
-            gap: 1.25
-          }}
-        >
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={handleEditPermissionClose}
-            sx={{
-              height: 44,
-              minWidth: 88,
-              borderRadius: 1.5,
-              textTransform: 'none'
-            }}
-          >
-            Cancelar
-          </Button>
-
-          <Button
-            variant="contained"
-            onClick={handleEditPermissionSave}
-            sx={{
-              height: 44,
-              minWidth: 156,
-              borderRadius: 1.5,
-              textTransform: 'none',
-              fontWeight: 500
-            }}
-          >
-            Atualizar Permissão
-          </Button>
-        </DialogActions>
-      </Dialog>
+        permission={editPermissionData}
+        onUpdate={handleEditPermissionSave}
+      />
 
       {/* ===================================================== */}
       {/* MODAL DELETAR PERMISSÃO                              */}
@@ -2753,6 +2662,144 @@ export default function RolesPermissionsView() {
       {/* ===================================================== */}
 
       <CreateRoleDialog open={openCreateRoleDialog} onClose={() => setOpenCreateRoleDialog(false)} onCreate={handleCreateRole} />
+
+      {/* ===================================================== */}
+      {/* MODAL SELECIONAR PERMISSÕES                          */}
+      {/* ===================================================== */}
+
+      <Dialog
+        open={openPermissionSelectDialog}
+        onClose={() => {
+          setOpenPermissionSelectDialog(false);
+          setSelectedPermissionIds([]);
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>Selecionar Permissões</DialogTitle>
+        <Divider />
+        <DialogContent>
+          {permissionsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : permissionsError ? (
+            <Typography color="error" sx={{ py: 4 }}>
+              Erro ao carregar permissões
+            </Typography>
+          ) : (
+            <Autocomplete
+              multiple
+              options={availablePermissions?.map((p) => String(p.id)) || []}
+              getOptionLabel={(id) => {
+                const perm = availablePermissions?.find((p) => String(p.id) === id);
+                return perm?.name || `${perm?.subject}.${perm?.action}` || id;
+              }}
+              value={selectedPermissionIds}
+              onChange={(_event, value) => handleAddPermissions(value)}
+              disableCloseOnSelect
+              renderOption={(props, option, { selected }) => {
+                const perm = availablePermissions?.find((p) => String(p.id) === option);
+                return (
+                  <li {...props}>
+                    <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                    {perm?.name || `${perm?.subject}.${perm?.action}` || option}
+                  </li>
+                );
+              }}
+              renderInput={(params) => <TextField {...params} placeholder="Buscar permissões" fullWidth sx={{ mt: 2 }} />}
+            />
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: 'flex-end', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => {
+              setOpenPermissionSelectDialog(false);
+              setSelectedPermissionIds([]);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={handleConfirmAddPermissions}>
+            Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* MODAL SELECIONAR USUÁRIOS                             */}
+      {/* ===================================================== */}
+
+      <Dialog
+        open={openUserSelectDialog}
+        onClose={() => {
+          setOpenUserSelectDialog(false);
+          setSelectedUserIds([]);
+        }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2
+          }
+        }}
+      >
+        <DialogTitle>Selecionar Usuários</DialogTitle>
+        <Divider />
+        <DialogContent>
+          {usersLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Autocomplete
+              multiple
+              options={availableUsers?.map((u) => u.id) || []}
+              getOptionLabel={(id) => {
+                const user = availableUsers?.find((u) => u.id === id);
+                return user?.name || id;
+              }}
+              value={selectedUserIds}
+              onChange={(_event, value) => handleAddUsers(value)}
+              disableCloseOnSelect
+              renderOption={(props, option, { selected }) => {
+                const user = availableUsers?.find((u) => u.id === option);
+                return (
+                  <li {...props}>
+                    <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                    {user?.name || option}
+                  </li>
+                );
+              }}
+              renderInput={(params) => <TextField {...params} placeholder="Buscar usuários" fullWidth sx={{ mt: 2 }} />}
+            />
+          )}
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: 'flex-end', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => {
+              setOpenUserSelectDialog(false);
+              setSelectedUserIds([]);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button variant="contained" onClick={handleConfirmAddUsers}>
+            Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* ===================================================== */}
       {/* MODAL CRIAR PERMISSÃO                                */}

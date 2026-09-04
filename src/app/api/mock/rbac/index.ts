@@ -12,10 +12,39 @@ import { Role, CreateRoleRequest, Permission } from '@/types/rbac';
 const roles = [...mockRoles];
 const permissions = [...mockPermissions];
 
+// Mock storage for user-role assignments
+const userRoles: Record<string, string[]> = {};
+
+// Mock users data
+const mockUsers = [
+  { id: '1', name: 'Allison Mosciski', username: 'allison_mosciski' },
+  { id: '2', name: 'Stacy Reichel', username: 'stacy_reichel.880' },
+  { id: '3', name: 'Roderick Rohan', username: 'roderick.rohan' }
+];
+
 /***************************  MOCK - GET ROLES  ***************************/
 
 export async function getRoles(request: Request) {
-  return NextResponse.json(roles, { status: 200 });
+  // Adiciona usuários atribuídos a cada role
+  const rolesWithUsers = roles.map((role) => {
+    // Encontra todos os usuários que têm este role
+    const assignedUserIds = Object.entries(userRoles)
+      .filter(([, roleIds]) => roleIds.includes(String(role.id)))
+      .map(([userId]) => userId);
+
+    // Busca os dados dos usuários
+    const assignedUsers = mockUsers.filter((user) => assignedUserIds.includes(user.id));
+
+    console.log(`getRoles - Role ${role.id} (${role.name}) tem ${assignedUsers.length} usuários:`, assignedUsers.map(u => u.name));
+
+    return {
+      ...role,
+      users: assignedUsers
+    };
+  });
+
+  console.log('getRoles - Retornando roles:', rolesWithUsers.map(r => ({ id: r.id, name: r.name, description: r.description, userCount: r.users?.length || 0 })));
+  return NextResponse.json(rolesWithUsers, { status: 200 });
 }
 
 /***************************  MOCK - CREATE ROLE  ***************************/
@@ -47,9 +76,13 @@ export async function createRole(request: Request) {
 export async function updateRole(request: Request) {
   try {
     const body: CreateRoleRequest & { id: string | number } = await request.json();
+    console.log('updateRole - Body recebido:', body);
+    console.log('updateRole - Roles antes:', roles.map(r => ({ id: r.id, name: r.name })));
+
     const index = roles.findIndex((r) => r.id === body.id);
 
     if (index === -1) {
+      console.error('updateRole - Role não encontrado:', body.id);
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
     }
 
@@ -61,8 +94,12 @@ export async function updateRole(request: Request) {
       updatedAt: new Date().toISOString()
     };
 
+    console.log('updateRole - Role atualizado:', roles[index]);
+    console.log('updateRole - Roles depois:', roles.map(r => ({ id: r.id, name: r.name })));
+
     return NextResponse.json(roles[index], { status: 200 });
-  } catch {
+  } catch (error) {
+    console.error('updateRole - Erro:', error);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }
@@ -135,11 +172,13 @@ export async function updatePermission(request: Request) {
 
     permissions[index] = {
       ...permissions[index],
+      name: body.name ?? permissions[index].name,
       subject: body.subject ?? permissions[index].subject,
       action: body.action ?? permissions[index].action,
       conditions: body.conditions ?? permissions[index].conditions,
       fields: body.fields ?? permissions[index].fields,
-      description: body.description ?? permissions[index].description
+      description: body.description ?? permissions[index].description,
+      roles: body.roles ?? permissions[index].roles
     };
 
     return NextResponse.json(permissions[index], { status: 200 });
@@ -178,12 +217,18 @@ export async function deletePermission(request: Request) {
 export async function assignPermission(request: Request) {
   try {
     const body = await request.json();
+    console.log('assignPermission - Body recebido:', body);
+
     const { roleId, permissions } = body;
 
     const role = roles.find((r) => r.id === roleId);
     if (!role) {
+      console.error('assignPermission - Role não encontrado:', roleId);
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
     }
+
+    console.log('assignPermission - Role encontrado:', role);
+    console.log('assignPermission - Permissions antes:', role.permissions?.map(p => p.id));
 
     // Atualiza todas as permissions do role
     role.permissions = permissions.map((permId: string) => {
@@ -199,8 +244,11 @@ export async function assignPermission(request: Request) {
       );
     });
 
-    return NextResponse.json(role, { status: 200 });
-  } catch {
+    console.log('assignPermission - Permissions depois:', role.permissions?.map(p => p.id));
+
+    return NextResponse.json({ success: true, role }, { status: 200 });
+  } catch (error) {
+    console.error('assignPermission - Erro:', error);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }
@@ -210,12 +258,18 @@ export async function assignPermission(request: Request) {
 export async function removePermission(request: Request) {
   try {
     const body = await request.json();
+    console.log('removePermission - Body recebido:', body);
+
     const { roleId, permissions } = body;
 
     const role = roles.find((r) => r.id === roleId);
     if (!role) {
+      console.error('removePermission - Role não encontrado:', roleId);
       return NextResponse.json({ error: 'Role not found' }, { status: 404 });
     }
+
+    console.log('removePermission - Role encontrado:', role);
+    console.log('removePermission - Permissions antes:', role.permissions?.map(p => p.id));
 
     // Atualiza permissions removendo as não selecionadas
     role.permissions = permissions.map((permId: string) => {
@@ -231,8 +285,11 @@ export async function removePermission(request: Request) {
       );
     });
 
-    return NextResponse.json(role, { status: 200 });
-  } catch {
+    console.log('removePermission - Permissions depois:', role.permissions?.map(p => p.id));
+
+    return NextResponse.json({ success: true, role }, { status: 200 });
+  } catch (error) {
+    console.error('removePermission - Erro:', error);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }
@@ -258,9 +315,40 @@ export async function getUserRoles(request: Request) {
 export async function assignRolesToUser(request: Request) {
   try {
     const body = await request.json();
-    // Mock: apenas retorna sucesso
-    return NextResponse.json({ success: true, roles: body.roles }, { status: 200 });
-  } catch {
+    console.log('assignRolesToUser - Body recebido:', body);
+
+    // Validação básica
+    if (!body.userId || !body.roles || !Array.isArray(body.roles)) {
+      console.error('assignRolesToUser - Dados inválidos:', body);
+      return NextResponse.json({ error: 'Dados inválidos: userId e roles são obrigatórios' }, { status: 400 });
+    }
+
+    // Salva a atribuição no armazenamento mock
+    const userId = String(body.userId);
+    const rolesToAdd = body.roles.map((r: string | number) => String(r));
+
+    if (!userRoles[userId]) {
+      userRoles[userId] = [];
+    }
+
+    // Adiciona os papéis (evita duplicatas)
+    rolesToAdd.forEach((role: string) => {
+      if (!userRoles[userId].includes(role)) {
+        userRoles[userId].push(role);
+      }
+    });
+
+    console.log('assignRolesToUser - Atribuição salva:', { userId, roles: userRoles[userId] });
+
+    // Mock: retorna no mesmo formato que a API ONC esperaria
+    const userRolesArray = userRoles[userId].map((roleId) => ({
+      user_id: userId,
+      role_id: roleId
+    }));
+
+    return NextResponse.json(userRolesArray, { status: 200 });
+  } catch (error) {
+    console.error('assignRolesToUser - Erro:', error);
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 }

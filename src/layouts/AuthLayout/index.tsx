@@ -68,7 +68,8 @@ export default function AuthLayout({ children }: ChildrenProps) {
             justifyContent: 'center',
             backgroundColor: '#ffffff',
             boxSizing: 'border-box',
-            overflow: 'hidden'
+            overflowX: 'hidden',
+            overflowY: 'auto'
           }}
         >
           <CssBaseline />

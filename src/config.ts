@@ -22,11 +22,11 @@ export const AUTH_PROVIDER: AuthType = AuthType.ONC;
 
 /***************************  RBAC CONSTANT  ***************************/
 
-export const RBAC_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mock para desenvolvimento
+export const RBAC_PROVIDER: ProviderType = ProviderType.MOCK; // Usar mock para desenvolvimento local
 
 /***************************  USERS CONSTANT  ***************************/
 
-export const USERS_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mock para desenvolvimento
+export const USERS_PROVIDER: ProviderType = ProviderType.MOCK; // Usar mock para desenvolvimento local
 
 /***************************  THEME ENUM  ***************************/
 

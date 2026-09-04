@@ -23,6 +23,7 @@ export async function createRole(data: CreateRoleRequest) {
 }
 
 export async function updateRole(data: UpdateRoleRequest) {
+  console.log('updateRole (API client) - Enviando dados:', data);
   return attempt(axiosServices.put(`/api/rbac/roles/${data.id}`, data));
 }
 
@@ -47,6 +48,7 @@ export async function deletePermission(id: string | number) {
 }
 
 export async function assignPermission(data: RolePermissionCreateRequest) {
+  console.log('assignPermission (API client) - Enviando dados:', data);
   return attempt(axiosServices.post('/api/rbac/permissions', data));
 }
 
@@ -59,5 +61,6 @@ export async function getUserRoles(userId: string) {
 }
 
 export async function assignRolesToUser(data: UserRoleRequest) {
+  console.log('assignRolesToUser (API client) - Enviando dados:', data);
   return attempt(axiosServices.post('/api/rbac/user-roles', data));
 }

@@ -13,6 +13,7 @@ import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormGroup from '@mui/material/FormGroup';
 import FormHelperText from '@mui/material/FormHelperText';
+import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -53,6 +54,7 @@ export interface PermissionData {
 }
 
 interface CreatePermissionFormInput {
+  name?: string;
   target: string;
   actions: string[];
   description: string;
@@ -100,9 +102,12 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
     handleSubmit,
     register,
     reset,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm<CreatePermissionFormInput>({
     defaultValues: {
+      name: permission?.name || '',
       target: permission?.target || '',
       actions: permission?.actions || [],
       description: permission?.description || '',
@@ -116,6 +121,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
    */
   const handleDialogEntered = () => {
     reset({
+      name: permission?.name || '',
       target: permission?.target || '',
       actions: permission?.actions || [],
       description: permission?.description || '',
@@ -125,6 +131,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
 
   const handleClose = () => {
     reset({
+      name: '',
       target: '',
       actions: [],
       description: '',
@@ -144,20 +151,21 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
     handleClose();
   };
 
-  const selectedRoles = permission?.roles || [];
+  const selectedRoles = watch('roles') || [];
 
   return (
     <Dialog
       open={open}
       onClose={handleClose}
       onTransitionEnter={handleDialogEntered}
-      maxWidth="sm"
+      maxWidth="lg"
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: 2.5,
-          overflow: 'hidden',
-          maxHeight: 'calc(100vh - 48px)'
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh'
         }
       }}
     >
@@ -227,7 +235,9 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
           sx={{
             px: 3,
             py: 2.5,
-            overflowY: 'auto'
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            flex: 1
           }}
         >
           <Stack sx={{ gap: 2.5 }}>
@@ -249,8 +259,35 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
             {/* MODO EDIÇÃO - NOME DA PERMISSÃO                  */}
             {/* ================================================= */}
 
-            {isEdit ? (
-              <Box>
+            <Grid container spacing={2}>
+              {isEdit && (
+                <Grid size={{ xs: 12, sm: 12 }} sx={{ order: 1 }}>
+                  <InputLabel
+                    sx={{
+                      mb: 0.75,
+                      fontSize: 14,
+                      color: 'text.primary'
+                    }}
+                  >
+                    Nome da permissão
+                  </InputLabel>
+
+                  <TextField
+                    {...register('name')}
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        height: 40,
+                        borderRadius: 1.5
+                      }
+                    }}
+                  />
+                </Grid>
+              )}
+
+              {/* ALVO */}
+
+              <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 2 }}>
                 <InputLabel
                   sx={{
                     mb: 0.75,
@@ -258,131 +295,261 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                     color: 'text.primary'
                   }}
                 >
-                  Nome da permissão
+                  Alvo
                 </InputLabel>
 
-                <TextField
-                  value={permission?.name || ''}
-                  fullWidth
-                  disabled
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      height: 40,
-                      borderRadius: 1.5,
-                      bgcolor: 'background.paper'
-                    }
+                <Controller
+                  name="target"
+                  control={control}
+                  rules={{
+                    required: 'Selecione o recurso alvo desta permissão'
                   }}
+                  render={({ field }) => (
+                    <Select
+                      {...field}
+                      displayEmpty
+                      fullWidth
+                      error={Boolean(errors.target)}
+                      sx={{
+                        height: 40,
+                        borderRadius: 1.5
+                      }}
+                    >
+                      <MenuItem value="" disabled>
+                        Selecionar item
+                      </MenuItem>
+
+                      {targetOptions.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
                 />
-              </Box>
-            ) : (
-              <>
-                {/* ALVO */}
 
-                <Box>
-                  <InputLabel
-                    sx={{
-                      mb: 0.75,
-                      fontSize: 14,
-                      color: 'text.primary'
-                    }}
-                  >
-                    Alvo
-                  </InputLabel>
+                {errors.target?.message && <FormHelperText error>{errors.target.message}</FormHelperText>}
+              </Grid>
+            
+              {/* AÇÕES */}
 
-                  <Controller
-                    name="target"
-                    control={control}
-                    rules={{
-                      required: 'Selecione o recurso alvo desta permissão'
-                    }}
-                    render={({ field }) => (
-                      <Select
-                        {...field}
-                        displayEmpty
-                        fullWidth
-                        error={Boolean(errors.target)}
+              <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 3 }}>
+                <InputLabel
+                  sx={{
+                    mb: 0.75,
+                    fontSize: 14,
+                    color: 'text.primary'
+                  }}
+                >
+                  Ação
+                </InputLabel>
+
+                <Controller
+                  name="actions"
+                  control={control}
+                  rules={{
+                    validate: (value) => value.length > 0 || 'Selecione pelo menos uma ação'
+                  }}
+                  render={({ field }) => (
+                    <Box
+                      sx={{
+                        border: '1px solid',
+                        borderColor: errors.actions ? 'error.main' : 'divider',
+                        borderRadius: 1.5,
+                        p: 1,
+                        maxHeight: 160,
+                        overflowY: 'auto'
+                      }}
+                    >
+                      <FormGroup>
+                        {actionOptions.map((action) => (
+                          <FormControlLabel
+                            key={action}
+                            label={action}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={field.value.includes(action)}
+                                onChange={(_event, checked) => {
+                                  field.onChange(checked ? [...field.value, action] : field.value.filter((item) => item !== action));
+                                }}
+                              />
+                            }
+                          />
+                        ))}
+                      </FormGroup>
+                    </Box>
+                  )}
+                />
+
+                {errors.actions?.message && <FormHelperText error>{errors.actions.message}</FormHelperText>}
+              </Grid>
+
+              {/* PAPÉIS */}
+
+              <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 1,
+                    fontWeight: 500,
+                    fontSize: 14
+                  }}
+                >
+                  Papéis{' '}
+                  <Typography component="span" variant="body2" color="text.secondary">
+                    (Opcional)
+                  </Typography>
+                </Typography>
+
+                {isEdit ? (
+                  <Stack sx={{ gap: 1 }}>
+                    {selectedRoles.map((role) => (
+                      <Stack
+                        key={role}
+                        direction="row"
                         sx={{
-                          height: 40,
+                          alignItems: 'center',
+                          gap: 1.25,
+                          minHeight: 58,
+                          px: 1,
+                          py: 0.75,
                           borderRadius: 1.5
                         }}
                       >
-                        <MenuItem value="" disabled>
-                          Selecionar item
-                        </MenuItem>
+                        <Box
+                          sx={{
+                            width: 44,
+                            height: 44,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            borderRadius: 1.5,
+                            bgcolor: 'primary.lighter',
+                            color: 'primary.main'
+                          }}
+                        >
+                          <IconUser size={20} />
+                        </Box>
 
-                        {targetOptions.map((option) => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    )}
-                  />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                            {role}
+                          </Typography>
 
-                  {errors.target?.message && <FormHelperText error>{errors.target.message}</FormHelperText>}
-                </Box>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              lineHeight: 1.4
+                            }}
+                          >
+                            {permission?.roleDetails?.find((item) => item.name === role)?.description || getRoleDescription(role)}
+                          </Typography>
+                        </Box>
 
-                {/* AÇÕES */}
+                        <IconButton
+                          type="button"
+                          size="small"
+                          onClick={() => {
+                            const currentRoles = control._formValues.roles || [];
+                            setValue('roles', currentRoles.filter((r: string) => r !== role));
+                          }}
+                          sx={{
+                            width: 40,
+                            height: 40,
+                            color: 'error.main',
+                            border: '1px solid',
+                            borderColor: 'error.lighter',
+                            borderRadius: 1.5,
+                            flexShrink: 0
+                          }}
+                        >
+                          <IconTrash size={17} />
+                        </IconButton>
+                      </Stack>
+                    ))}
 
-                <Box>
-                  <InputLabel
-                    sx={{
-                      mb: 0.75,
-                      fontSize: 14,
-                      color: 'text.primary'
-                    }}
-                  >
-                    Ação
-                  </InputLabel>
-
-                  <Controller
-                    name="actions"
-                    control={control}
-                    rules={{
-                      validate: (value) => value.length > 0 || 'Selecione pelo menos uma ação'
-                    }}
-                    render={({ field }) => (
-                      <Box
-                        sx={{
-                          border: '1px solid',
-                          borderColor: errors.actions ? 'error.main' : 'divider',
-                          borderRadius: 1.5,
-                          p: 1,
-                          maxHeight: 160,
-                          overflowY: 'auto'
-                        }}
-                      >
-                        <FormGroup>
-                          {actionOptions.map((action) => (
-                            <FormControlLabel
-                              key={action}
-                              label={action}
-                              control={
-                                <Checkbox
-                                  size="small"
-                                  checked={field.value.includes(action)}
-                                  onChange={(_event, checked) => {
-                                    field.onChange(checked ? [...field.value, action] : field.value.filter((item) => item !== action));
-                                  }}
-                                />
-                              }
+                    <Controller
+                      name="roles"
+                      control={control}
+                      render={({ field }) => (
+                        <Autocomplete
+                          multiple
+                          fullWidth
+                          options={roleOptions}
+                          value={field.value}
+                          onChange={(_event, value) => field.onChange(value)}
+                          disableCloseOnSelect
+                          renderOption={(props, option, { selected }) => (
+                            <li {...props}>
+                              <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                              {option}
+                            </li>
+                          )}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder="+ Atribuir Papéis"
+                              fullWidth
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  minHeight: 44,
+                                  borderRadius: 1.5
+                                }
+                              }}
                             />
-                          ))}
-                        </FormGroup>
-                      </Box>
+                          )}
+                        />
+                      )}
+                    />
+                  </Stack>
+                ) : (
+                  <Controller
+                    name="roles"
+                    control={control}
+                    render={({ field }) => (
+                      <Autocomplete
+                        multiple
+                        fullWidth
+                        options={roleOptions}
+                        value={field.value}
+                        onChange={(_event, value) => field.onChange(value)}
+                        disableCloseOnSelect
+                        renderOption={(props, option, { selected }) => (
+                          <li {...props}>
+                            <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
+                            {option}
+                          </li>
+                        )}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="+ Atribuir Papéis"
+                            fullWidth
+                            sx={{
+                              '& .MuiOutlinedInput-root': {
+                                minHeight: 44,
+                                borderRadius: 1.5
+                              }
+                            }}
+                          />
+                        )}
+                      />
                     )}
                   />
-
-                  {errors.actions?.message && <FormHelperText error>{errors.actions.message}</FormHelperText>}
-                </Box>
-              </>
-            )}
-
+                )}
+              </Grid>
             {/* ================================================= */}
             {/* DESCRIÇÃO                                         */}
             {/* ================================================= */}
 
-            <Box>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <InputLabel
                 sx={{
                   mb: 0.75,
@@ -409,191 +576,9 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                   }
                 }}
               />
-            </Box>
+            </Grid>
 
-            {/* ================================================= */}
-            {/* PAPÉIS                                            */}
-            {/* ================================================= */}
-
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 1,
-                  fontWeight: 500,
-                  fontSize: 14
-                }}
-              >
-                Papéis{' '}
-                <Typography component="span" variant="body2" color="text.secondary">
-                  (Opcional)
-                </Typography>
-              </Typography>
-
-              {/* ============================================= */}
-              {/* MODO EDIÇÃO                                    */}
-              {/* ============================================= */}
-
-              {isEdit ? (
-                <Stack sx={{ gap: 1 }}>
-                  {selectedRoles.map((role) => (
-                    <Stack
-                      key={role}
-                      direction="row"
-                      sx={{
-                        alignItems: 'center',
-                        gap: 1.25,
-                        minHeight: 58,
-                        px: 1,
-                        py: 0.75,
-                        borderRadius: 1.5
-                      }}
-                    >
-                      {/* ÍCONE */}
-
-                      <Box
-                        sx={{
-                          width: 44,
-                          height: 44,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          borderRadius: 1.5,
-                          bgcolor: 'primary.lighter',
-                          color: 'primary.main'
-                        }}
-                      >
-                        <IconUser size={20} />
-                      </Box>
-
-                      {/* INFORMAÇÕES */}
-
-                      <Box
-                        sx={{
-                          flex: 1,
-                          minWidth: 0
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            lineHeight: 1.4
-                          }}
-                        >
-                          {role}
-                        </Typography>
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          {permission?.roleDetails?.find((item) => item.name === role)?.description || getRoleDescription(role)}
-                        </Typography>
-                      </Box>
-
-                      {/* REMOVER */}
-
-                      <IconButton
-                        type="button"
-                        size="small"
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          color: 'error.main',
-                          border: '1px solid',
-                          borderColor: 'error.lighter',
-                          borderRadius: 1.5,
-                          flexShrink: 0
-                        }}
-                      >
-                        <IconTrash size={17} />
-                      </IconButton>
-                    </Stack>
-                  ))}
-
-                  {/* ========================================= */}
-                  {/* ATRIBUIR PAPÉIS                            */}
-                  {/* ========================================= */}
-
-                  <Controller
-                    name="roles"
-                    control={control}
-                    render={({ field }) => (
-                      <Autocomplete
-                        multiple
-                        options={roleOptions}
-                        value={field.value}
-                        onChange={(_event, value) => field.onChange(value)}
-                        disableCloseOnSelect
-                        renderOption={(props, option, { selected }) => (
-                          <li {...props}>
-                            <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                            {option}
-                          </li>
-                        )}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            placeholder="+ Atribuir Papéis"
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                minHeight: 44,
-                                borderRadius: 1.5
-                              }
-                            }}
-                          />
-                        )}
-                      />
-                    )}
-                  />
-                </Stack>
-              ) : (
-                /* ============================================= */
-                /* MODO CRIAÇÃO                                  */
-                /* ============================================= */
-
-                <Controller
-                  name="roles"
-                  control={control}
-                  render={({ field }) => (
-                    <Autocomplete
-                      multiple
-                      options={roleOptions}
-                      value={field.value}
-                      onChange={(_event, value) => field.onChange(value)}
-                      disableCloseOnSelect
-                      renderOption={(props, option, { selected }) => (
-                        <li {...props}>
-                          <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                          {option}
-                        </li>
-                      )}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder="+ Atribuir Papéis"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              minHeight: 44,
-                              borderRadius: 1.5
-                            }
-                          }}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
-            </Box>
+            </Grid>
           </Stack>
         </DialogContent>
 
@@ -607,7 +592,8 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
           sx={{
             px: 3,
             py: 2,
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexShrink: 0
           }}
         >
           <Button
