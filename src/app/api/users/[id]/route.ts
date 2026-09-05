@@ -26,11 +26,10 @@ export async function PUT(request: NextRequest, { params }: Context) {
   const url = new URL(request.url);
   url.searchParams.set('id', id);
 
-  const bodyText = await request.text();
   const newRequest = new NextRequest(url, {
     method: 'PUT',
     headers: request.headers,
-    body: bodyText
+    body: request.body
   });
 
   const provider = await usersProvider();

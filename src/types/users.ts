@@ -36,6 +36,8 @@ export interface UpdateUserRequest {
   telefone?: string;
   cpf?: string;
   fotoURL?: string;
+  fotoFile?: File;
+  isAlteraFoto?: boolean;
   isAtivo?: boolean;
   logradouro?: string;
   numero?: string;

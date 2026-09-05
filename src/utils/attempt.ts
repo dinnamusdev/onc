@@ -43,8 +43,10 @@ export async function attempt<T>(promise: Promise<T | AxiosResponse<T>>): Promis
     // Type guard for Axios response
     const data = result && typeof (result as AxiosResponse<T>).data !== 'undefined' ? (result as AxiosResponse<T>).data : (result as T);
 
+    console.log('attempt - Sucesso:', data);
     return { data, error: null };
   } catch (error) {
+    console.error('attempt - Erro:', error);
     return { data: null, error: extractErrorMessage(error) };
   }
 }

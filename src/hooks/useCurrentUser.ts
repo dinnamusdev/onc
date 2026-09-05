@@ -21,6 +21,6 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 
 export default function useCurrentUser() {
-  const { user, isProcessing } = useAuth();
-  return { userData: user, isProcessing };
+  const { user, isProcessing, updateUser } = useAuth();
+  return { userData: user, isProcessing, updateUser };
 }

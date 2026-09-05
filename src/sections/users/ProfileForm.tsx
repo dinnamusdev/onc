@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 
 // @mui
 import Alert from '@mui/material/Alert';
+import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -27,6 +28,7 @@ import { openSnackbar } from '@/states/snackbar';
 // @types
 import { User } from '@/types/users';
 import { SnackbarProps } from '@/types/snackbar';
+import { IconCamera } from '@tabler/icons-react';
 
 /***************************  TYPES  ***************************/
 
@@ -63,7 +65,7 @@ const emptyForm: ProfileFormInput = {
 /***************************  USER - PROFILE FORM  ***************************/
 
 export default function ProfileForm() {
-  const { userData } = useCurrentUser();
+  const { userData, updateUser: updateAuthUser } = useCurrentUser();
 
   const notify = (message: string, severity: SnackbarProps['severity']) => {
     openSnackbar({
@@ -79,6 +81,9 @@ export default function ProfileForm() {
   const [loadError, setLoadError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPhotoUrl, setCurrentPhotoUrl] = useState('');
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const {
     register,
@@ -120,6 +125,7 @@ export default function ProfileForm() {
       }
 
       setUserId(profile.id);
+      setCurrentPhotoUrl(profile.fotoURL ?? '');
       reset({
         nomeCompleto: profile.nomeCompleto ?? '',
         email: profile.email ?? email,
@@ -142,6 +148,22 @@ export default function ProfileForm() {
     };
   }, [userData?.email, reset]);
 
+  useEffect(() => {
+    if (!selectedPhoto) {
+      setPhotoPreview(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedPhoto);
+    setPhotoPreview(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedPhoto]);
+
+  const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSelectedPhoto(event.target.files?.[0] ?? null);
+  };
+
   const onSubmit: SubmitHandler<ProfileFormInput> = async (formData) => {
     if (!userId) {
       notify('ID do usuário indisponível.', 'error');
@@ -150,8 +172,7 @@ export default function ProfileForm() {
 
     setIsSaving(true);
 
-    // PUT /auth/api/Users?id={id} (multipart) — apenas dados complementares.
-    const { error } = await updateUser({
+    const userFields = {
       id: userId,
       userName: userData?.userName ?? formData.email,
       email: formData.email,
@@ -166,7 +187,32 @@ export default function ProfileForm() {
       bairro: formData.bairro,
       cidade: formData.cidade,
       estado: formData.estado
-    });
+    };
+
+    const updatePayload = selectedPhoto
+      ? (() => {
+          const payload = new FormData();
+          payload.append('id', userId);
+          payload.append('UserName', userFields.userName);
+          payload.append('Email', userFields.email);
+          payload.append('NomeCompleto', userFields.nomeCompleto);
+          payload.append('Whatsapp', userFields.whatsapp);
+          payload.append('Telefone', userFields.telefone);
+          payload.append('Cpf', userFields.cpf);
+          payload.append('CEP', userFields.cep);
+          payload.append('Logradouro', userFields.logradouro);
+          payload.append('Numero', userFields.numero);
+          payload.append('Complemento', userFields.complemento);
+          payload.append('Bairro', userFields.bairro);
+          payload.append('Cidade', userFields.cidade);
+          payload.append('Estado', userFields.estado);
+          payload.append('isAlteraFoto', 'true');
+          payload.append('FotoFile', selectedPhoto);
+          return payload;
+        })()
+      : userFields;
+
+    const { data, error } = await updateUser(updatePayload);
 
     setIsSaving(false);
 
@@ -175,6 +221,21 @@ export default function ProfileForm() {
       return;
     }
 
+    let updatedProfile = data as User | null;
+    if (selectedPhoto) {
+      const refreshed = await getUsers({ email: formData.email });
+      updatedProfile = (Array.isArray(refreshed.data) ? refreshed.data[0] : refreshed.data) as User | null;
+      if (refreshed.error) {
+        notify('Perfil salvo, mas não foi possível atualizar a imagem na tela.', 'warning');
+      }
+    }
+
+    updateAuthUser({
+      ...userFields,
+      fotoURL: updatedProfile?.fotoURL ?? currentPhotoUrl
+    });
+    setCurrentPhotoUrl(updatedProfile?.fotoURL ?? currentPhotoUrl);
+    setSelectedPhoto(null);
     notify('Perfil atualizado com sucesso!', 'success');
   };
 
@@ -209,6 +270,20 @@ export default function ProfileForm() {
       </Box>
 
       <Divider sx={{ mb: 3 }} />
+
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mb: 3 }}>
+        <Avatar src={photoPreview ?? (currentPhotoUrl || undefined)} sx={{ width: 72, height: 72 }}>
+          <IconCamera size={28} />
+        </Avatar>
+        <Stack sx={{ gap: 0.75 }}>
+          <Typography variant="subtitle1">Foto de perfil</Typography>
+          <Button component="label" variant="outlined" size="small" startIcon={<IconCamera size={16} />}>
+            Escolher imagem
+            <input hidden type="file" accept="image/*" onChange={handlePhotoChange} />
+          </Button>
+          {selectedPhoto && <Typography variant="caption">{selectedPhoto.name}</Typography>}
+        </Stack>
+      </Stack>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack sx={{ gap: 2.5 }}>

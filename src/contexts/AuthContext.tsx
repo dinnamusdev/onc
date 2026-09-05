@@ -12,6 +12,7 @@ import { User } from '@/types/auth';
 type AuthContextType = {
   user: User | null;
   isProcessing: boolean;
+  updateUser: (data: Partial<User>) => void;
 };
 
 /***************************  AUTH - CONTEXT & PROVIDER  ***************************/
@@ -21,6 +22,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AuthProviderComponent = function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(true);
+
+  const updateUser = useCallback((data: Partial<User>) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser;
+
+      const updatedUser = { ...currentUser, ...data };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser));
+      }
+      return updatedUser;
+    });
+  }, []);
 
   const manageUserData = useCallback((localStorageData: string | null) => {
     try {
@@ -65,7 +78,7 @@ const AuthProviderComponent = function AuthProvider({ children }: { children: Re
     };
   }, [manageUserData]);
 
-  return <AuthContext value={{ user, isProcessing }}>{children}</AuthContext>;
+  return <AuthContext value={{ user, isProcessing, updateUser }}>{children}</AuthContext>;
 };
 
 export const AuthProvider = memo(AuthProviderComponent);

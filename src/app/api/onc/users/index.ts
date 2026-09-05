@@ -165,12 +165,21 @@ export async function updateUser(request: Request) {
       body: outgoing
     });
 
+    const responseText = await res.text();
+
     if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      return NextResponse.json({ error: error?.message || error?.title || 'Failed to update user' }, { status: res.status });
+      let error: unknown = {};
+      try {
+        error = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        error = { raw: responseText };
+      }
+
+      const errorRecord = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
+      return NextResponse.json({ error: errorRecord.message || errorRecord.title || 'Failed to update user' }, { status: res.status });
     }
 
-    const data = await res.json();
+    const data = responseText ? JSON.parse(responseText) : null;
     return NextResponse.json(data, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
