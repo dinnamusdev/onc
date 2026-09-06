@@ -25,8 +25,9 @@ export async function createUser(data: CreateUserRequest) {
   return attempt(axiosServices.post('/api/users', data));
 }
 
-export async function updateUser(data: UpdateUserRequest) {
-  return attempt(axiosServices.put(`/api/users/${data.id}`, data));
+export async function updateUser(data: UpdateUserRequest | FormData) {
+  const id = data instanceof FormData ? String(data.get('id') ?? '') : data.id;
+  return attempt(axiosServices.put(`/api/users/${id}`, data));
 }
 
 export async function deleteUser(id: string) {

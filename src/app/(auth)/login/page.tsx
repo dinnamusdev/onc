@@ -11,7 +11,16 @@ import Copyright from '@/sections/auth/Copyright';
 
 export default function Login() {
   return (
-    <Stack sx={{ height: 1, width: 1, position: 'relative', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+    <Stack
+      sx={{
+        minHeight: 1,
+        width: 1,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 3,
+        py: { xs: 3, sm: 5 }
+      }}
+    >
       <Box
         sx={{
           width: '100%',
@@ -64,7 +73,7 @@ export default function Login() {
         <AuthLogin />
       </Box>
 
-      <Box sx={{ position: 'absolute', bottom: { xs: 24, sm: 40 }, left: 0, right: 0 }}>
+      <Box>
         <Copyright />
       </Box>
     </Stack>
