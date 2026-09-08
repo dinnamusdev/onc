@@ -71,6 +71,9 @@ export async function updateRole(request: Request) {
     const body = await request.json();
     const { id, ...updateData } = body;
 
+    console.log('ONC updateRole - Body recebido:', body);
+    console.log('ONC updateRole - ID:', id, 'UpdateData:', updateData);
+
     const res = await fetch(`${ONC_API}/auth/api/Permission/roles?roleId=${id}`, {
       method: 'PUT',
       headers: {
@@ -82,12 +85,15 @@ export async function updateRole(request: Request) {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      console.error('ONC updateRole - Erro da API:', error);
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to update role' }, { status: res.status });
     }
 
     const data = await res.json();
+    console.log('ONC updateRole - Sucesso:', data);
     return NextResponse.json(data, { status: 200 });
-  } catch {
+  } catch (error) {
+    console.error('ONC updateRole - Erro:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -153,6 +159,8 @@ export async function createPermission(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const body = await request.json();
 
+    console.log('ONC createPermission - Body recebido:', body);
+
     // Swagger: POST /auth/api/Permission/permissions (PermissionCreateDTO)
     const res = await fetch(`${ONC_API}/auth/api/Permission/permissions`, {
       method: 'POST',
@@ -171,12 +179,15 @@ export async function createPermission(request: Request) {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      console.error('ONC createPermission - Erro da API:', error);
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to create permission' }, { status: res.status });
     }
 
     const data = await res.json();
+    console.log('ONC createPermission - Sucesso:', data);
     return NextResponse.json(data, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('ONC createPermission - Erro:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -188,6 +199,9 @@ export async function updatePermission(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const body = await request.json();
     const { id, ...updateData } = body;
+
+    console.log('ONC updatePermission - Body recebido:', body);
+    console.log('ONC updatePermission - ID:', id, 'UpdateData:', updateData);
 
     // Swagger: PUT /auth/api/Permission/permissions?permissionId= (PermissionUpdateDTO)
     const res = await fetch(`${ONC_API}/auth/api/Permission/permissions?permissionId=${id}`, {
@@ -207,12 +221,15 @@ export async function updatePermission(request: Request) {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      console.error('ONC updatePermission - Erro da API:', error);
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to update permission' }, { status: res.status });
     }
 
     const data = await res.json();
+    console.log('ONC updatePermission - Sucesso:', data);
     return NextResponse.json(data, { status: 200 });
-  } catch {
+  } catch (error) {
+    console.error('ONC updatePermission - Erro:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -252,13 +269,18 @@ export async function assignPermission(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const body = await request.json();
 
+    console.log('ONC assignPermission - Body recebido:', body);
+
     // Swagger: PUT /auth/api/Permission/role-permissions
     // Body: array of RolePermissionCreateDTO
-    const rolePermissions = body.permissions.map((permId: number) => ({
-      role_id: body.roleId,
-      permission_id: permId,
+    // Converter IDs para números (API ONC espera numbers)
+    const rolePermissions = body.permissions.map((permId: string | number) => ({
+      role_id: Number(body.roleId),
+      permission_id: Number(permId),
       effect: 'allow' // obrigatório pelo schema
     }));
+
+    console.log('ONC assignPermission - Enviando para API:', rolePermissions);
 
     const res = await fetch(`${ONC_API}/auth/api/Permission/role-permissions`, {
       method: 'PUT',
@@ -271,12 +293,15 @@ export async function assignPermission(request: Request) {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      console.error('ONC assignPermission - Erro da API:', error);
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to assign permission' }, { status: res.status });
     }
 
     const data = await res.json();
+    console.log('ONC assignPermission - Sucesso:', data);
     return NextResponse.json(data, { status: 200 });
-  } catch {
+  } catch (error) {
+    console.error('ONC assignPermission - Erro:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -336,8 +361,9 @@ export async function getUserRoles(request: Request) {
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch user roles' }, { status: res.status });
     }
 
-    const data = await res.json();
-    return NextResponse.json(data, { status: 200 });
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(Array.isArray(data) ? data : [data], { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
@@ -350,12 +376,17 @@ export async function assignRolesToUser(request: Request) {
     const authHeader = request.headers.get('Authorization');
     const body = await request.json();
 
+    console.log('ONC assignRolesToUser - Body recebido:', body);
+
     // Swagger: PUT /auth/api/Permission/user-roles
     // Body: array of UserRoleCreateDTO
-    const userRoles = body.roles.map((roleId: number) => ({
-      user_id: body.userId,
-      role_id: roleId
+    // userId é UUID (string), roleId é número
+    const userRoles = body.roles.map((roleId: string | number) => ({
+      user_id: String(body.userId), // Mantém como string (UUID)
+      role_id: Number(roleId) // Converte para número
     }));
+
+    console.log('ONC assignRolesToUser - Enviando para API:', userRoles);
 
     const res = await fetch(`${ONC_API}/auth/api/Permission/user-roles`, {
       method: 'PUT',
@@ -368,12 +399,15 @@ export async function assignRolesToUser(request: Request) {
 
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
+      console.error('ONC assignRolesToUser - Erro da API:', error);
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to assign roles to user' }, { status: res.status });
     }
 
     const data = await res.json();
+    console.log('ONC assignRolesToUser - Sucesso:', data);
     return NextResponse.json(data, { status: 200 });
-  } catch {
+  } catch (error) {
+    console.error('ONC assignRolesToUser - Erro:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

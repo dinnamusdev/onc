@@ -34,13 +34,11 @@ export interface CreatePermissionRequest {
 
 export interface UpdatePermissionRequest {
   id: string | number;
-  name?: string;
   subject?: string;
   action?: string;
   conditions?: string;
   fields?: string;
   description?: string;
-  roles?: string[];
 }
 
 export interface CreateRoleRequest {

@@ -40,7 +40,7 @@ export async function createPermission(data: CreatePermissionRequest) {
 }
 
 export async function updatePermission(data: UpdatePermissionRequest) {
-  return attempt(axiosServices.put('/api/rbac/permission', data));
+  return attempt(axiosServices.put(`/api/rbac/permission?id=${data.id}`, data));
 }
 
 export async function deletePermission(id: string | number) {

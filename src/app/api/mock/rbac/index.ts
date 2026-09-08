@@ -172,13 +172,12 @@ export async function updatePermission(request: Request) {
 
     permissions[index] = {
       ...permissions[index],
-      name: body.name ?? permissions[index].name,
       subject: body.subject ?? permissions[index].subject,
       action: body.action ?? permissions[index].action,
       conditions: body.conditions ?? permissions[index].conditions,
       fields: body.fields ?? permissions[index].fields,
       description: body.description ?? permissions[index].description,
-      roles: body.roles ?? permissions[index].roles
+      roles: permissions[index].roles
     };
 
     return NextResponse.json(permissions[index], { status: 200 });
@@ -323,20 +322,11 @@ export async function assignRolesToUser(request: Request) {
       return NextResponse.json({ error: 'Dados inválidos: userId e roles são obrigatórios' }, { status: 400 });
     }
 
-    // Salva a atribuição no armazenamento mock
+    // Salva a atribuição no armazenamento mock de forma exata, substituindo o conjunto final
     const userId = String(body.userId);
-    const rolesToAdd = body.roles.map((r: string | number) => String(r));
+    const finalRoles: string[] = Array.from(new Set(body.roles.map((r: string | number) => String(r))));
 
-    if (!userRoles[userId]) {
-      userRoles[userId] = [];
-    }
-
-    // Adiciona os papéis (evita duplicatas)
-    rolesToAdd.forEach((role: string) => {
-      if (!userRoles[userId].includes(role)) {
-        userRoles[userId].push(role);
-      }
-    });
+    userRoles[userId] = finalRoles;
 
     console.log('assignRolesToUser - Atribuição salva:', { userId, roles: userRoles[userId] });
 

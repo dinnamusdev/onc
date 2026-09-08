@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
 // @mui
 import Avatar from '@mui/material/Avatar';
 import AvatarGroup from '@mui/material/AvatarGroup';
+import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -16,8 +17,10 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
+import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
+import InputLabel from '@mui/material/InputLabel';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -47,7 +50,6 @@ import {
   IconSearch,
   IconShield,
   IconTrash,
-  IconUser,
   IconX
 } from '@tabler/icons-react';
 
@@ -55,8 +57,6 @@ import {
 import useSWR, { mutate } from 'swr';
 
 // @project
-import UsersView from '@/views/admin/users';
-import CreateUserDialog from '@/sections/users/CreateUserDialog';
 import CreatePermissionDialog, { PermissionData } from '@/sections/permissions/CreatePermissionDialog';
 import CreateRoleDialog from '@/sections/roles/CreateRoleDialog';
 import {
@@ -68,7 +68,8 @@ import {
   deletePermission,
   updateRole,
   assignPermission,
-  assignRolesToUser
+  assignRolesToUser,
+  getUserRoles
 } from '@/utils/api/rbac';
 import { getUsers } from '@/utils/api/users';
 import { openSnackbar } from '@/states/snackbar';
@@ -122,6 +123,34 @@ interface CreatePermissionData {
   description?: string;
   roles?: string[];
 }
+
+const permissionActionValues: Record<string, string> = {
+  Visualizar: 'read',
+  Criar: 'create',
+  Atualizar: 'update',
+  Deletar: 'delete',
+  'Aplicar Desconto': 'apply-discount'
+};
+
+const normalizePermissionAction = (action: string) => {
+  const trimmedAction = action.trim();
+  const normalizedLabel = trimmedAction
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const labels: Record<string, string> = {
+    visualizar: 'read',
+    ler: 'read',
+    criar: 'create',
+    atualizar: 'update',
+    editar: 'update',
+    deletar: 'delete',
+    excluir: 'delete',
+    'aplicar desconto': 'apply-discount'
+  };
+
+  return permissionActionValues[trimmedAction] ?? labels[normalizedLabel] ?? trimmedAction;
+};
 
 /*************************** MOCK DATA ***************************/
 
@@ -290,17 +319,23 @@ export default function RolesPermissionsView() {
   // Os dados reais podem ultrapassar 10 páginas quando conectados à API.
   const rowsPerPage = 10;
 
-  const [roles, setRoles] = useState<RoleRow[]>(mockRoles);
-  const [permissions, setPermissions] = useState<PermissionRow[]>(mockPermissions);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [permissions, setPermissions] = useState<PermissionRow[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   /*************************** DATA LOADING (BACKEND) ***************************/
 
-  // Carrega papéis e permissões reais do backend, mapeando para o
-  // formato das linhas exibidas na tabela. Em caso de erro, mantém o mock.
+  // Carrega papéis e permissões reais do backend, mapeando para o formato das linhas exibidas na tabela.
   const reloadData = useCallback(async () => {
+    setDataLoading(true);
+    setDataError(null);
+
     const [rolesRes, permsRes] = await Promise.all([getRoles(), getPermissions()]);
 
-    if (!rolesRes.error && Array.isArray(rolesRes.data)) {
+    if (rolesRes.error) {
+      setRoles([]);
+    } else if (Array.isArray(rolesRes.data)) {
       const mapped: RoleRow[] = (rolesRes.data as ApiRole[]).map((role) => {
         const rolePermissions = (role.permissions ?? []).map((p) => ({
           id: String(p.id),
@@ -330,18 +365,41 @@ export default function RolesPermissionsView() {
         };
       });
       setRoles(mapped);
+    } else {
+      setRoles([]);
     }
 
-    if (!permsRes.error && Array.isArray(permsRes.data)) {
-      const mapped: PermissionRow[] = (permsRes.data as ApiPermission[]).map((perm) => ({
-        id: String(perm.id),
-        subject: perm.subject ?? '',
-        action: Array.isArray(perm.action) ? perm.action.join(', ') : (perm.action ?? perm.name ?? ''),
-        description: perm.description ?? '',
-        roles: (perm.roles ?? []).map(String)
-      }));
+    if (permsRes.error) {
+      setPermissions([]);
+    } else if (Array.isArray(permsRes.data)) {
+      const mapped: PermissionRow[] = (permsRes.data as Array<ApiPermission & Record<string, unknown>>).map((perm) => {
+        const rawSubject = String(perm.subject ?? perm.Subject ?? perm.resource ?? perm.Resource ?? '');
+        const rawAction = perm.action ?? perm.Action ?? perm.name ?? perm.Name ?? '';
+        const actionValue = Array.isArray(rawAction) ? rawAction.join(', ') : String(rawAction);
+        const dottedParts = !rawSubject && actionValue.includes('.') ? actionValue.split('.') : [];
+        const subject = rawSubject || dottedParts[0] || '';
+        const action = dottedParts.length > 1 ? dottedParts.slice(1).join('.') : actionValue;
+        const rawRoles = perm.roles ?? perm.Roles ?? [];
+
+        return {
+          id: String(perm.id ?? perm.Id),
+          subject,
+          action,
+          description: String(perm.description ?? perm.Description ?? ''),
+          roles: Array.isArray(rawRoles) ? rawRoles.map(String) : []
+        };
+      });
       setPermissions(mapped);
+    } else {
+      setPermissions([]);
     }
+
+    const errors = [rolesRes.error, permsRes.error].filter(Boolean);
+    if (errors.length > 0) {
+      setDataError(`Não foi possível carregar os dados do backend: ${errors.join(' | ')}`);
+    }
+
+    setDataLoading(false);
   }, []);
 
   useEffect(() => {
@@ -357,8 +415,6 @@ export default function RolesPermissionsView() {
   const [openCreateRoleDialog, setOpenCreateRoleDialog] = useState(false);
 
   const [openCreatePermissionDialog, setOpenCreatePermissionDialog] = useState(false);
-
-  const [openCreateDialog, setOpenCreateDialog] = useState(false);
 
   /*************************** ROLE MENU ***************************/
 
@@ -695,28 +751,25 @@ export default function RolesPermissionsView() {
 
   const handleEditRoleSave = async () => {
     if (!menuRole) {
+      console.error('handleEditRoleSave - menuRole é null');
       return;
     }
 
-    const roleId = Number(menuRole.id);
-    if (!Number.isInteger(roleId)) {
-      openSnackbar({
-        open: true,
-        message: 'ID do papel inválido.',
-        variant: 'alert',
-        severity: 'error',
-        alert: { color: 'error' }
-      } as never);
-      return;
-    }
+    // Padroniza todos os IDs como strings (MOCK usa strings, ONC aceita strings)
+    const roleId = String(menuRole.id);
 
-    console.log('handleEditRoleSave - Iniciando salvamento do papel:', menuRole.id);
+    console.log('handleEditRoleSave - Iniciando salvamento do papel:', roleId);
+    console.log('handleEditRoleSave - menuRole completo:', menuRole);
     console.log('handleEditRoleSave - Dados do papel:', { name: editRoleName, description: editRoleDescription });
     console.log('handleEditRoleSave - Permissões:', editPermissions.map(p => p.id));
     console.log('handleEditRoleSave - Usuários:', editUsers.map(u => u.id));
 
     // 1) Atualiza o papel na API
-    console.log('handleEditRoleSave - Chamando updateRole...');
+    console.log('handleEditRoleSave - Chamando updateRole com:', {
+      id: roleId,
+      name: editRoleName.trim() || menuRole.name,
+      description: editRoleDescription.trim() || menuRole.description
+    });
     const { error: updateError } = await updateRole({
       id: roleId,
       name: editRoleName.trim() || menuRole.name,
@@ -730,12 +783,15 @@ export default function RolesPermissionsView() {
     }
     console.log('handleEditRoleSave - updateRole concluído com sucesso');
 
-    // 2) Atualiza as permissões do papel
-    const selectedPermissionIds = editPermissions.map((p) => Number(p.id)).filter((id) => Number.isInteger(id));
+    // 2) Atualiza as permissões do papel (mantém como strings)
+    const selectedPermissionIds = editPermissions.map((p) => String(p.id));
     console.log('handleEditRoleSave - Permissões selecionadas:', selectedPermissionIds);
-    console.log('handleEditRoleSave - Chamando assignPermission...');
+    console.log('handleEditRoleSave - Chamando assignPermission com:', {
+      roleId: roleId,
+      permissions: selectedPermissionIds
+    });
     const { error: assignError } = await assignPermission({
-      roleId: String(menuRole.id),
+      roleId: roleId,
       permissions: selectedPermissionIds
     });
 
@@ -746,17 +802,42 @@ export default function RolesPermissionsView() {
     }
     console.log('handleEditRoleSave - assignPermission concluído com sucesso');
 
-    // 3) Atualiza os usuários atribuídos ao papel
-    const selectedUserIds = editUsers.map((u) => u.id);
+    // 3) Sincroniza a atribuição de usuários ao papel de forma exata: remove o papel
+    // dos usuários que saíram da seleção e mantém o papel apenas nos usuários selecionados.
+    const selectedUserIds = editUsers.map((u) => String(u.id));
+    const selectedUserIdSet = new Set(selectedUserIds);
+    const usersToSync = (availableUsers ?? []).map((user) => String(user.id));
+
     console.log('handleEditRoleSave - Usuários selecionados:', selectedUserIds);
-    console.log('handleEditRoleSave - Chamando assignRolesToUser para cada usuário...');
+    console.log('handleEditRoleSave - Chamando assignRolesToUser para sincronizar a atribuição final...');
+
     const results = await Promise.all(
-      selectedUserIds.map((userId) =>
-        assignRolesToUser({
-          userId: String(userId),
-          roles: [roleId]
-        })
-      )
+      usersToSync.map(async (userId) => {
+        const currentRolesResult = await getUserRoles(userId);
+
+        if (currentRolesResult.error) {
+          return { error: currentRolesResult.error };
+        }
+
+        const currentRolePayload = currentRolesResult.data as
+          | Array<string | number | { role_id?: string | number; roleId?: string | number }>
+          | { roles?: Array<string | number | { role_id?: string | number; roleId?: string | number }> }
+          | null;
+        const currentRoleItems = (Array.isArray(currentRolePayload) ? currentRolePayload : currentRolePayload?.roles ?? []) as Array<
+          | string
+          | number
+          | { role_id?: string | number; roleId?: string | number }
+        >;
+        const currentRoles = currentRoleItems
+          .map((item) => (typeof item === 'object' ? item.role_id ?? item.roleId : item))
+          .filter((id): id is string | number => id !== undefined && id !== null)
+          .map(String);
+        const nextRoles = Array.from(new Set(currentRoles.filter((existingRoleId) => existingRoleId !== roleId))).concat(
+          selectedUserIdSet.has(userId) ? [roleId] : []
+        );
+
+        return assignRolesToUser({ userId, roles: nextRoles });
+      })
     );
 
     console.log('handleEditRoleSave - Resultados assignRolesToUser:', results);
@@ -764,9 +845,16 @@ export default function RolesPermissionsView() {
     const firstUserError = results.find((r) => r.error)?.error;
     if (firstUserError) {
       console.error('handleEditRoleSave - Erro ao atribuir usuários:', results);
-      openSnackbar({ open: true, message: firstUserError || 'Erro ao atribuir usuários', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      openSnackbar({
+        open: true,
+        message: firstUserError,
+        variant: 'alert',
+        severity: 'error',
+        alert: { color: 'error' }
+      } as never);
       return;
     }
+
     console.log('handleEditRoleSave - assignRolesToUser concluído com sucesso');
 
     openSnackbar({
@@ -783,6 +871,23 @@ export default function RolesPermissionsView() {
 
     // Recarrega os dados
     await reloadData();
+
+    setRoles((current) =>
+      current.map((role) =>
+        role.id === roleId
+          ? {
+              ...role,
+              name: editRoleName.trim() || menuRole.name,
+              description: editRoleDescription.trim() || menuRole.description,
+              permissions: editPermissions,
+              permissionCount: editPermissions.length,
+              users: editUsers,
+              assignedUsers: editUsers.map((user) => user.name?.charAt(0)?.toUpperCase() || 'U'),
+              extraUsersCount: Math.max(0, editUsers.length - 4)
+            }
+          : role
+      )
+    );
 
     setOpenEditRoleDialog(false);
     setMenuRole(null);
@@ -855,8 +960,7 @@ export default function RolesPermissionsView() {
         .split(',')
         .map((action) => action.trim())
         .filter(Boolean),
-      description: menuPermission.description,
-      roles: menuPermission.roles
+      description: menuPermission.description
     };
 
     setEditPermissionData(permissionData);
@@ -870,40 +974,87 @@ export default function RolesPermissionsView() {
     setEditPermissionData(null);
   };
 
-  const handleEditPermissionSave = async (data: { name?: string; target: string; actions: string[]; description: string; roles: string[] }) => {
+  const handleEditPermissionSave = async (data: { name?: string; target: string; actions: string[]; description: string }) => {
     if (!menuPermission) {
+      console.error('handleEditPermissionSave - menuPermission é null');
       return false;
     }
 
     console.log('handleEditPermissionSave - Dados recebidos:', data);
+    console.log('handleEditPermissionSave - menuPermission:', menuPermission);
+    console.log('handleEditPermissionSave - ID da permissão:', menuPermission.id);
 
+    const actions = data.actions.map(normalizePermissionAction).filter(Boolean);
+    const action = actions[0];
+    if (!action) {
+      openSnackbar({ open: true, message: 'Selecione pelo menos uma ação.', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return false;
+    }
+
+    const duplicatePermission = permissions.find(
+      (permission) =>
+        permission.id !== menuPermission.id &&
+        permission.subject.trim().toLowerCase() === data.target.trim().toLowerCase() &&
+        actions.includes(normalizePermissionAction(permission.action.split(',')[0].trim()))
+    );
+    if (duplicatePermission) {
+      openSnackbar({
+        open: true,
+        message: 'Já existe uma permissão com este alvo e ação.',
+        variant: 'alert',
+        severity: 'error',
+        alert: { color: 'error' }
+      } as never);
+      return false;
+    }
+
+    // O backend mantém uma ação por permissão; a edição atualiza o registro existente.
+    console.log('handleEditPermissionSave - Enviando updatePermission com:', {
+      id: menuPermission.id,
+      subject: data.target,
+      action,
+      description: data.description
+    });
     const { error } = await updatePermission({
       id: menuPermission.id,
-      name: data.name || menuPermission.action,
-      subject: data.target, // target é o subject
-      action: data.actions.join(', '), // Junta as ações em uma string
-      description: data.description,
-      roles: data.roles
+      subject: data.target,
+      action,
+      description: data.description
     });
 
     if (error) {
+      console.error('handleEditPermissionSave - Erro no updatePermission:', error);
       openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
       return false;
-    } else {
-      openSnackbar({
-        open: true,
-        message: 'Permissão atualizada com sucesso!',
-        variant: 'alert',
-        severity: 'success',
-        alert: { color: 'success' }
-      } as never);
-
-      // Invalida o cache do SWR para forçar recarregamento
-      await mutate('/api/rbac/permissions');
-      await mutate('/api/rbac/roles');
-
-      await reloadData();
     }
+
+    const additionalPermissionResults = await Promise.all(
+      actions.slice(1).map((additionalAction) =>
+        createPermission({
+          subject: data.target,
+          action: additionalAction,
+          description: data.description
+        })
+      )
+    );
+    const additionalPermissionError = additionalPermissionResults.find((result) => result.error)?.error;
+    if (additionalPermissionError) {
+      openSnackbar({ open: true, message: additionalPermissionError, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return false;
+    }
+
+    console.log('handleEditPermissionSave - Update realizado com sucesso');
+    openSnackbar({
+      open: true,
+      message: 'Permissão atualizada com sucesso!',
+      variant: 'alert',
+      severity: 'success',
+      alert: { color: 'success' }
+    } as never);
+
+    await mutate('/api/rbac/permissions');
+    await mutate('/api/rbac/roles');
+    await reloadData();
 
     setOpenEditPermissionDialog(false);
     setMenuPermission(null);
@@ -1036,35 +1187,18 @@ export default function RolesPermissionsView() {
           Papéis e Permissões
         </Typography>
 
-        {tab !== 2 && (
-          <Button
-            variant="contained"
-            startIcon={<IconPlus size={16} />}
-            onClick={handleAddClick}
-            sx={{
-              minWidth: 150,
-              height: 40,
-              mt: 0
-            }}
-          >
-            {addButtonLabel}
-          </Button>
-        )}
-
-        {tab === 2 && (
-          <Button
-            variant="contained"
-            startIcon={<IconPlus size={16} />}
-            onClick={() => setOpenCreateDialog(true)}
-            sx={{
-              minWidth: 150,
-              height: 40,
-              mt: 0
-            }}
-          >
-            Adicionar Novo
-          </Button>
-        )}
+        <Button
+          variant="contained"
+          startIcon={<IconPlus size={16} />}
+          onClick={handleAddClick}
+          sx={{
+            minWidth: 150,
+            height: 40,
+            mt: 0
+          }}
+        >
+          {addButtonLabel}
+        </Button>
       </Stack>
 
       <Card
@@ -1085,13 +1219,23 @@ export default function RolesPermissionsView() {
         >
           <Tab label="Papéis" />
           <Tab label="Permissões" />
-          <Tab label="Usuários do Sistema" />
         </Tabs>
+
+        {dataLoading && (
+          <Alert severity="info" sx={{ mx: 2, mt: 2 }}>
+            Carregando dados do backend...
+          </Alert>
+        )}
+
+        {dataError && (
+          <Alert severity="error" sx={{ mx: 2, mt: 2 }}>
+            {dataError}
+          </Alert>
+        )}
 
         {/* PESQUISA / FILTRO */}
 
-        {tab !== 2 && (
-          <>
+        <>
             <Stack
               direction="row"
               sx={{
@@ -1224,8 +1368,7 @@ export default function RolesPermissionsView() {
                 </Button>
               </Stack>
             )}
-          </>
-        )}
+        </>
 
         {/* ===================================================== */}
         {/* ABA PAPÉIS                                           */}
@@ -1744,15 +1887,6 @@ export default function RolesPermissionsView() {
           </>
         )}
 
-        {/* ===================================================== */}
-        {/* ABA USUÁRIOS                                         */}
-        {/* ===================================================== */}
-
-        {tab === 2 && (
-          <Stack sx={{ p: 2 }}>
-            <UsersView showCreateButton={false} />
-          </Stack>
-        )}
       </Card>
 
       {/* ===================================================== */}
@@ -2129,12 +2263,14 @@ export default function RolesPermissionsView() {
       <Dialog
         open={openEditRoleDialog}
         onClose={handleEditRoleClose}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 2,
-            maxHeight: 'calc(100vh - 32px)'
+            borderRadius: 2.5,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '90vh'
           }
         }}
       >
@@ -2144,313 +2280,185 @@ export default function RolesPermissionsView() {
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             px: 3,
-            pt: 3
+            pt: 3,
+            pb: 2.5
           }}
         >
           <Box>
             <DialogTitle
               sx={{
                 p: 0,
-                fontSize: 18,
-                fontWeight: 600
+                fontSize: 22,
+                lineHeight: 1.3,
+                fontWeight: 600,
+                color: 'text.primary'
               }}
             >
               Editar Papel
             </DialogTitle>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: 14 }}>
               Edite as informações, permissões e usuários atribuídos a este papel.
             </Typography>
           </Box>
 
-          <IconButton onClick={handleEditRoleClose} size="small">
-            <IconX size={18} />
+          <IconButton
+            onClick={handleEditRoleClose}
+            size="small"
+            sx={{
+              width: 44,
+              height: 44,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 1.5,
+              flexShrink: 0
+            }}
+          >
+            <IconX size={19} />
           </IconButton>
         </Stack>
 
-        <Divider sx={{ mt: 2 }} />
+        <Divider />
 
         <DialogContent
           sx={{
-            px: 2.5,
+            px: 3,
             py: 2.5,
-            overflowY: 'auto'
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            flex: 1
           }}
         >
           <Stack sx={{ gap: 2.5 }}>
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 0.75,
-                  fontWeight: 500
-                }}
-              >
-                Nome do papel
-              </Typography>
+            <Typography variant="subtitle1">Informação Geral</Typography>
 
-              <OutlinedInput value={editRoleName} onChange={(event) => setEditRoleName(event.target.value)} fullWidth />
-            </Box>
-
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 0.75,
-                  fontWeight: 500
-                }}
-              >
-                Descrição
-              </Typography>
-
-              <TextField
-                value={editRoleDescription}
-                onChange={(event) => setEditRoleDescription(event.target.value)}
-                fullWidth
-                multiline
-                minRows={3}
-              />
-            </Box>
-
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 1,
-                  fontWeight: 500
-                }}
-              >
-                Permissões{' '}
-                <Typography component="span" variant="body2" color="text.secondary">
-                  (Opcional)
-                </Typography>
-              </Typography>
-
-              <Stack sx={{ gap: 1 }}>
-                {editPermissions.map((permission) => (
-                  <Stack
-                    key={permission.id}
-                    direction="row"
-                    sx={{
-                      alignItems: 'center',
-                      gap: 1.25,
-                      minHeight: 58,
-                      px: 1,
-                      py: 0.75,
-                      borderRadius: 1.5,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 1.5,
-                        bgcolor: 'primary.lighter',
-                        color: 'primary.main'
-                      }}
-                    >
-                      <IconShield size={20} />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        flex: 1,
-                        minWidth: 0
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          lineHeight: 1.4
-                        }}
-                      >
-                        {permission.name}
-                      </Typography>
-
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          lineHeight: 1.4
-                        }}
-                      >
-                        {permission.description}
-                      </Typography>
-                    </Box>
-
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemovePermission(permission.id)}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        color: 'error.main',
-                        border: '1px solid',
-                        borderColor: 'error.lighter',
-                        borderRadius: 1.5,
-                        flexShrink: 0
-                      }}
-                    >
-                      <IconTrash size={17} />
-                    </IconButton>
-                  </Stack>
-                ))}
-
-                <Button
-                  variant="outlined"
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Papel</InputLabel>
+                <OutlinedInput
+                  value={editRoleName}
+                  onChange={(event) => setEditRoleName(event.target.value)}
+                  placeholder="Insira o nome do papel ex. Super Admin"
                   fullWidth
-                  startIcon={<IconPlus size={17} />}
-                  onClick={() => setOpenPermissionSelectDialog(true)}
-                  sx={{
-                    height: 44,
-                    mt: 0.5
-                  }}
-                >
-                  Atribuir Permissões
-                </Button>
-              </Stack>
-            </Box>
+                />
+              </Grid>
 
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{
-                  mb: 1,
-                  fontWeight: 500
-                }}
-              >
-                Usuários{' '}
-                <Typography component="span" variant="body2" color="text.secondary">
-                  (Opcional)
-                </Typography>
-              </Typography>
-
-              <Stack sx={{ gap: 1 }}>
-                {editUsers.map((user) => (
-                  <Stack
-                    key={user.id}
-                    direction="row"
-                    sx={{
-                      alignItems: 'center',
-                      gap: 1.25,
-                      minHeight: 58,
-                      px: 1,
-                      py: 0.75,
-                      borderRadius: 1.5,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 1.5,
-                        bgcolor: 'primary.lighter',
-                        color: 'primary.main'
-                      }}
-                    >
-                      <IconUser size={20} />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        flex: 1,
-                        minWidth: 0
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          lineHeight: 1.4
-                        }}
-                      >
-                        {user.name}
-                      </Typography>
-
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          lineHeight: 1.4
-                        }}
-                      >
-                        {user.username}
-                      </Typography>
-                    </Box>
-
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemoveUser(user.id)}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        color: 'error.main',
-                        border: '1px solid',
-                        borderColor: 'error.lighter',
-                        borderRadius: 1.5,
-                        flexShrink: 0
-                      }}
-                    >
-                      <IconTrash size={17} />
-                    </IconButton>
-                  </Stack>
-                ))}
-
-                <Button
-                  variant="outlined"
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Descrição</InputLabel>
+                <TextField
+                  value={editRoleDescription}
+                  onChange={(event) => setEditRoleDescription(event.target.value)}
+                  placeholder="Adicione uma descrição"
                   fullWidth
-                  startIcon={<IconPlus size={17} />}
-                  onClick={() => setOpenUserSelectDialog(true)}
-                  sx={{
-                    height: 44,
-                    mt: 0.5
-                  }}
-                >
-                  Atribuir Usuários
-                </Button>
-              </Stack>
-            </Box>
+                  multiline
+                  minRows={3}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel sx={{ mb: 1 }}>Permissão (Opcional)</InputLabel>
+                {permissionsLoading ? (
+                  <CircularProgress size={20} />
+                ) : permissionsError ? (
+                  <Typography color="error">Erro ao carregar permissões</Typography>
+                ) : (
+                  <Autocomplete
+                    multiple
+                    options={(availablePermissions ?? []).map((permission) => ({
+                      id: String(permission.id),
+                      label: permission.name || `${permission.subject ?? ''}.${permission.action ?? ''}`.replace(/^\./, '').replace(/\.$/, '') || String(permission.id)
+                    }))}
+                    value={editPermissions.map((permission) => ({
+                      id: String(permission.id),
+                      label: permission.name || String(permission.id)
+                    }))}
+                    onChange={(_event, value) => {
+                      const nextPermissionIds = new Set(value.map((item) => String(item.id)));
+                      setEditPermissions(
+                        (availablePermissions ?? [])
+                          .filter((permission) => nextPermissionIds.has(String(permission.id)))
+                          .map((permission) => ({
+                            id: String(permission.id),
+                            name: permission.name || `${permission.subject ?? ''}.${permission.action ?? ''}`.replace(/^\./, '').replace(/\.$/, '') || String(permission.id),
+                            description: permission.description ?? ''
+                          }))
+                      );
+                    }}
+                    getOptionLabel={(option) => option.label}
+                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder={editPermissions.length ? '' : '+ Atribuir Permissões'}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment:
+                            editPermissions.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel sx={{ mb: 1 }}>Usuários (Opcional)</InputLabel>
+                {usersLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <Autocomplete
+                    multiple
+                    options={(availableUsers ?? []).map((user) => ({
+                      id: String(user.id),
+                      label: user.name || user.username || String(user.id)
+                    }))}
+                    value={editUsers.map((user) => ({
+                      id: String(user.id),
+                      label: user.name || user.username || String(user.id)
+                    }))}
+                    onChange={(_event, value) => {
+                      const selectedIds = new Set(value.map((item) => String(item.id)));
+                      setEditUsers(
+                        (availableUsers ?? [])
+                          .filter((user) => selectedIds.has(String(user.id)))
+                          .map((user) => ({
+                            id: String(user.id),
+                            name: user.name || 'Usuário',
+                            username: user.username || ''
+                          }))
+                      );
+                    }}
+                    getOptionLabel={(option) => option.label}
+                    isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder={editUsers.length ? '' : '+ Atribuir Usuários'}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment:
+                            editUsers.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
+                        }}
+                      />
+                    )}
+                  />
+                )}
+              </Grid>
+            </Grid>
           </Stack>
         </DialogContent>
 
         <Divider />
 
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            justifyContent: 'flex-end',
-            gap: 1
-          }}
-        >
-          <Button variant="outlined" color="secondary" onClick={handleEditRoleClose}>
-            Cancelar
-          </Button>
-
-          <Button variant="contained" onClick={handleEditRoleSave}>
-            Atualizar Papel
-          </Button>
+        <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', alignItems: 'stretch', gap: 1.5 }}>
+          <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
+            <Button onClick={handleEditRoleClose} color="secondary" variant="outlined">
+              Cancelar
+            </Button>
+            <Button variant="contained" color="error" onClick={handleEditRoleSave}>
+              Atualizar Papel
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
 
@@ -2721,8 +2729,9 @@ export default function RolesPermissionsView() {
               disableCloseOnSelect
               renderOption={(props, option, { selected }) => {
                 const perm = availablePermissions?.find((p) => String(p.id) === option);
+                const { key, ...optionProps } = props;
                 return (
-                  <li {...props}>
+                  <li key={key} {...optionProps}>
                     <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
                     {perm?.name || `${perm?.subject}.${perm?.action}` || option}
                   </li>
@@ -2788,8 +2797,9 @@ export default function RolesPermissionsView() {
               disableCloseOnSelect
               renderOption={(props, option, { selected }) => {
                 const user = availableUsers?.find((u) => u.id === option);
+                const { key, ...optionProps } = props;
                 return (
-                  <li {...props}>
+                  <li key={key} {...optionProps}>
                     <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
                     {user?.name || option}
                   </li>
@@ -2827,18 +2837,6 @@ export default function RolesPermissionsView() {
         onCreate={handleCreatePermission}
       />
 
-      {/* ===================================================== */}
-      {/* MODAL CRIAR USUÁRIO                                   */}
-      {/* ===================================================== */}
-
-      <CreateUserDialog
-        open={openCreateDialog}
-        onClose={() => setOpenCreateDialog(false)}
-        onCreate={(data) => {
-          // O usuário já foi persistido no backend (POST /api/users) pelo diálogo.
-          console.log('Usuário criado:', data);
-        }}
-      />
     </Stack>
   );
 }

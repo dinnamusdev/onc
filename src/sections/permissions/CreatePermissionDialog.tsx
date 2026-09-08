@@ -24,24 +24,21 @@ import Typography from '@mui/material/Typography';
 
 // @third-party
 import { Controller, useForm, SubmitHandler } from 'react-hook-form';
+import useSWR from 'swr';
 
 // @icons
-import { IconTrash, IconUser, IconX } from '@tabler/icons-react';
+import { IconX } from '@tabler/icons-react';
 
-/*************************** MOCK - OPÇÕES ***************************/
+// @project
+import { getPermissions } from '@/utils/api/rbac';
 
-const targetOptions = ['Proposta', 'Cliente', 'Dashboard', 'Papel', 'Permissão', 'Usuário'];
+/*************************** MOCK - OPÇÕES (Fallback) ***************************/
 
-const actionOptions = ['Visualizar', 'Criar', 'Atualizar', 'Deletar', 'Aplicar Desconto'];
+const defaultTargetOptions = ['Proposta', 'Cliente', 'Dashboard', 'Papel', 'Permissão', 'Usuário'];
 
-const roleOptions = ['Super Admin', 'Gestor', 'Gerente', 'Atendente'];
+const defaultActionOptions = ['Visualizar', 'Criar', 'Atualizar', 'Deletar', 'Aplicar Desconto'];
 
 /*************************** TYPES ***************************/
-
-export interface PermissionRole {
-  name: string;
-  description?: string;
-}
 
 export interface PermissionData {
   id?: string;
@@ -49,8 +46,6 @@ export interface PermissionData {
   target?: string;
   actions?: string[];
   description?: string;
-  roles?: string[];
-  roleDetails?: PermissionRole[];
 }
 
 interface CreatePermissionFormInput {
@@ -58,7 +53,6 @@ interface CreatePermissionFormInput {
   target: string;
   actions: string[];
   description: string;
-  roles: string[];
 }
 
 interface CreatePermissionDialogProps {
@@ -81,45 +75,54 @@ interface CreatePermissionDialogProps {
 
 /*************************** HELPERS ***************************/
 
-const getRoleDescription = (role: string) => {
-  const descriptions: Record<string, string> = {
-    'Super Admin': 'O Super Admin é o papel administrativo de mais alto nível com acesso total ao sistema.',
-    Gestor: 'Responsável por gerenciar atividades, usuários e permissões relacionadas ao sistema.',
-    Gerente: 'Responsável por acompanhar e gerenciar as atividades da equipe.',
-    Atendente: 'Responsável pelo atendimento e execução das atividades atribuídas.'
-  };
-
-  return descriptions[role] || 'Papel atribuído a esta permissão.';
-};
-
 /*************************** PERMISSIONS DIALOG ***************************/
 
 export default function CreatePermissionDialog({ open, onClose, onCreate, permission, onUpdate }: CreatePermissionDialogProps) {
   const isEdit = Boolean(permission);
 
-  const editTargetOptions = permission?.target && !targetOptions.includes(permission.target) ? [...targetOptions, permission.target] : targetOptions;
+  const { data: permissions } = useSWR('/api/rbac/permissions', async () => {
+    const { data, error } = await getPermissions();
+    if (error) throw new Error(error);
+    return (data ?? []) as Array<{ id: string | number; subject?: string; action?: string | string[] }>;
+  });
+
+  // Sempre usar defaults como base, adicionando opções da API se disponíveis
+  const apiTargets = permissions && permissions.length > 0
+    ? Array.from(new Set(permissions.map(p => p.subject).filter(Boolean)))
+    : [];
+
+  const apiActions = permissions && permissions.length > 0
+    ? Array.from(new Set(permissions.flatMap(p => {
+        if (Array.isArray(p.action)) return p.action;
+        if (typeof p.action === 'string') return p.action.split(',').map(a => a.trim());
+        return [];
+      }).filter(Boolean)))
+    : [];
+
+  // Combinar defaults com opções da API (priorizando API)
+  const targetOptions = Array.from(new Set([...defaultTargetOptions, ...apiTargets]));
+  const actionOptions = Array.from(new Set([...defaultActionOptions, ...apiActions]));
+
+  const editTargetOptions = permission?.target && !targetOptions.includes(permission.target)
+    ? [...targetOptions, permission.target]
+    : targetOptions;
+
   const editActionOptions = permission?.actions
     ? [...actionOptions, ...permission.actions].filter((option, index, options) => options.indexOf(option) === index)
     : actionOptions;
-  const editRoleOptions = permission?.roles
-    ? [...roleOptions, ...permission.roles].filter((option, index, options) => options.indexOf(option) === index)
-    : roleOptions;
 
   const {
     control,
     handleSubmit,
     register,
     reset,
-    setValue,
-    watch,
     formState: { errors }
   } = useForm<CreatePermissionFormInput>({
     defaultValues: {
       name: permission?.name || '',
       target: permission?.target || '',
       actions: permission?.actions || [],
-      description: permission?.description || '',
-      roles: permission?.roles || []
+      description: permission?.description || ''
     }
   });
 
@@ -132,8 +135,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
       name: permission?.name || '',
       target: permission?.target || '',
       actions: permission?.actions || [],
-      description: permission?.description || '',
-      roles: permission?.roles || []
+      description: permission?.description || ''
     });
   };
 
@@ -142,8 +144,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
       name: '',
       target: '',
       actions: [],
-      description: '',
-      roles: []
+      description: ''
     });
 
     onClose();
@@ -156,8 +157,6 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
       handleClose();
     }
   };
-
-  const selectedRoles = watch('roles') || [];
 
   return (
     <Dialog
@@ -363,171 +362,11 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                 {errors.actions?.message && <FormHelperText error>{errors.actions.message}</FormHelperText>}
               </Grid>
 
-              {/* PAPÉIS */}
-
-              <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 5 }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    mb: 1,
-                    fontWeight: 500,
-                    fontSize: 14
-                  }}
-                >
-                  Papéis{' '}
-                  <Typography component="span" variant="body2" color="text.secondary">
-                    (Opcional)
-                  </Typography>
-                </Typography>
-
-                {isEdit ? (
-                  <Stack sx={{ gap: 1 }}>
-                    {selectedRoles.map((role) => (
-                      <Stack
-                        key={role}
-                        direction="row"
-                        sx={{
-                          alignItems: 'center',
-                          gap: 1.25,
-                          minHeight: 58,
-                          px: 1,
-                          py: 0.75,
-                          borderRadius: 1.5
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 44,
-                            height: 44,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            borderRadius: 1.5,
-                            bgcolor: 'primary.lighter',
-                            color: 'primary.main'
-                          }}
-                        >
-                          <IconUser size={20} />
-                        </Box>
-
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
-                            {role}
-                          </Typography>
-
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 1,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                              lineHeight: 1.4
-                            }}
-                          >
-                            {permission?.roleDetails?.find((item) => item.name === role)?.description || getRoleDescription(role)}
-                          </Typography>
-                        </Box>
-
-                        <IconButton
-                          type="button"
-                          size="small"
-                          onClick={() => {
-                            const currentRoles = control._formValues.roles || [];
-                            setValue('roles', currentRoles.filter((r: string) => r !== role));
-                          }}
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            color: 'error.main',
-                            border: '1px solid',
-                            borderColor: 'error.lighter',
-                            borderRadius: 1.5,
-                            flexShrink: 0
-                          }}
-                        >
-                          <IconTrash size={17} />
-                        </IconButton>
-                      </Stack>
-                    ))}
-
-                    <Controller
-                      name="roles"
-                      control={control}
-                      render={({ field }) => (
-                        <Autocomplete
-                          multiple
-                          fullWidth
-                          options={editRoleOptions}
-                          value={field.value}
-                          onChange={(_event, value) => field.onChange(value)}
-                          disableCloseOnSelect
-                          renderOption={(props, option, { selected }) => (
-                            <li {...props}>
-                              <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                              {option}
-                            </li>
-                          )}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              placeholder="+ Atribuir Papéis"
-                              fullWidth
-                              sx={{
-                                '& .MuiOutlinedInput-root': {
-                                  minHeight: 44,
-                                  borderRadius: 1.5
-                                }
-                              }}
-                            />
-                          )}
-                        />
-                      )}
-                    />
-                  </Stack>
-                ) : (
-                  <Controller
-                    name="roles"
-                    control={control}
-                    render={({ field }) => (
-                      <Autocomplete
-                        multiple
-                        fullWidth
-                        options={editRoleOptions}
-                        value={field.value}
-                        onChange={(_event, value) => field.onChange(value)}
-                        disableCloseOnSelect
-                        renderOption={(props, option, { selected }) => (
-                          <li {...props}>
-                            <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                            {option}
-                          </li>
-                        )}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            placeholder="+ Atribuir Papéis"
-                            fullWidth
-                            sx={{
-                              '& .MuiOutlinedInput-root': {
-                                minHeight: 44,
-                                borderRadius: 1.5
-                              }
-                            }}
-                          />
-                        )}
-                      />
-                    )}
-                  />
-                )}
-              </Grid>
             {/* ================================================= */}
             {/* DESCRIÇÃO                                         */}
             {/* ================================================= */}
 
-            <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 6 }}>
+            <Grid size={{ xs: 12 }} sx={{ order: 4 }}>
               <InputLabel
                 sx={{
                   mb: 0.75,
