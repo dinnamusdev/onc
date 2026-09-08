@@ -3,6 +3,9 @@
 import { useState } from 'react';
 
 // @mui
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -40,6 +43,7 @@ interface CreateUserFormInput {
   email: string;
   password: string;
   rePassword: string;
+  status: 'Ativo' | 'Pendente' | 'Denunciado' | 'Bloqueado';
 }
 
 interface CreateUserDialogProps {
@@ -58,6 +62,8 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
     handleSubmit,
     register,
     reset,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm<CreateUserFormInput>({
     defaultValues: {
@@ -65,7 +71,8 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
       lastName: '',
       email: '',
       password: '',
-      rePassword: ''
+      rePassword: '',
+      status: 'Pendente'
     }
   });
 
@@ -108,13 +115,25 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          px: 3,
+          pt: 3
+        }}
+      >
         <Box>
-          <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Adicionar Novo Usuário</DialogTitle>
+          <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>
+            Adicionar Novo Usuário
+          </DialogTitle>
+
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             Cadastro básico. O usuário receberá um e-mail para ativar a conta e completar o perfil.
           </Typography>
         </Box>
+
         <IconButton onClick={handleClose} size="small">
           <IconX size={18} />
         </IconButton>
@@ -126,19 +145,33 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
         {/* Campos falsos para impedir o autofill do navegador de preencher os reais */}
         <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} />
         <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} />
+
         <DialogContent>
           <Stack sx={{ gap: 2.5 }}>
+            {/* Nome e Sobrenome */}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InputLabel>Nome</InputLabel>
-                <OutlinedInput {...register('firstName')} placeholder="ex. John" fullWidth autoComplete="off" />
+                <OutlinedInput
+                  {...register('firstName')}
+                  placeholder="ex. John"
+                  fullWidth
+                  autoComplete="off"
+                />
               </Grid>
+
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InputLabel>Sobrenome</InputLabel>
-                <OutlinedInput {...register('lastName')} placeholder="ex. Doe" fullWidth autoComplete="off" />
+                <OutlinedInput
+                  {...register('lastName')}
+                  placeholder="ex. Doe"
+                  fullWidth
+                  autoComplete="off"
+                />
               </Grid>
             </Grid>
 
+            {/* E-mail */}
             <Box>
               <InputLabel>E-mail *</InputLabel>
               <OutlinedInput
@@ -148,9 +181,57 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
                 autoComplete="off"
                 error={Boolean(errors.email)}
               />
-              {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
+              {errors.email?.message && (
+                <FormHelperText error>{errors.email.message}</FormHelperText>
+              )}
             </Box>
 
+            {/* Status */}
+            <Box>
+              <InputLabel sx={{ mb: 1 }}>Status</InputLabel>
+
+              <RadioGroup
+                row
+                value={watch('status')}
+                onChange={(event) =>
+                  setValue(
+                    'status',
+                    event.target.value as CreateUserFormInput['status']
+                  )
+                }
+                sx={{
+                  justifyContent: 'center',
+                  gap: 2,
+                  flexWrap: 'wrap'
+                }}
+              >
+                <FormControlLabel
+                  value="Ativo"
+                  control={<Radio size="small" />}
+                  label="Ativo"
+                />
+
+                <FormControlLabel
+                  value="Pendente"
+                  control={<Radio size="small" />}
+                  label="Pendente"
+                />
+
+                <FormControlLabel
+                  value="Denunciado"
+                  control={<Radio size="small" />}
+                  label="Denunciado"
+                />
+
+                <FormControlLabel
+                  value="Bloqueado"
+                  control={<Radio size="small" />}
+                  label="Bloqueado"
+                />
+              </RadioGroup>
+            </Box>
+
+            {/* Senha e Confirmar Senha */}
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InputLabel>Senha *</InputLabel>
@@ -162,19 +243,26 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
                   autoComplete="new-password"
                   error={Boolean(errors.password)}
                 />
-                {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
+                {errors.password?.message && (
+                  <FormHelperText error>{errors.password.message}</FormHelperText>
+                )}
               </Grid>
+
               <Grid size={{ xs: 12, sm: 6 }}>
                 <InputLabel>Confirmar Senha *</InputLabel>
                 <OutlinedInput
-                  {...register('rePassword', { required: 'A confirmação de senha é obrigatória' })}
+                  {...register('rePassword', {
+                    required: 'A confirmação de senha é obrigatória'
+                  })}
                   type="password"
                   placeholder="Confirmar Senha"
                   fullWidth
                   autoComplete="new-password"
                   error={Boolean(errors.rePassword)}
                 />
-                {errors.rePassword?.message && <FormHelperText error>{errors.rePassword.message}</FormHelperText>}
+                {errors.rePassword?.message && (
+                  <FormHelperText error>{errors.rePassword.message}</FormHelperText>
+                )}
               </Grid>
             </Grid>
           </Stack>
@@ -182,18 +270,35 @@ export default function CreateUserDialog({ open, onClose, onCreate }: CreateUser
 
         <Divider />
 
-        <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', alignItems: 'stretch', gap: 1.5 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 1.5
+          }}
+        >
           {submitError && <Alert severity="error">{submitError}</Alert>}
+
           <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={handleClose} color="secondary" variant="outlined" disabled={isSubmitting}>
+            <Button
+              onClick={handleClose}
+              color="secondary"
+              variant="outlined"
+              disabled={isSubmitting}
+            >
               Cancelar
             </Button>
+
             <Button
               type="submit"
               variant="contained"
               color="error"
               disabled={isSubmitting}
-              startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+              startIcon={
+                isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined
+              }
             >
               {isSubmitting ? 'Criando...' : 'Criar Usuário'}
             </Button>

@@ -2301,12 +2301,38 @@ export default function RolesPermissionsView() {
 
         <Divider />
 
-        <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', alignItems: 'stretch', gap: 1.5 }}>
-          <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={handleEditRoleClose} color="secondary" variant="outlined">
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 1.5
+          }}
+        >
+          <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              onClick={handleEditRoleClose}
+              color="secondary"
+              variant="outlined"
+              sx={{
+                minWidth: 108,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
               Cancelar
             </Button>
-            <Button variant="contained" color="error" onClick={handleEditRoleSave}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleEditRoleSave}
+              sx={{
+                minWidth: 170,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
               Atualizar Papel
             </Button>
           </Stack>

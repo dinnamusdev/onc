@@ -39,7 +39,6 @@ import Typography from '@mui/material/Typography';
 
 // @icons
 import {
-  IconCamera,
   IconBan,
   IconCalendar,
   IconCheck,
@@ -144,14 +143,10 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
   const [openEditDialog, setOpenEditDialog] = useState(false);
 
   const [editName, setEditName] = useState('');
-  const [editUsername, setEditUsername] = useState('');
+  const [editLastName, setEditLastName] = useState('');
 
   const [editEmail, setEditEmail] = useState('');
-  const [editCountryCode, setEditCountryCode] = useState('BR');
-  const [editContact, setEditContact] = useState('');
   const [editAdmissionDate, setEditAdmissionDate] = useState('');
-  const [editZipCode, setEditZipCode] = useState('');
-  const [editAddress, setEditAddress] = useState('');
   const [editStatus, setEditStatus] = useState<UserRow['status']>('Ativo');
 
   // Modal bloquear
@@ -185,14 +180,10 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     const nameParts = menuUser.name.trim().split(' ');
 
     setEditName(nameParts[0] || '');
-    setEditUsername(menuUser.username);
+    setEditLastName(nameParts.slice(1).join(' '));
 
     setEditEmail('');
-    setEditCountryCode('BR');
-    setEditContact('');
     setEditAdmissionDate('');
-    setEditZipCode('');
-    setEditAddress('');
 
     setEditStatus(menuUser.status);
 
@@ -212,8 +203,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
         user.id === menuUser.id
           ? {
               ...user,
-              name: editName.trim() || user.name,
-              username: editUsername.trim() || user.username,
+              name: [editName.trim(), editLastName.trim()].filter(Boolean).join(' ') || user.name,
               status: editStatus
             }
           : user
@@ -863,7 +853,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
       <Dialog
         open={openEditDialog}
         onClose={handleEditClose}
-        maxWidth="md"
+        maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
@@ -872,7 +862,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
           }
         }}
       >
-        {/* CABEÇALHO */}
         <Stack
           direction="row"
           sx={{
@@ -883,25 +872,12 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
           }}
         >
           <Box>
-            <DialogTitle
-              sx={{
-                p: 0,
-                fontSize: 18,
-                fontWeight: 600
-              }}
-            >
+            <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>
               Editar usuário
             </DialogTitle>
 
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                mt: 0.5,
-                maxWidth: 430
-              }}
-            >
-              Edite as informações, configurações e permissões personalizadas do usuário.
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Configurações e permissões personalizadas para usuários novos ou existentes.
             </Typography>
           </Box>
 
@@ -912,210 +888,70 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
         <Divider sx={{ mt: 2 }} />
 
-        <DialogContent
-          sx={{
-            px: 2,
-            py: 2.5,
-            overflowY: 'auto'
-          }}
-        >
+        <DialogContent>
           <Stack sx={{ gap: 2.5 }}>
-            {/* DADOS PESSOAIS */}
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Nome</InputLabel>
+                <OutlinedInput
+                  value={editName}
+                  onChange={(event) => setEditName(event.target.value)}
+                  placeholder="ex. John"
+                  fullWidth
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <InputLabel>Sobrenome</InputLabel>
+                <OutlinedInput
+                  value={editLastName}
+                  onChange={(event) => setEditLastName(event.target.value)}
+                  placeholder="ex. Doe"
+                  fullWidth
+                />
+              </Grid>
+            </Grid>
+
             <Box>
-              <Typography variant="subtitle1" sx={{ mb: 1.5 }}>
-                Dados Pessoais
-              </Typography>
-
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: 64,
-                  height: 64
-                }}
-              >
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    bgcolor: 'error.light',
-                    color: 'error.main',
-                    fontSize: 22
-                  }}
-                >
-                  {editName?.charAt(0)?.toUpperCase() || 'U'}
-                </Avatar>
-
-                <IconButton
-                  size="small"
-                  sx={{
-                    position: 'absolute',
-                    bottom: -4,
-                    right: -4,
-                    width: 34,
-                    height: 34,
-                    bgcolor: 'background.paper',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    color: 'error.main',
-
-                    '&:hover': {
-                      bgcolor: 'background.paper'
-                    }
-                  }}
-                >
-                  <IconCamera size={15} />
-                </IconButton>
-              </Box>
+              <InputLabel>E-mail *</InputLabel>
+              <OutlinedInput
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                placeholder="exemplo@gmail.com"
+                fullWidth
+              />
             </Box>
 
-            {/* NOME + SOBRENOME */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
-              <Box sx={{ flex: 1 }}>
-                <InputLabel>Nome</InputLabel>
+            <Box>
+              <InputLabel>Data de Admissão *</InputLabel>
+              <OutlinedInput
+                value={editAdmissionDate}
+                onChange={(event) => setEditAdmissionDate(event.target.value)}
+                type="date"
+                fullWidth
+              />
+            </Box>
 
-                <OutlinedInput value={editName} onChange={(event) => setEditName(event.target.value)} placeholder="ex. John" fullWidth />
-              </Box>
-
-              <Box sx={{ flex: 1 }}>
-                <InputLabel>Sobrenome</InputLabel>
-
-                <OutlinedInput placeholder="ex. Doe" fullWidth />
-              </Box>
-            </Stack>
-
-            <Grid container spacing={2}>
-              {/* NOME DE USUÁRIO */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <InputLabel>Nome de usuário</InputLabel>
-
-                <OutlinedInput
-                  value={editUsername}
-                  onChange={(event) => setEditUsername(event.target.value)}
-                  placeholder="ex. john.doe"
-                  fullWidth
-                />
-              </Grid>
-
-              {/* E-MAIL */}
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <InputLabel>E-mail *</InputLabel>
-
-                <OutlinedInput
-                  value={editEmail}
-                  onChange={(event) => setEditEmail(event.target.value)}
-                  placeholder="exemplo@gmail.com"
-                  fullWidth
-                />
-              </Grid>
-            </Grid>
-
-            {/* CONTATO + DATA */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 2 }}>
-              <Box sx={{ flex: 1 }}>
-                <InputLabel>Contato *</InputLabel>
-
-                <Stack direction="row" sx={{ gap: 1 }}>
-                  <Select
-                    value={editCountryCode}
-                    onChange={(event) => setEditCountryCode(event.target.value)}
-                    size="small"
-                    sx={{
-                      minWidth: 92
-                    }}
-                  >
-                    <MenuItem value="BR">BR +55</MenuItem>
-
-                    <MenuItem value="US">US +1</MenuItem>
-
-                    <MenuItem value="PT">PT +351</MenuItem>
-                  </Select>
-
-                  <OutlinedInput
-                    value={editContact}
-                    onChange={(event) => setEditContact(event.target.value)}
-                    placeholder="ex. 9876x xxxxx"
-                    fullWidth
-                  />
-                </Stack>
-              </Box>
-
-              <Box sx={{ flex: 1 }}>
-                <InputLabel>Data de Admissão *</InputLabel>
-
-                <OutlinedInput
-                  value={editAdmissionDate}
-                  onChange={(event) => setEditAdmissionDate(event.target.value)}
-                  type="date"
-                  fullWidth
-                />
-              </Box>
-            </Stack>
-
-            <Grid container spacing={2}>
-              {/* CEP */}
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <InputLabel>CEP</InputLabel>
-
-                <OutlinedInput
-                  value={editZipCode}
-                  onChange={(event) => setEditZipCode(event.target.value)}
-                  placeholder="00000-000"
-                  fullWidth
-                />
-              </Grid>
-
-              {/* ENDEREÇO */}
-              <Grid size={{ xs: 12, sm: 8 }}>
-                <InputLabel>Endereço</InputLabel>
-
-                <TextField
-                  value={editAddress}
-                  onChange={(event) => setEditAddress(event.target.value)}
-                  placeholder="Insira um endereço..."
-                  fullWidth
-                  multiline
-                  minRows={2}
-                />
-              </Grid>
-            </Grid>
-
-            {/* STATUS */}
             <Box>
               <InputLabel sx={{ mb: 1 }}>Status</InputLabel>
-
               <RadioGroup
                 value={editStatus}
                 onChange={(event) => setEditStatus(event.target.value as UserRow['status'])}
                 row
-                sx={{
-                  gap: 1.5,
-                  flexWrap: 'wrap'
-                }}
+                sx={{ gap: 2, flexWrap: 'wrap' }}
               >
                 <FormControlLabel value="Ativo" control={<Radio size="small" />} label="Ativo" />
-
                 <FormControlLabel value="Pendente" control={<Radio size="small" />} label="Pendente" />
-
                 <FormControlLabel value="Denunciado" control={<Radio size="small" />} label="Denunciado" />
-
                 <FormControlLabel value="Bloqueado" control={<Radio size="small" />} label="Bloqueado" />
               </RadioGroup>
             </Box>
-
           </Stack>
         </DialogContent>
 
         <Divider />
 
-        {/* RODAPÉ */}
-        <DialogActions
-          sx={{
-            px: 3,
-            py: 2,
-            justifyContent: 'flex-end',
-            gap: 1
-          }}
-        >
+        <DialogActions sx={{ px: 3, py: 2 }}>
           <Button variant="outlined" color="secondary" onClick={handleEditClose}>
             Cancelar
           </Button>
