@@ -204,7 +204,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
   const [editZipCode, setEditZipCode] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editStatus, setEditStatus] = useState<UserRow['status']>('Ativo');
-  const [editRoles, setEditRoles] = useState<string[]>([]);
 
   // Modal bloquear
   const [openBlockDialog, setOpenBlockDialog] = useState(false);
@@ -248,8 +247,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
     setEditStatus(menuUser.status);
 
-    setEditRoles(menuUser.roles.filter((role) => !role.startsWith('+')));
-
     handleMenuClose();
     setOpenEditDialog(true);
   };
@@ -268,8 +265,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
               ...user,
               name: editName.trim() || user.name,
               username: editUsername.trim() || user.username,
-              status: editStatus,
-              roles: editRoles.length > 0 ? editRoles : user.roles
+              status: editStatus
             }
           : user
       )
@@ -1157,37 +1153,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
               </RadioGroup>
             </Box>
 
-            {/* PAPÉIS */}
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>Papéis (Opcional)</InputLabel>
-
-              <Stack
-                direction="row"
-                sx={{
-                  gap: 0.75,
-                  flexWrap: 'wrap'
-                }}
-              >
-                {roles.map((role) => {
-                  const selectedRole = editRoles.includes(role);
-
-                  return (
-                    <Chip
-                      key={role}
-                      label={role}
-                      size="small"
-                      variant={selectedRole ? 'filled' : 'outlined'}
-                      onClick={() => {
-                        setEditRoles((current) => (current.includes(role) ? current.filter((item) => item !== role) : [...current, role]));
-                      }}
-                      sx={{
-                        cursor: 'pointer'
-                      }}
-                    />
-                  );
-                })}
-              </Stack>
-            </Box>
           </Stack>
         </DialogContent>
 
@@ -1407,7 +1372,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
         onClose={() => setOpenFilter(false)}
         PaperProps={{
           sx: {
-            width: 352,
+            width: 420,
             maxWidth: 'calc(100% - 32px)',
             borderRadius: 1.5
           }
@@ -1591,12 +1556,12 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
             </Stack>
 
             {/* DATA */}
-            <Stack sx={{ gap: 1 }}>
+            <Stack sx={{ gap: 1.5 }}>
               <Typography variant="caption" color="text.secondary">
                 Data
               </Typography>
 
-              <Stack direction="row" sx={{ gap: 1 }}>
+              <Stack direction="row" sx={{ gap: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -1654,7 +1619,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
             }}
           >
             <Button variant="text" color="secondary" onClick={handleResetFilters}>
-              Resetar
+              Cancelar
             </Button>
 
             <Button variant="contained" onClick={handleApplyFilters}>
