@@ -169,23 +169,76 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3 }}>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2.5,
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh'
+        }
+      }}
+    >
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          px: 3,
+          pt: 3,
+          pb: 2.5
+        }}
+      >
         <Box>
-          <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Adicionar Papéis</DialogTitle>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-            Descreva as responsabilidades e o nível de autoridade deste papel.
+          <DialogTitle
+            sx={{
+              p: 0,
+              fontSize: 22,
+              lineHeight: 1.3,
+              fontWeight: 600,
+              color: 'text.primary'
+            }}
+          >
+            Criar Papel
+          </DialogTitle>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: 14 }}>
+            Crie um novo papel com as permissões e usuários que ele deve gerenciar.
           </Typography>
         </Box>
-        <IconButton onClick={handleClose} size="small">
-          <IconX size={18} />
+
+        <IconButton
+          onClick={handleClose}
+          size="small"
+          sx={{
+            width: 44,
+            height: 44,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1.5,
+            flexShrink: 0
+          }}
+        >
+          <IconX size={19} />
         </IconButton>
       </Stack>
 
-      <Divider sx={{ mt: 2 }} />
+      <Divider />
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            px: 3,
+            py: 2.5,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            flex: 1
+          }}
+        >
           <Stack sx={{ gap: 2.5 }}>
             <Typography variant="subtitle1">Informação Geral</Typography>
 
@@ -277,20 +330,45 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
 
         <Divider />
 
-        <DialogActions sx={{ px: 3, py: 2, flexDirection: 'column', alignItems: 'stretch', gap: 1.5 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 1.5
+          }}
+        >
           {submitError && <Alert severity="error">{submitError}</Alert>}
-          <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={handleClose} color="secondary" variant="outlined" disabled={isSubmitting}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              type="button"
+              onClick={handleClose}
+              variant="outlined"
+              color="secondary"
+              disabled={isSubmitting}
+              sx={{
+                minWidth: 108,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
               Cancelar
             </Button>
+
             <Button
               type="submit"
               variant="contained"
-              color="error"
+              color="primary"
               disabled={isSubmitting}
               startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+              sx={{
+                minWidth: 170,
+                height: 44,
+                borderRadius: 1.5
+              }}
             >
-              {isSubmitting ? 'Criando...' : 'Criar Papel'}
+              {isSubmitting ? 'Criando...' : 'Salvar Papel'}
             </Button>
           </Stack>
         </DialogActions>

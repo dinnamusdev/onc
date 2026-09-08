@@ -163,7 +163,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
       open={open}
       onClose={handleClose}
       onTransitionEnter={handleDialogEntered}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
@@ -335,7 +335,8 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                         borderRadius: 1.5,
                         p: 1,
                         maxHeight: 160,
-                        overflowY: 'auto'
+                        overflowY: 'auto',
+                        backgroundColor: 'background.paper'
                       }}
                     >
                       <FormGroup>
@@ -409,36 +410,39 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
           sx={{
             px: 3,
             py: 2,
-            justifyContent: 'space-between',
-            flexShrink: 0
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: 1.5
           }}
         >
-          <Button
-            type="button"
-            onClick={handleClose}
-            variant="outlined"
-            color="secondary"
-            sx={{
-              minWidth: 108,
-              height: 44,
-              borderRadius: 1.5
-            }}
-          >
-            Cancelar
-          </Button>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              type="button"
+              onClick={handleClose}
+              variant="outlined"
+              color="secondary"
+              sx={{
+                minWidth: 108,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
+              Cancelar
+            </Button>
 
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            sx={{
-              minWidth: 170,
-              height: 44,
-              borderRadius: 1.5
-            }}
-          >
-            {isEdit ? 'Atualizar Permissão' : 'Criar Permissão'}
-          </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              sx={{
+                minWidth: 170,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
+              {isEdit ? 'Atualizar Permissão' : 'Criar Permissão'}
+            </Button>
+          </Stack>
         </DialogActions>
       </form>
     </Dialog>
