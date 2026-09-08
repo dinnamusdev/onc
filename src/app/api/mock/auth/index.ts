@@ -220,10 +220,29 @@ export async function verifyRecoveryCode(request: Request) {
 }
 
 // Export as a single object for easy import
+/***************************  MOCK - ACTIVATE ACCOUNT  ***************************/
+
+export async function activateAccount(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const idUsuario = searchParams.get('IdUsuario') ?? searchParams.get('idUsuario');
+  const token =
+    searchParams.get('Token') ??
+    searchParams.get('token') ??
+    searchParams.get('CodigoAtivacao') ??
+    searchParams.get('codigoAtivacao');
+
+  if (!idUsuario || !token) {
+    return NextResponse.json({ error: 'Parâmetros de ativação ausentes' }, { status: 400 });
+  }
+
+  return NextResponse.json({ message: 'Conta ativada com sucesso (mock)' }, { status: 200 });
+}
+
 const mockAuth = {
   login,
   getUser,
   signUp,
+  activateAccount,
   verifyOtp,
   resend,
   forgotPassword,

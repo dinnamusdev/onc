@@ -8,6 +8,7 @@ interface AuthProvider {
   resetPassword?: (request: Request) => Promise<Response>;
   signOut?: (request: Request) => Promise<Response>;
   signUp?: (request: Request) => Promise<Response>;
+  activateAccount?: (request: Request) => Promise<Response>;
   verifyOtp?: (request: Request) => Promise<Response>;
   resend?: (request: Request) => Promise<Response>;
   getUserProfile?: (request: Request) => Promise<Response>;

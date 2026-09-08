@@ -99,10 +99,18 @@ export async function signUp(request: Request) {
   try {
     const body = await request.json();
 
+    // URL da página de ativação (frontend). O backend usa este valor para montar
+    // o link enviado por e-mail: {url_callback}?IdUsuario=...&CodigoAtivacao=...
+    const origin = request.headers.get('origin') || new URL(request.url).origin;
+    const urlCallback = `${origin}/activate-account`;
+
     // Swagger: POST /auth/api/Register/register-account (CreateUserDTO)
     const res = await fetch(`${ONC_API}/auth/api/Register/register-account`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        url_callback: urlCallback
+      },
       body: JSON.stringify({
         userName: body.userName ?? body.email,
         email: body.email,
@@ -294,11 +302,47 @@ export async function getUserProfile(request: Request) {
   }
 }
 
+/***************************  ONC - ACTIVATE ACCOUNT  ***************************/
+
+export async function activateAccount(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const idUsuario = searchParams.get('IdUsuario') ?? searchParams.get('idUsuario');
+    const token =
+      searchParams.get('Token') ??
+      searchParams.get('token') ??
+      searchParams.get('CodigoAtivacao') ??
+      searchParams.get('codigoAtivacao');
+
+    if (!idUsuario || !token) {
+      return NextResponse.json({ error: 'Parâmetros de ativação ausentes' }, { status: 400 });
+    }
+
+    // Swagger: GET /auth/api/Register/activate-account?IdUsuario={uuid}&Token={token}
+    const query = new URLSearchParams({ IdUsuario: idUsuario, Token: token });
+    const res = await fetch(`${ONC_API}/auth/api/Register/activate-account?${query.toString()}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || data?.title || 'Falha ao ativar a conta' }, { status: res.status });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 // Export as a single object for easy import
 const oncAuth = {
   login,
   getUser,
   signUp,
+  activateAccount,
   forgotPassword,
   resetPassword,
   signOut,

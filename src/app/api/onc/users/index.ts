@@ -75,10 +75,16 @@ export async function createUser(request: Request) {
   try {
     const body = await request.json();
 
+    // URL da página de ativação (frontend). O backend usa este valor para montar
+    // o link enviado por e-mail: {url_callback}?IdUsuario=...&CodigoAtivacao=...
+    const origin = request.headers.get('origin') || new URL(request.url).origin;
+    const urlCallback = `${origin}/activate-account`;
+
     const res = await fetch(`${ONC_API}/auth/api/Register/register-account`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        url_callback: urlCallback
       },
       body: JSON.stringify({
         userName: body.userName,

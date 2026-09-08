@@ -18,6 +18,11 @@ export async function signUp(formData: ApiFormData) {
   return attempt(axiosServices.post('/api/auth/signUp', formData));
 }
 
+export async function activateAccount(idUsuario: string, token: string) {
+  const query = new URLSearchParams({ IdUsuario: idUsuario, Token: token });
+  return attempt(axiosServices.get(`/api/auth/activateAccount?${query.toString()}`));
+}
+
 export async function getUser() {
   return attempt(axiosServices.get('/api/auth/getUser'));
 }

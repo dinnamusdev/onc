@@ -78,58 +78,7 @@ const statusColorMap: Record<UserRow['status'], 'success' | 'warning' | 'error' 
   Denunciado: 'info'
 };
 
-const mockUsers: UserRow[] = [
-  {
-    id: '1',
-    name: 'Stacy Reichel',
-    username: 'stacy_reichel.880',
-    roles: ['Gestor', 'Admin', '+4 mais'],
-    lastActivity: 'Criado',
-    lastActivityDate: '19 dias atrás',
-    date: '23 Jul 2025',
-    status: 'Ativo'
-  },
-  {
-    id: '2',
-    name: 'Roderick Rohan',
-    username: 'roderick.rohan',
-    roles: ['Gerente', 'Admin', '+2 mais'],
-    lastActivity: 'Desconectou',
-    lastActivityDate: '20 dias atrás',
-    date: '19 Jul 2025',
-    status: 'Pendente'
-  },
-  {
-    id: '3',
-    name: 'Audrey Leffler MD',
-    username: 'audrey_leffler',
-    roles: ['Gerente', 'Admin', '+1 mais'],
-    lastActivity: 'Cadastrado',
-    lastActivityDate: '1 mês atrás',
-    date: '19 Jul 2025',
-    status: 'Denunciado'
-  },
-  {
-    id: '4',
-    name: 'Allison Mosciski',
-    username: 'allison_mosciski',
-    roles: ['Atendente', 'Developer', '+6 mais'],
-    lastActivity: 'Criado',
-    lastActivityDate: '19 dias atrás',
-    date: '19 Jul 2025',
-    status: 'Bloqueado'
-  },
-  {
-    id: '5',
-    name: 'Maureen Aufderhar',
-    username: 'maureen_aufderhar',
-    roles: ['Atendente', 'Engineer', '+2 mais'],
-    lastActivity: 'Desconectou',
-    lastActivityDate: '20 dias atrás',
-    date: '18 Jul 2025',
-    status: 'Ativo'
-  }
-];
+const mockUsers: UserRow[] = [];
 
 /***************************  USERS - VIEW  ***************************/
 
@@ -141,7 +90,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
   const [users, setUsers] = useState<UserRow[]>(mockUsers);
 
   // Carrega usuários reais do backend, mapeando UserResponseDTO -> UserRow.
-  // Em caso de erro, mantém o mock.
+  // Em caso de erro, mantém a lista vazia.
   const reloadData = useCallback(async () => {
     const { data, error } = await getUsers();
 
