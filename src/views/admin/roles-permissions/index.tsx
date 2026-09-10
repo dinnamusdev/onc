@@ -278,9 +278,22 @@ export default function RolesPermissionsView() {
 
     // Mapa id → usuário para resolver UUIDs de usuário vindos do backend ONC
     // (GET /roles retorna RolePermissionsIntsResponseDTO com users: string[])
-    type AnyUser = { id: string; userName?: string; email?: string; nomeCompleto?: string; [key: string]: unknown };
+    // Campos suportados: nomeCompleto (ONC/mock), userName, email — todos camelCase conforme Swagger UserResponseDTO
+    type AnyUser = {
+      id?: unknown; Id?: unknown;
+      nomeCompleto?: unknown; NomeCompleto?: unknown;
+      userName?: unknown; UserName?: unknown;
+      email?: unknown; Email?: unknown;
+      [key: string]: unknown
+    };
+    const resolveUserName = (u: AnyUser, fallback: string): string =>
+      String(u.nomeCompleto || u.NomeCompleto || u.userName || u.UserName || u.email || u.Email || fallback);
+    const resolveUserUsername = (u: AnyUser): string =>
+      String(u.userName || u.UserName || u.email || u.Email || '');
+
+    // Chaves em lowercase para tolerar casing diferente de UUIDs (ONC pode serializar em maiúsculas)
     const userMap = new Map<string, AnyUser>(
-      ((usersRes.data ?? []) as AnyUser[]).map((u) => [String(u.id), u])
+      ((usersRes.data ?? []) as AnyUser[]).map((u) => [String(u.id ?? u.Id ?? '').toLowerCase(), u])
     );
 
     if (rolesRes.error) {
@@ -308,23 +321,38 @@ export default function RolesPermissionsView() {
         });
 
         // ONC retorna users como string[] (UUIDs); mock retorna objetos completos.
+        // Em ambos os casos, sempre buscamos o usuário no userMap (dados de getUsers())
+        // para garantir que nomeCompleto seja exibido de forma consistente.
         const roleUsers = (role.users ?? []).map((u: unknown) => {
-          if (typeof u === 'string') {
-            // Modo ONC: u é um UUID — resolve via mapa de usuários
-            const full = userMap.get(u);
-            const name = full
-              ? String(full.nomeCompleto || full.userName || full.email || u)
-              : u;
-            const username = full ? String(full.userName || full.email || '') : '';
-            return { id: u, name, username };
+          // Extrai o ID raw em lowercase (consistente com chaves do userMap e availableUsers)
+          const rawId = (typeof u === 'string'
+            ? u
+            : String((u as AnyUser).id ?? (u as AnyUser).Id ?? '')
+          ).toLowerCase();
+
+          // Prioridade 1: userMap (fonte canônica vinda de getUsers() com nomeCompleto)
+          // Lookup em lowercase para tolerar casing diferente de UUIDs
+          const fromMap = rawId ? userMap.get(rawId.toLowerCase()) : undefined;
+          if (fromMap) {
+            return {
+              id: rawId,
+              name: resolveUserName(fromMap, rawId),
+              username: resolveUserUsername(fromMap)
+            };
           }
-          // Modo mock: u é um objeto completo
-          const uObj = u as { id?: unknown; name?: unknown; userName?: unknown; email?: unknown };
-          return {
-            id: String(uObj.id ?? ''),
-            name: String(uObj.name || uObj.userName || uObj.email || 'Usuário'),
-            username: String(uObj.userName || uObj.email || '')
-          };
+
+          // Prioridade 2: campos do próprio objeto embutido (fallback para mock offline)
+          if (typeof u !== 'string') {
+            const uObj = u as AnyUser;
+            return {
+              id: rawId,
+              name: resolveUserName(uObj, rawId),
+              username: resolveUserUsername(uObj)
+            };
+          }
+
+          // Último recurso: exibe o ID (UUID) mesmo
+          return { id: rawId, name: rawId, username: '' };
         });
 
         const assignedUserNames = roleUsers.map((u) => u.name?.charAt(0)?.toUpperCase() || 'U');
@@ -585,14 +613,17 @@ export default function RolesPermissionsView() {
   });
 
   // Buscar usuários disponíveis para seleção
+  // Normalização defensiva: cobre camelCase e PascalCase, alinhado ao UserResponseDTO do Swagger
   const { data: availableUsers, isLoading: usersLoading } = useSWR('/api/users', async () => {
     const { data, error } = await getUsers();
     if (error) throw new Error(error);
-    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    type RawUser = Record<string, unknown>;
+    const list = (Array.isArray(data) ? data : []) as RawUser[];
     return list.map((u) => ({
-      id: String(u.id ?? ''),
-      name: String(u.nomeCompleto || u.userName || u.email || u.id || 'Usuário'),
-      username: String(u.userName || u.email || '')
+      // id em lowercase para ser consistente com o userMap de reloadData
+      id: String(u.id ?? u.Id ?? '').toLowerCase(),
+      name: String(u.nomeCompleto || u.NomeCompleto || u.userName || u.UserName || u.email || u.Email || u.id || 'Usuário'),
+      username: String(u.userName || u.UserName || u.email || u.Email || '')
     }));
   });
 
@@ -965,40 +996,54 @@ export default function RolesPermissionsView() {
     }
     console.log('handleEditRoleSave - assignPermission concluído com sucesso');
 
-    // 3) Sincroniza a atribuição de usuários ao papel de forma exata: remove o papel
-    // dos usuários que saíram da seleção e mantém o papel apenas nos usuários selecionados.
+    // 3) Sincroniza a atribuição de usuários ao papel.
+    // Processa APENAS os usuários que mudaram: adicionados ou removidos.
+    // Isso evita chamar getUserRoles para todos os usuários do sistema,
+    // o que causaria erro 404 para usuários sem nenhum papel ainda.
     const selectedUserIds = editUsers.map((u) => String(u.id));
     const selectedUserIdSet = new Set(selectedUserIds);
-    const usersToSync = (availableUsers ?? []).map((user) => String(user.id));
+    const originalUserIdSet = new Set((menuRole.users ?? []).map((u) => String(u.id)));
+
+    // Usuários adicionados: estão em editUsers mas não estavam em menuRole.users
+    const addedUserIds = selectedUserIds.filter((id) => !originalUserIdSet.has(id));
+    // Usuários removidos: estavam em menuRole.users mas não estão em editUsers
+    const removedUserIds = Array.from(originalUserIdSet).filter((id) => !selectedUserIdSet.has(id));
+    const usersToSync = Array.from(new Set([...addedUserIds, ...removedUserIds]));
 
     console.log('handleEditRoleSave - Usuários selecionados:', selectedUserIds);
-    console.log('handleEditRoleSave - Chamando assignRolesToUser para sincronizar a atribuição final...');
+    console.log('handleEditRoleSave - Adicionados:', addedUserIds, '| Removidos:', removedUserIds);
+
+    // Helper: extrai lista de role IDs do payload do getUserRoles.
+    // O endpoint ONC pode retornar:
+    //   - array de user-role pairs: [{ role_id: 5, user_id: "uuid" }]
+    //   - array de objetos de role completos: [{ id: 5, name: "Admin" }]
+    //   - array de IDs primitivos: [5, 3]
+    //   - envelope: { roles: [...] }
+    const parseRoleIds = (payload: unknown): string[] => {
+      type RoleItem = string | number | { role_id?: string | number; roleId?: string | number; id?: string | number };
+      const items = (
+        Array.isArray(payload) ? payload : ((payload as { roles?: RoleItem[] })?.roles ?? [])
+      ) as RoleItem[];
+      return items
+        .map((item) => (typeof item === 'object' && item !== null ? item.role_id ?? item.roleId ?? item.id : item))
+        .filter((id): id is string | number => id !== undefined && id !== null)
+        .map(String);
+    };
 
     const results = await Promise.all(
       usersToSync.map(async (userId) => {
         const currentRolesResult = await getUserRoles(userId);
 
-        if (currentRolesResult.error) {
-          return { error: currentRolesResult.error };
-        }
+        // Se getUserRoles retornar erro (ex.: 404 "usuário sem papéis"), trata como lista vazia.
+        // Não propaga o erro — um usuário sem papéis ainda pode receber ou perder este papel.
+        const currentRoles: string[] = currentRolesResult.error ? [] : parseRoleIds(currentRolesResult.data);
 
-        const currentRolePayload = currentRolesResult.data as
-          | Array<string | number | { role_id?: string | number; roleId?: string | number }>
-          | { roles?: Array<string | number | { role_id?: string | number; roleId?: string | number }> }
-          | null;
-        const currentRoleItems = (Array.isArray(currentRolePayload) ? currentRolePayload : currentRolePayload?.roles ?? []) as Array<
-          | string
-          | number
-          | { role_id?: string | number; roleId?: string | number }
-        >;
-        const currentRoles = currentRoleItems
-          .map((item) => (typeof item === 'object' ? item.role_id ?? item.roleId : item))
-          .filter((id): id is string | number => id !== undefined && id !== null)
-          .map(String);
-        const nextRoles = Array.from(new Set(currentRoles.filter((existingRoleId) => existingRoleId !== roleId))).concat(
-          selectedUserIdSet.has(userId) ? [roleId] : []
-        );
+        // Calcula o próximo conjunto de papéis para este usuário
+        const nextRoles = Array.from(
+          new Set(currentRoles.filter((existingRoleId) => existingRoleId !== roleId))
+        ).concat(selectedUserIdSet.has(userId) ? [roleId] : []);
 
+        console.log(`handleEditRoleSave - userId=${userId} papéis atuais=${currentRoles} → próximos=${nextRoles}`);
         return assignRolesToUser({ userId, roles: nextRoles });
       })
     );
@@ -1603,49 +1648,37 @@ export default function RolesPermissionsView() {
                         </Typography>
                       </TableCell>
 
-                      <TableCell sx={{ overflow: 'hidden' }}>
+                      <TableCell>
                         {role.users.length === 0 ? (
                           <Typography variant="body2" color="text.disabled">—</Typography>
                         ) : (
-                          <Typography
-                            variant="body2"
-                            noWrap
-                            title={role.users.map((u) => u.name).join(', ')}
-                            sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          >
-                            {role.users
-                              .slice(0, 3)
-                              .map((u) => u.name)
-                              .join(', ')}
+                          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                            {role.users.slice(0, 3).map((u) => (
+                              <Chip key={u.id} label={u.name} size="small" color="success" variant="outlined" />
+                            ))}
                             {role.users.length > 3 && (
-                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                              <Typography variant="caption" color="text.secondary">
                                 +{role.users.length - 3}
                               </Typography>
                             )}
-                          </Typography>
+                          </Stack>
                         )}
                       </TableCell>
 
-                      <TableCell sx={{ overflow: 'hidden' }}>
+                      <TableCell>
                         {role.permissions.length === 0 ? (
                           <Typography variant="body2" color="text.disabled">—</Typography>
                         ) : (
-                          <Typography
-                            variant="body2"
-                            noWrap
-                            title={role.permissions.map((p) => p.description || p.name || String(p.id)).join(', ')}
-                            sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          >
-                            {role.permissions
-                              .slice(0, 2)
-                              .map((p) => p.description || p.name || String(p.id))
-                              .join(', ')}
-                            {role.permissions.length > 2 && (
-                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                                +{role.permissions.length - 2}
+                          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                            {role.permissions.slice(0, 3).map((p) => (
+                              <Chip key={p.id} label={p.description || p.name || String(p.id)} size="small" color="primary" variant="outlined" />
+                            ))}
+                            {role.permissions.length > 3 && (
+                              <Typography variant="caption" color="text.secondary">
+                                +{role.permissions.length - 3}
                               </Typography>
                             )}
-                          </Typography>
+                          </Stack>
                         )}
                       </TableCell>
 
@@ -3015,7 +3048,13 @@ export default function RolesPermissionsView() {
       {/* MODAL CRIAR PAPEL                                    */}
       {/* ===================================================== */}
 
-      <CreateRoleDialog open={openCreateRoleDialog} onClose={() => setOpenCreateRoleDialog(false)} onCreate={handleCreateRole} />
+      <CreateRoleDialog
+        open={openCreateRoleDialog}
+        onClose={() => setOpenCreateRoleDialog(false)}
+        onCreate={handleCreateRole}
+        userOptions={availableUsers ?? []}
+        usersLoading={usersLoading}
+      />
 
       {/* ===================================================== */}
       {/* MODAL SELECIONAR PERMISSÕES                          */}

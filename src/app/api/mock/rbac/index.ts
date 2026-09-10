@@ -300,10 +300,13 @@ export async function getUserRoles(request: Request) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    // Mock: retorna roles baseado no userId
-    const userRoles = userId === '1' ? [1, 2] : [3]; // Exemplo
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    }
 
-    return NextResponse.json(userRoles, { status: 200 });
+    // Retorna os papéis atribuídos ao usuário via assignRolesToUser (estado real do mock)
+    const assignedRoles = userRoles[userId] ?? [];
+    return NextResponse.json(assignedRoles, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }

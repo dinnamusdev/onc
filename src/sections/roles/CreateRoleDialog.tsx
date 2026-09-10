@@ -30,16 +30,17 @@ import useSWR from 'swr';
 import { IconPlus, IconX } from '@tabler/icons-react';
 
 // @project
-import { getPermissions, getSubjects, getActions, createRole, assignPermission, assignRolesToUser } from '@/utils/api/rbac';
-import { getUsers } from '@/utils/api/users';
+import { getPermissions, getSubjects, getActions, getRoles, createRole, assignPermission, assignRolesToUser } from '@/utils/api/rbac';
 import { Permission } from '@/types/rbac';
 
 /***************************  HELPERS  ***************************/
 
-// Representa um usuário no formato retornado pelo backend (UserResponseDTO).
-interface UserOption {
+// Formato padronizado de usuário usado em toda a tela de roles/permissions.
+// A propriedade `name` já vem resolvida como nomeCompleto → userName → email → id.
+export interface UserOption {
   id: string;
-  label: string;
+  name: string;
+  username: string;
 }
 
 type LookupMap = Map<number, string>;
@@ -50,18 +51,21 @@ interface CreateRoleFormInput {
   name: string;
   description: string;
   permissions: string[];
-  users: string[];
+  users: string[]; // array de IDs de usuário
 }
 
 interface CreateRoleDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate?: (data: CreateRoleFormInput) => void;
+  // Recebe os usuários já normalizados da view pai (evita SWR duplicado e cache collision)
+  userOptions?: UserOption[];
+  usersLoading?: boolean;
 }
 
 /***************************  ROLES - CREATE DIALOG  ***************************/
 
-export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRoleDialogProps) {
+export default function CreateRoleDialog({ open, onClose, onCreate, userOptions = [], usersLoading = false }: CreateRoleDialogProps) {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -122,16 +126,8 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
     return p.name ?? String(p.id);
   };
 
-  // Buscar usuários da API para permitir atribuição ao papel.
-  const { data: userOptions, isLoading: usersLoading } = useSWR<UserOption[]>('/api/users', async () => {
-    const { data, error } = await getUsers();
-    if (error) throw new Error(error);
-    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
-    return list.map((u) => ({
-      id: String(u.id ?? ''),
-      label: String(u.nomeCompleto || u.userName || u.email || u.id || '')
-    }));
-  });
+  // Usuários recebidos como prop da view pai (sem SWR duplicado)
+  // userOptions já contém name = nomeCompleto → userName → email → id
 
   const handleClose = () => {
     reset();
@@ -155,9 +151,20 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
       return;
     }
 
-    // 2) Se houver permissões selecionadas, associa ao papel recém-criado.
-    const roleId = (created as { id?: string | number } | null)?.id;
-    const selectedPermissionIds = (permissions ?? []).filter((p) => data.permissions.includes(permissionLabel(p))).map((p) => p.id);
+    // 2) Obtém o ID do papel recém-criado.
+    //    O backend ONC pode não retornar o id na resposta do POST; nesse caso,
+    //    buscamos a lista de roles e localizamos pelo nome.
+    let roleId: string | number | undefined = (created as { id?: string | number } | null)?.id;
+
+    if (roleId == null) {
+      const { data: rolesData } = await getRoles();
+      const allRoles = (rolesData ?? []) as Array<{ id: string | number; name: string }>;
+      const found = allRoles.find((r) => r.name === data.name);
+      roleId = found?.id;
+    }
+
+    // data.permissions agora contém IDs (strings) diretamente — não mais labels.
+    const selectedPermissionIds = data.permissions;
 
     if (roleId != null && selectedPermissionIds.length > 0) {
       const { error: assignError } = await assignPermission({
@@ -174,10 +181,12 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
 
     // 3) Se houver usuários selecionados, vincula o papel a cada um deles
     //    (PUT /auth/api/Permission/user-roles).
-    const selectedUserIds = (userOptions ?? []).filter((u) => data.users.includes(u.label)).map((u) => u.id);
+    // data.users já contém IDs diretamente (não mais labels)
+    const selectedUserIds = data.users;
 
     if (roleId != null && selectedUserIds.length > 0) {
-      const results = await Promise.all(selectedUserIds.map((userId) => assignRolesToUser({ userId, roles: [roleId] })));
+      const resolvedRoleId = roleId;
+      const results = await Promise.all(selectedUserIds.map((userId) => assignRolesToUser({ userId, roles: [resolvedRoleId] })));
 
       const firstUserError = results.find((r) => r.error)?.error;
       if (firstUserError) {
@@ -296,9 +305,12 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
                     render={({ field }) => (
                       <Autocomplete
                         multiple
-                        options={permissions?.map((p) => permissionLabel(p)) || []}
-                        value={field.value}
-                        onChange={(_event, value) => field.onChange(value)}
+                        options={permissions || []}
+                        getOptionLabel={(p) => permissionLabel(p)}
+                        isOptionEqualToValue={(opt, val) => String(opt.id) === String(val.id)}
+                        // field.value = array de IDs (strings); derivamos os objetos para o value do Autocomplete
+                        value={(permissions || []).filter((p) => field.value.includes(String(p.id)))}
+                        onChange={(_event, selected) => field.onChange(selected.map((p) => String(p.id)))}
                         noOptionsText="Nenhuma permissão encontrada"
                         renderInput={(params) => (
                           <TextField
@@ -328,9 +340,13 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
                     render={({ field }) => (
                       <Autocomplete
                         multiple
-                        options={(userOptions ?? []).map((u) => u.label)}
-                        value={field.value}
-                        onChange={(_event, value) => field.onChange(value)}
+                        options={userOptions}
+                        // exibe nomeCompleto (resolvido em `name`)
+                        getOptionLabel={(opt) => opt.name || opt.username || opt.id}
+                        isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                        // field.value = array de IDs; derivamos os objetos para o value do Autocomplete
+                        value={userOptions.filter((u) => field.value.includes(u.id))}
+                        onChange={(_event, selected) => field.onChange(selected.map((u) => u.id))}
                         noOptionsText="Nenhum usuário encontrado"
                         renderInput={(params) => (
                           <TextField

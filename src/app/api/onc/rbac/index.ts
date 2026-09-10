@@ -57,7 +57,9 @@ export async function createRole(request: Request) {
     }
 
     const data = await res.json();
-    return NextResponse.json(data, { status: 201 });
+    // Desempacota o envelope ServiceResponse { data: Role } se necessário
+    const role = data?.data ?? data;
+    return NextResponse.json(role, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
