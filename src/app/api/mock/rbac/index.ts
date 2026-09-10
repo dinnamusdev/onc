@@ -227,7 +227,7 @@ export async function assignPermission(request: Request) {
     }
 
     console.log('assignPermission - Role encontrado:', role);
-    console.log('assignPermission - Permissions antes:', role.permissions?.map(p => p.id));
+    console.log('assignPermission - Permissions antes:', role.permissions?.map(p => typeof p === 'number' ? p : p.id));
 
     // Atualiza todas as permissions do role
     role.permissions = permissions.map((permId: string) => {
@@ -243,7 +243,7 @@ export async function assignPermission(request: Request) {
       );
     });
 
-    console.log('assignPermission - Permissions depois:', role.permissions?.map(p => p.id));
+    console.log('assignPermission - Permissions depois:', role.permissions?.map(p => typeof p === 'number' ? p : p.id));
 
     return NextResponse.json({ success: true, role }, { status: 200 });
   } catch (error) {
@@ -268,7 +268,7 @@ export async function removePermission(request: Request) {
     }
 
     console.log('removePermission - Role encontrado:', role);
-    console.log('removePermission - Permissions antes:', role.permissions?.map(p => p.id));
+    console.log('removePermission - Permissions antes:', role.permissions?.map(p => typeof p === 'number' ? p : p.id));
 
     // Atualiza permissions removendo as não selecionadas
     role.permissions = permissions.map((permId: string) => {
@@ -284,7 +284,7 @@ export async function removePermission(request: Request) {
       );
     });
 
-    console.log('removePermission - Permissions depois:', role.permissions?.map(p => p.id));
+    console.log('removePermission - Permissions depois:', role.permissions?.map(p => typeof p === 'number' ? p : p.id));
 
     return NextResponse.json({ success: true, role }, { status: 200 });
   } catch (error) {
@@ -343,7 +343,125 @@ export async function assignRolesToUser(request: Request) {
   }
 }
 
-// Export as a single object for easy import
+/***************************  MOCK - SUBJECTS (in-memory)  ***************************/
+
+let subjects = [
+  { id: 1, description: 'account', createdAt: new Date().toISOString() },
+  { id: 2, description: 'invoice', createdAt: new Date().toISOString() },
+  { id: 3, description: 'user', createdAt: new Date().toISOString() }
+];
+let nextSubjectId = 4;
+
+export async function getSubjects() {
+  return NextResponse.json([...subjects], { status: 200 });
+}
+
+export async function createSubject(request: Request) {
+  try {
+    const body = await request.json();
+    const description = String(body.description ?? '').trim();
+    if (description.length < 3) {
+      return NextResponse.json({ error: 'Descrição deve ter pelo menos 3 caracteres' }, { status: 400 });
+    }
+    const created = { id: nextSubjectId++, description, createdAt: new Date().toISOString() };
+    subjects.push(created);
+    return NextResponse.json(created, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
+export async function updateSubject(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get('subjectId') ?? searchParams.get('id'));
+    const body = await request.json();
+    const description = String(body.description ?? '').trim();
+    if (description.length < 3) {
+      return NextResponse.json({ error: 'Descrição deve ter pelo menos 3 caracteres' }, { status: 400 });
+    }
+    const idx = subjects.findIndex((s) => s.id === id);
+    if (idx === -1) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+    subjects[idx] = { ...subjects[idx], description };
+    return NextResponse.json(subjects[idx], { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
+export async function deleteSubject(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get('subjectId') ?? searchParams.get('id'));
+    const idx = subjects.findIndex((s) => s.id === id);
+    if (idx === -1) return NextResponse.json({ error: 'Subject not found' }, { status: 404 });
+    subjects.splice(idx, 1);
+    return NextResponse.json({ message: 'Subject deleted' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
+/***************************  MOCK - ACTIONS (in-memory)  ***************************/
+
+let mockActions = [
+  { id: 1, description: 'read', createdAt: new Date().toISOString() },
+  { id: 2, description: 'create', createdAt: new Date().toISOString() },
+  { id: 3, description: 'update', createdAt: new Date().toISOString() },
+  { id: 4, description: 'delete', createdAt: new Date().toISOString() }
+];
+let nextActionId = 5;
+
+export async function getActions() {
+  return NextResponse.json([...mockActions], { status: 200 });
+}
+
+export async function createAction(request: Request) {
+  try {
+    const body = await request.json();
+    const description = String(body.description ?? '').trim();
+    if (description.length < 3) {
+      return NextResponse.json({ error: 'Descrição deve ter pelo menos 3 caracteres' }, { status: 400 });
+    }
+    const created = { id: nextActionId++, description, createdAt: new Date().toISOString() };
+    mockActions.push(created);
+    return NextResponse.json(created, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
+export async function updateAction(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get('actionId') ?? searchParams.get('id'));
+    const body = await request.json();
+    const description = String(body.description ?? '').trim();
+    if (description.length < 3) {
+      return NextResponse.json({ error: 'Descrição deve ter pelo menos 3 caracteres' }, { status: 400 });
+    }
+    const idx = mockActions.findIndex((a) => a.id === id);
+    if (idx === -1) return NextResponse.json({ error: 'Action not found' }, { status: 404 });
+    mockActions[idx] = { ...mockActions[idx], description };
+    return NextResponse.json(mockActions[idx], { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
+export async function deleteAction(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get('actionId') ?? searchParams.get('id'));
+    const idx = mockActions.findIndex((a) => a.id === id);
+    if (idx === -1) return NextResponse.json({ error: 'Action not found' }, { status: 404 });
+    mockActions.splice(idx, 1);
+    return NextResponse.json({ message: 'Action deleted' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+}
+
 const mockRbac = {
   getRoles,
   createRole,
@@ -356,7 +474,15 @@ const mockRbac = {
   assignPermission,
   removePermission,
   getUserRoles,
-  assignRolesToUser
+  assignRolesToUser,
+  getSubjects,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  getActions,
+  createAction,
+  updateAction,
+  deleteAction
 };
 
 export default mockRbac;

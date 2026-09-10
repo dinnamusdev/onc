@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 // @mui
 import Alert from '@mui/material/Alert';
@@ -30,7 +30,7 @@ import useSWR from 'swr';
 import { IconPlus, IconX } from '@tabler/icons-react';
 
 // @project
-import { getPermissions, createRole, assignPermission, assignRolesToUser } from '@/utils/api/rbac';
+import { getPermissions, getSubjects, getActions, createRole, assignPermission, assignRolesToUser } from '@/utils/api/rbac';
 import { getUsers } from '@/utils/api/users';
 import { Permission } from '@/types/rbac';
 
@@ -42,14 +42,7 @@ interface UserOption {
   label: string;
 }
 
-// Gera um rótulo estável para a permissão. O backend novo modela permissões como
-// subject + action (o campo `name` pode vir vazio), então priorizamos essa combinação.
-const permissionLabel = (p: Permission): string => {
-  if (p.subject || p.action) {
-    return [p.subject, p.action].filter(Boolean).join('.');
-  }
-  return p.name ?? String(p.id);
-};
+type LookupMap = Map<number, string>;
 
 /***************************  TYPES  ***************************/
 
@@ -97,6 +90,37 @@ export default function CreateRoleDialog({ open, onClose, onCreate }: CreateRole
     if (error) throw new Error(error);
     return (data ?? []) as Permission[];
   });
+
+  // Buscar subjects/actions para resolver subjectId/actionId → descrição
+  const { data: subjectsData } = useSWR('/api/rbac/subjects', async () => {
+    const { data } = await getSubjects();
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+  });
+
+  const { data: actionsData } = useSWR('/api/rbac/actions', async () => {
+    const { data } = await getActions();
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+  });
+
+  const subjectMap = useMemo<LookupMap>(
+    () => new Map((subjectsData ?? []).map((s) => [Number(s.id), s.description || ''])),
+    [subjectsData]
+  );
+
+  const actionMap = useMemo<LookupMap>(
+    () => new Map((actionsData ?? []).map((a) => [Number(a.id), a.description || ''])),
+    [actionsData]
+  );
+
+  // Rótulo legível para uma permissão.
+  // Prioridade: description > subject.action > name > id
+  const permissionLabel = (p: Permission): string => {
+    if (p.description) return p.description;
+    const subject = p.subject || (p.subjectId != null ? subjectMap.get(Number(p.subjectId)) : undefined) || '';
+    const action = p.action || (p.actionId != null ? actionMap.get(Number(p.actionId)) : undefined) || '';
+    if (subject || action) return [subject, action].filter(Boolean).join('.');
+    return p.name ?? String(p.id);
+  };
 
   // Buscar usuários da API para permitir atribuição ao papel.
   const { data: userOptions, isLoading: usersLoading } = useSWR<UserOption[]>('/api/users', async () => {

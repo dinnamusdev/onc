@@ -35,6 +35,38 @@ export async function getPermissions() {
   return attempt(axiosServices.get('/api/rbac/permissions'));
 }
 
+export async function getSubjects() {
+  return attempt(axiosServices.get('/api/rbac/subjects'));
+}
+
+export async function createSubject(data: { description: string }) {
+  return attempt(axiosServices.post('/api/rbac/subjects', data));
+}
+
+export async function updateSubject(data: { id: string | number; description: string }) {
+  return attempt(axiosServices.put(`/api/rbac/subjects?subjectId=${data.id}`, data));
+}
+
+export async function deleteSubject(id: string | number) {
+  return attempt(axiosServices.delete(`/api/rbac/subjects?subjectId=${id}`));
+}
+
+export async function getActions() {
+  return attempt(axiosServices.get('/api/rbac/actions'));
+}
+
+export async function createAction(data: { description: string }) {
+  return attempt(axiosServices.post('/api/rbac/actions', data));
+}
+
+export async function updateAction(data: { id: string | number; description: string }) {
+  return attempt(axiosServices.put(`/api/rbac/actions?actionId=${data.id}`, data));
+}
+
+export async function deleteAction(id: string | number) {
+  return attempt(axiosServices.delete(`/api/rbac/actions?actionId=${id}`));
+}
+
 export async function createPermission(data: CreatePermissionRequest) {
   return attempt(axiosServices.post('/api/rbac/permission', data));
 }

@@ -163,19 +163,45 @@ export const USERS_PROVIDER = ProviderType.ONC;  // Production
 **Endpoints reais implementados (conferidos no código):**
 
 *Auth* (`src/app/api/onc/auth/index.ts`):
-- Login: `POST /auth/api/Login/login-by-email` — retorna o JWT como **string** em `data`
-- Sign up: `POST /auth/api/Cadastro`
-- Reenvio ativação: `POST /auth/api/Cadastro/resend-activation`
-- Solicitar código de reset: `POST /auth/api/Login/request-code-password-reset`
-- Verificar código: `POST /auth/api/Login/verify-recovery-code`
+- Login por email: `POST /auth/api/Login/login-by-email` — retorna `TokenServiceResponse { data: { token: string } }`
+- Login por username: `POST /auth/api/Login/login-by-username` — mesma resposta (NOVO)
+- Sign up: `POST /auth/api/Register/register-account`
+- Reenvio ativação: `POST /auth/api/Register/resend-activation-code` (body: raw JSON string do email)
+- Ativar conta: `GET /auth/api/Register/activate-account?IdUsuario=&Token=` (NOVO)
+- Recuperação por email (link): `POST /auth/api/Login/request-email-password-reset` → `TokenServiceResponse`
+- Recuperação por código: `POST /auth/api/Login/request-code-password-reset` → `PasswordResetDataDTOServiceResponse { token, code }`
+- Verificar código: `POST /auth/api/Login/verify-recovery-code` (não aparece no Swagger atual — pode ter sido removido)
 - Reset senha: `POST /auth/api/Login/do-reset-password`
-- Perfil: `GET /auth/api/Users?email=...`
+- Perfil por email: `GET /auth/api/Users?email=...`
+- Perfil por ID: `GET /auth/api/Users/user-by-id?id={uuid}` (NOVO)
 - Logout: `POST /auth/api/Logout`
 
+**ATENÇÃO — Formato do token no login:**
+`TokenServiceResponse` retorna `{ data: { token: "eyJ..." } }` (objeto `Token`), **não** string direta.
+O código normaliza: `payload?.token` para extrair o JWT do objeto.
+
 *RBAC* (`src/app/api/onc/rbac/index.ts`) — base `/auth/api/Permission/*`:
-- Roles: `roles` (POST/PUT/DELETE), `role-by-id` (GET)
+- Roles: `roles` (GET/POST/PUT/DELETE), `role-by-id` (GET)
 - Permissions: `permissions` (GET/POST/PUT/DELETE), `permission-by-id` (GET), `role-permissions` (PUT)
 - User-roles: `user-roles-by-userId` (GET), `user-roles` (PUT)
+- User-permissions: `user-permissions` (PUT) — atribuição direta de permissões a usuários (NOVO)
+- Subjects: `subjects` (GET/POST/PUT), `subject-by-id` (GET) (POST/PUT/GET-by-id NOVOs)
+- Actions: `actions` (GET/POST/PUT/DELETE), `action-by-id` (GET) (POST/PUT/DELETE/GET-by-id NOVOs)
+
+**ATENÇÃO — Formato da resposta de roles (GET /roles e GET /role-by-id):**
+O backend retorna `RolePermissionsIntsResponseDTO`:
+```json
+{
+  "id": 1, "name": "Admin", "description": "...", "isSystem": true,
+  "createdAt": "...", "updatedAt": "...",
+  "permissions": [1, 2, 3],    // ← IDs inteiros, NÃO objetos completos
+  "users": ["uuid1", "uuid2"]  // ← UUIDs string, NÃO objetos completos
+}
+```
+O mapeamento em `reloadData()` (roles-permissions/index.tsx) já resolve:
+- `permissions: number[]` → lookup em `permissionMap` + `subjectMap` + `actionMap`
+- `users: string[]` → lookup em `userMap` (carregado junto em `reloadData`)
+O tipo `Role` em `src/types/rbac.ts` reflete isso: `permissions?: (number | Permission)[]`, `users?: (string | {...})[]`
 
 *Users* (`src/app/api/onc/users/index.ts`):
 - Listar/perfil: `GET /auth/api/Users`
@@ -402,12 +428,31 @@ npm run build
 
 ---
 
-**Last Updated**: September 3, 2026
-**Version**: 2.1.0
-**Recent Changes**: Integrado CRUD completo de Permissões (backend passou a expor
-POST/PUT/DELETE em `/auth/api/Permission/permissions`): nova rota
-`src/app/api/rbac/permission/route.ts`, clients `createPermission`/`updatePermission`/
-`deletePermission`, provider ONC+mock e handlers na view roles-permissions. Modelo
-`Permission` atualizado para `{ subject, action, conditions, fields, description }`.
-Dois TODOs abertos: validar CRUD end-to-end e formalizar modelo derivado
-(`EffectivePermission` + `normalizePermissions`) para autorização.
+**Last Updated**: September 10, 2026
+**Version**: 2.2.0
+**Recent Changes**:
+
+1. **Análise do Swagger (v0.1.5)** — Identificadas e implementadas todas as mudanças:
+
+2. **CRÍTICO corrigido — Formato da resposta de roles:**
+   - `GET /auth/api/Permission/roles` retorna `RolePermissionsIntsResponseDTO` com
+     `permissions: number[]` (só IDs) e `users: string[]` (só UUIDs).
+   - Corrigido em `src/views/admin/roles-permissions/index.tsx`: `reloadData()` agora
+     também chama `getUsers()` para montar `userMap`, e usa `permissionMap` para resolver
+     IDs de permissões em nomes legíveis.
+   - Tipo `Role` em `src/types/rbac.ts` atualizado para `permissions?: (number | Permission)[]`
+     e `users?: (string | {...})[]`.
+
+3. **Novos endpoints implementados no ONC:**
+   - Auth: `login-by-username`, `user-by-id`
+   - RBAC: `subject-by-id`, `createSubject`, `updateSubject`,
+     `action-by-id`, `createAction`, `updateAction`, `deleteAction`,
+     `assignUserPermissions` (PUT `/user-permissions`)
+
+4. **Atenção — `verify-recovery-code` não aparece no Swagger v0.1.5.** O endpoint
+   ainda está implementado no código mas pode ter sido removido do backend.
+   Verificar com a equipe de backend se ainda é necessário.
+
+5. Dois TODOs anteriores mantidos:
+   - Validar CRUD de Permissões end-to-end com RBAC_PROVIDER=ONC
+   - Formalizar modelo derivado `EffectivePermission` + `normalizePermissions`

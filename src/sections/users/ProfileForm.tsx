@@ -172,47 +172,33 @@ export default function ProfileForm() {
 
     setIsSaving(true);
 
-    const userFields = {
-      id: userId,
-      userName: userData?.userName ?? formData.email,
-      email: formData.email,
-      nomeCompleto: formData.nomeCompleto,
-      whatsapp: formData.whatsapp,
-      telefone: formData.telefone,
-      cpf: formData.cpf,
-      cep: formData.cep,
-      logradouro: formData.logradouro,
-      numero: formData.numero,
-      complemento: formData.complemento,
-      bairro: formData.bairro,
-      cidade: formData.cidade,
-      estado: formData.estado
-    };
+    // Indica se uma nova imagem foi selecionada pelo usuário nesta sessão de edição.
+    // isAlteraFoto só deve ser 'true' quando o usuário escolheu um arquivo novo.
+    const photoChanged = selectedPhoto != null;
 
-    const updatePayload = selectedPhoto
-      ? (() => {
-          const payload = new FormData();
-          payload.append('id', userId);
-          payload.append('UserName', userFields.userName);
-          payload.append('Email', userFields.email);
-          payload.append('NomeCompleto', userFields.nomeCompleto);
-          payload.append('Whatsapp', userFields.whatsapp);
-          payload.append('Telefone', userFields.telefone);
-          payload.append('Cpf', userFields.cpf);
-          payload.append('CEP', userFields.cep);
-          payload.append('Logradouro', userFields.logradouro);
-          payload.append('Numero', userFields.numero);
-          payload.append('Complemento', userFields.complemento);
-          payload.append('Bairro', userFields.bairro);
-          payload.append('Cidade', userFields.cidade);
-          payload.append('Estado', userFields.estado);
-          payload.append('isAlteraFoto', 'true');
-          payload.append('FotoFile', selectedPhoto);
-          return payload;
-        })()
-      : userFields;
+    const payload = new FormData();
+    payload.append('id', userId);
+    payload.append('UserName', userData?.userName ?? formData.email);
+    payload.append('Email', formData.email);
+    payload.append('NomeCompleto', formData.nomeCompleto);
+    payload.append('Whatsapp', formData.whatsapp);
+    payload.append('Telefone', formData.telefone);
+    payload.append('Cpf', formData.cpf);
+    payload.append('CEP', formData.cep);
+    payload.append('Logradouro', formData.logradouro);
+    payload.append('Numero', formData.numero);
+    payload.append('Complemento', formData.complemento);
+    payload.append('Bairro', formData.bairro);
+    payload.append('Cidade', formData.cidade);
+    payload.append('Estado', formData.estado);
 
-    const { data, error } = await updateUser(updatePayload);
+    // Flag de alteração de foto: somente 'true' quando uma nova imagem foi selecionada.
+    payload.append('isAlteraFoto', photoChanged ? 'true' : 'false');
+    if (photoChanged) {
+      payload.append('FotoFile', selectedPhoto);
+    }
+
+    const { data, error } = await updateUser(payload);
 
     setIsSaving(false);
 
@@ -222,7 +208,8 @@ export default function ProfileForm() {
     }
 
     let updatedProfile = data as User | null;
-    if (selectedPhoto) {
+    if (photoChanged) {
+      // Recarrega o perfil para obter a URL atualizada da foto
       const refreshed = await getUsers({ email: formData.email });
       updatedProfile = (Array.isArray(refreshed.data) ? refreshed.data[0] : refreshed.data) as User | null;
       if (refreshed.error) {
@@ -231,7 +218,13 @@ export default function ProfileForm() {
     }
 
     updateAuthUser({
-      ...userFields,
+      id: userId,
+      userName: userData?.userName ?? formData.email,
+      email: formData.email,
+      nomeCompleto: formData.nomeCompleto,
+      whatsapp: formData.whatsapp,
+      telefone: formData.telefone,
+      cpf: formData.cpf,
       fotoURL: updatedProfile?.fotoURL ?? currentPhotoUrl
     });
     setCurrentPhotoUrl(updatedProfile?.fotoURL ?? currentPhotoUrl);

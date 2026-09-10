@@ -54,8 +54,8 @@ import {
 } from '@tabler/icons-react';
 
 // @project
-import CreateUserDialog from '@/sections/users/CreateUserDialog';
-import { getUsers } from '@/utils/api/users';
+import CreateUserDialog, { EditableUser } from '@/sections/users/CreateUserDialog';
+import { getUsers, getUserById } from '@/utils/api/users';
 
 /***************************  MOCK DATA  ***************************/
 
@@ -96,8 +96,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     if (!error && Array.isArray(data)) {
       const mapped: UserRow[] = data.map((u: Record<string, unknown>) => {
         const isAtivo = u.isAtivo;
-        const status: UserRow['status'] =
-          isAtivo === false || isAtivo === 0 ? 'Bloqueado' : 'Ativo';
+        const status: UserRow['status'] = isAtivo === false || isAtivo === 0 ? 'Bloqueado' : 'Ativo';
         const dataCadastro = u.dataCadastro ? String(u.dataCadastro) : '';
 
         return {
@@ -141,13 +140,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
   // Modal editar
   const [openEditDialog, setOpenEditDialog] = useState(false);
-
-  const [editName, setEditName] = useState('');
-  const [editLastName, setEditLastName] = useState('');
-
-  const [editEmail, setEditEmail] = useState('');
-  const [editAdmissionDate, setEditAdmissionDate] = useState('');
-  const [editStatus, setEditStatus] = useState<UserRow['status']>('Ativo');
+  const [editingUser, setEditingUser] = useState<EditableUser | null>(null);
 
   // Modal bloquear
   const [openBlockDialog, setOpenBlockDialog] = useState(false);
@@ -174,43 +167,40 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
   /*************************** EDITAR ***************************/
 
-  const handleEditOpen = () => {
+  const handleEditOpen = async () => {
     if (!menuUser) return;
-
-    const nameParts = menuUser.name.trim().split(' ');
-
-    setEditName(nameParts[0] || '');
-    setEditLastName(nameParts.slice(1).join(' '));
-
-    setEditEmail('');
-    setEditAdmissionDate('');
-
-    setEditStatus(menuUser.status);
-
+    const targetId = menuUser.id;
     handleMenuClose();
+
+    // Busca os dados completos do usuário (UserResponseDTO) para preencher as abas.
+    const { data, error } = await getUserById(targetId);
+    const dto = (error ? null : data) as Record<string, unknown> | null;
+
+    setEditingUser({
+      id: targetId,
+      userName: dto?.userName ? String(dto.userName) : '',
+      email: dto?.email ? String(dto.email) : '',
+      nomeCompleto: dto?.nomeCompleto ? String(dto.nomeCompleto) : menuUser.name,
+      cpf: dto?.cpf ? String(dto.cpf) : '',
+      whatsapp: dto?.whatsapp ? String(dto.whatsapp) : '',
+      telefone: dto?.telefone ? String(dto.telefone) : '',
+      isAtivo: dto?.isAtivo === undefined ? menuUser.status !== 'Bloqueado' : Boolean(dto.isAtivo),
+      logradouro: dto?.logradouro ? String(dto.logradouro) : '',
+      numero: dto?.numero ? String(dto.numero) : '',
+      complemento: dto?.complemento ? String(dto.complemento) : '',
+      bairro: dto?.bairro ? String(dto.bairro) : '',
+      cidade: dto?.cidade ? String(dto.cidade) : '',
+      estado: dto?.estado ? String(dto.estado) : '',
+      cep: dto?.cep ? String(dto.cep) : '',
+      roles: menuUser.roles ?? []
+    });
+
     setOpenEditDialog(true);
   };
 
   const handleEditClose = () => {
     setOpenEditDialog(false);
-  };
-
-  const handleEditSave = () => {
-    if (!menuUser) return;
-
-    setUsers((current) =>
-      current.map((user) =>
-        user.id === menuUser.id
-          ? {
-              ...user,
-              name: [editName.trim(), editLastName.trim()].filter(Boolean).join(' ') || user.name,
-              status: editStatus
-            }
-          : user
-      )
-    );
-
-    setOpenEditDialog(false);
+    setEditingUser(null);
     setMenuUser(null);
   };
 
@@ -850,117 +840,15 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
       {/* MODAL EDITAR USUÁRIO                                     */}
       {/* ========================================================= */}
 
-      <Dialog
+      <CreateUserDialog
         open={openEditDialog}
+        user={editingUser}
         onClose={handleEditClose}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            maxHeight: 'calc(100vh - 32px)'
-          }
+        onUpdated={() => {
+          handleEditClose();
+          reloadData();
         }}
-      >
-        <Stack
-          direction="row"
-          sx={{
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            px: 3,
-            pt: 3
-          }}
-        >
-          <Box>
-            <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>
-              Editar usuário
-            </DialogTitle>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Configurações e permissões personalizadas para usuários novos ou existentes.
-            </Typography>
-          </Box>
-
-          <IconButton onClick={handleEditClose} size="small">
-            <IconX size={18} />
-          </IconButton>
-        </Stack>
-
-        <Divider sx={{ mt: 2 }} />
-
-        <DialogContent>
-          <Stack sx={{ gap: 2.5 }}>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <InputLabel>Nome</InputLabel>
-                <OutlinedInput
-                  value={editName}
-                  onChange={(event) => setEditName(event.target.value)}
-                  placeholder="ex. John"
-                  fullWidth
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <InputLabel>Sobrenome</InputLabel>
-                <OutlinedInput
-                  value={editLastName}
-                  onChange={(event) => setEditLastName(event.target.value)}
-                  placeholder="ex. Doe"
-                  fullWidth
-                />
-              </Grid>
-            </Grid>
-
-            <Box>
-              <InputLabel>E-mail *</InputLabel>
-              <OutlinedInput
-                value={editEmail}
-                onChange={(event) => setEditEmail(event.target.value)}
-                placeholder="exemplo@gmail.com"
-                fullWidth
-              />
-            </Box>
-
-            <Box>
-              <InputLabel>Data de Admissão *</InputLabel>
-              <OutlinedInput
-                value={editAdmissionDate}
-                onChange={(event) => setEditAdmissionDate(event.target.value)}
-                type="date"
-                fullWidth
-              />
-            </Box>
-
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>Status</InputLabel>
-              <RadioGroup
-                value={editStatus}
-                onChange={(event) => setEditStatus(event.target.value as UserRow['status'])}
-                row
-                sx={{ gap: 2, flexWrap: 'wrap' }}
-              >
-                <FormControlLabel value="Ativo" control={<Radio size="small" />} label="Ativo" />
-                <FormControlLabel value="Pendente" control={<Radio size="small" />} label="Pendente" />
-                <FormControlLabel value="Denunciado" control={<Radio size="small" />} label="Denunciado" />
-                <FormControlLabel value="Bloqueado" control={<Radio size="small" />} label="Bloqueado" />
-              </RadioGroup>
-            </Box>
-          </Stack>
-        </DialogContent>
-
-        <Divider />
-
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button variant="outlined" color="secondary" onClick={handleEditClose}>
-            Cancelar
-          </Button>
-
-          <Button variant="contained" color="error" onClick={handleEditSave}>
-            Salvar Alterações
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
 
       {/* ========================================================= */}
       {/* MODAL BLOQUEAR USUÁRIO                                   */}

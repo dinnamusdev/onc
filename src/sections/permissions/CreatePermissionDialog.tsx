@@ -1,10 +1,10 @@
 'use client';
 
 // @mui
-import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -30,26 +30,20 @@ import useSWR from 'swr';
 import { IconX } from '@tabler/icons-react';
 
 // @project
-import { getPermissions } from '@/utils/api/rbac';
-
-/*************************** MOCK - OPÇÕES (Fallback) ***************************/
-
-const defaultTargetOptions = ['Proposta', 'Cliente', 'Dashboard', 'Papel', 'Permissão', 'Usuário'];
-
-const defaultActionOptions = ['Visualizar', 'Criar', 'Atualizar', 'Deletar', 'Aplicar Desconto'];
+import { getSubjects, getActions } from '@/utils/api/rbac';
 
 /*************************** TYPES ***************************/
 
 export interface PermissionData {
   id?: string;
-  name?: string;
-  target?: string;
-  actions?: string[];
+  target?: string;    // description (apenas para exibição em fallback)
+  targetId?: string;  // subjectId numérico como string (valor real do formulário)
+  actions?: string[]; // descriptions (fallback de exibição)
+  actionIds?: string[]; // actionIds numéricos como strings (valor real do formulário)
   description?: string;
 }
 
 interface CreatePermissionFormInput {
-  name?: string;
   target: string;
   actions: string[];
   description: string;
@@ -73,43 +67,49 @@ interface CreatePermissionDialogProps {
   onUpdate?: (data: CreatePermissionFormInput) => void | Promise<boolean | void>;
 }
 
-/*************************** HELPERS ***************************/
-
 /*************************** PERMISSIONS DIALOG ***************************/
 
 export default function CreatePermissionDialog({ open, onClose, onCreate, permission, onUpdate }: CreatePermissionDialogProps) {
   const isEdit = Boolean(permission);
 
-  const { data: permissions } = useSWR('/api/rbac/permissions', async () => {
-    const { data, error } = await getPermissions();
+  const { data: subjectsData, isLoading: subjectsLoading } = useSWR('/api/rbac/subjects', async () => {
+    const { data, error } = await getSubjects();
     if (error) throw new Error(error);
-    return (data ?? []) as Array<{ id: string | number; subject?: string; action?: string | string[] }>;
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
   });
 
-  // Sempre usar defaults como base, adicionando opções da API se disponíveis
-  const apiTargets = permissions && permissions.length > 0
-    ? Array.from(new Set(permissions.map(p => p.subject).filter(Boolean)))
-    : [];
+  const { data: actionsData, isLoading: actionsLoading } = useSWR('/api/rbac/actions', async () => {
+    const { data, error } = await getActions();
+    if (error) throw new Error(error);
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+  });
 
-  const apiActions = permissions && permissions.length > 0
-    ? Array.from(new Set(permissions.flatMap(p => {
-        if (Array.isArray(p.action)) return p.action;
-        if (typeof p.action === 'string') return p.action.split(',').map(a => a.trim());
-        return [];
-      }).filter(Boolean)))
-    : [];
+  // Opções com id (valor do form) + description (label exibido)
+  const baseTargetOptions = (subjectsData ?? [])
+    .map((s) => ({ id: String(s.id), label: s.description || String(s.id) }))
+    .filter((o) => o.id && o.id !== 'undefined' && o.id !== 'null');
 
-  // Combinar defaults com opções da API (priorizando API)
-  const targetOptions = Array.from(new Set([...defaultTargetOptions, ...apiTargets]));
-  const actionOptions = Array.from(new Set([...defaultActionOptions, ...apiActions]));
+  const baseActionOptions = (actionsData ?? [])
+    .map((a) => ({ id: String(a.id), label: a.description || String(a.id) }))
+    .filter((o) => o.id && o.id !== 'undefined' && o.id !== 'null');
 
-  const editTargetOptions = permission?.target && !targetOptions.includes(permission.target)
-    ? [...targetOptions, permission.target]
-    : targetOptions;
+  // No modo edição, garante que o ID já selecionado esteja disponível mesmo que o backend não o retorne.
+  const currentTargetId = permission?.targetId;
+  const targetOptions =
+    currentTargetId && !baseTargetOptions.find((o) => o.id === currentTargetId)
+      ? [...baseTargetOptions, { id: currentTargetId, label: permission?.target || currentTargetId }]
+      : baseTargetOptions;
 
-  const editActionOptions = permission?.actions
-    ? [...actionOptions, ...permission.actions].filter((option, index, options) => options.indexOf(option) === index)
-    : actionOptions;
+  const currentActionIds = permission?.actionIds ?? [];
+  const actionOptions = (() => {
+    const base = [...baseActionOptions];
+    currentActionIds.forEach((aid, idx) => {
+      if (!base.find((o) => o.id === aid)) {
+        base.push({ id: aid, label: permission?.actions?.[idx] || aid });
+      }
+    });
+    return base;
+  })();
 
   const {
     control,
@@ -119,9 +119,9 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
     formState: { errors }
   } = useForm<CreatePermissionFormInput>({
     defaultValues: {
-      name: permission?.name || '',
-      target: permission?.target || '',
-      actions: permission?.actions || [],
+      // Usa IDs como valor; descriptions são só para exibição nos labels
+      target: permission?.targetId || '',
+      actions: permission?.actionIds || [],
       description: permission?.description || ''
     }
   });
@@ -132,16 +132,14 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
    */
   const handleDialogEntered = () => {
     reset({
-      name: permission?.name || '',
-      target: permission?.target || '',
-      actions: permission?.actions || [],
+      target: permission?.targetId || '',
+      actions: permission?.actionIds || [],
       description: permission?.description || ''
     });
   };
 
   const handleClose = () => {
     reset({
-      name: '',
       target: '',
       actions: [],
       description: ''
@@ -286,6 +284,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                       {...field}
                       displayEmpty
                       fullWidth
+                      disabled={subjectsLoading}
                       error={Boolean(errors.target)}
                       sx={{
                         height: 40,
@@ -293,12 +292,12 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                       }}
                     >
                       <MenuItem value="" disabled>
-                        Selecionar item
+                        {subjectsLoading ? 'Carregando...' : 'Selecionar item'}
                       </MenuItem>
 
-                      {editTargetOptions.map((option) => (
-                        <MenuItem key={option} value={option}>
-                          {option}
+                      {targetOptions.map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.label}
                         </MenuItem>
                       ))}
                     </Select>
@@ -307,7 +306,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
 
                 {errors.target?.message && <FormHelperText error>{errors.target.message}</FormHelperText>}
               </Grid>
-            
+
               {/* AÇÕES */}
 
               <Grid size={{ xs: 12, sm: 6 }} sx={{ order: 3 }}>
@@ -339,23 +338,29 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                         backgroundColor: 'background.paper'
                       }}
                     >
-                      <FormGroup>
-                        {editActionOptions.map((action) => (
-                          <FormControlLabel
-                            key={action}
-                            label={action}
-                            control={
-                              <Checkbox
-                                size="small"
-                                checked={field.value.includes(action)}
-                                onChange={(_event, checked) => {
-                                  field.onChange(checked ? [...field.value, action] : field.value.filter((item) => item !== action));
-                                }}
-                              />
-                            }
-                          />
-                        ))}
-                      </FormGroup>
+                      {actionsLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
+                          <CircularProgress size={22} />
+                        </Box>
+                      ) : (
+                        <FormGroup>
+                          {actionOptions.map((action) => (
+                            <FormControlLabel
+                              key={action.id}
+                              label={action.label}
+                              control={
+                                <Checkbox
+                                  size="small"
+                                  checked={field.value.includes(action.id)}
+                                  onChange={(_event, checked) => {
+                                    field.onChange(checked ? [...field.value, action.id] : field.value.filter((item) => item !== action.id));
+                                  }}
+                                />
+                              }
+                            />
+                          ))}
+                        </FormGroup>
+                      )}
                     </Box>
                   )}
                 />
