@@ -8,9 +8,13 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Divider from '@mui/material/Divider';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
@@ -28,7 +32,7 @@ import { openSnackbar } from '@/states/snackbar';
 // @types
 import { User } from '@/types/users';
 import { SnackbarProps } from '@/types/snackbar';
-import { IconCamera } from '@tabler/icons-react';
+import { IconCamera, IconX } from '@tabler/icons-react';
 
 /***************************  TYPES  ***************************/
 
@@ -62,9 +66,15 @@ const emptyForm: ProfileFormInput = {
   estado: ''
 };
 
+interface ProfileFormProps {
+  /** Quando fornecido, o formulário renderiza no modo dialog (sem MainCard).
+   *  Chamado ao clicar em "Cancelar" ou após salvar com sucesso. */
+  onClose?: () => void;
+}
+
 /***************************  USER - PROFILE FORM  ***************************/
 
-export default function ProfileForm() {
+export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
   const { userData, updateUser: updateAuthUser } = useCurrentUser();
 
   const notify = (message: string, severity: SnackbarProps['severity']) => {
@@ -81,6 +91,8 @@ export default function ProfileForm() {
   const [loadError, setLoadError] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<{ message: string; errors?: string[] } | null>(null);
+  const [photoError, setPhotoError] = useState('');
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -160,8 +172,34 @@ export default function ProfileForm() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedPhoto]);
 
+  const ACCEPTED_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
+  const MAX_PHOTO_SIZE_BYTES = 256 * 1024; // 256 KB
+
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSelectedPhoto(event.target.files?.[0] ?? null);
+    const file = event.target.files?.[0] ?? null;
+    // Limpa o valor para permitir reselecionar o mesmo arquivo após erro
+    event.target.value = '';
+
+    if (!file) {
+      setPhotoError('');
+      setSelectedPhoto(null);
+      return;
+    }
+
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
+      setPhotoError('Formato inválido. Use PNG, JPG ou GIF.');
+      setSelectedPhoto(null);
+      return;
+    }
+
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      setPhotoError(`Imagem muito grande (${(file.size / 1024).toFixed(1)} KB). O limite é 256 KB.`);
+      setSelectedPhoto(null);
+      return;
+    }
+
+    setPhotoError('');
+    setSelectedPhoto(file);
   };
 
   const onSubmit: SubmitHandler<ProfileFormInput> = async (formData) => {
@@ -170,6 +208,7 @@ export default function ProfileForm() {
       return;
     }
 
+    setSubmitError(null);
     setIsSaving(true);
 
     // Indica se uma nova imagem foi selecionada pelo usuário nesta sessão de edição.
@@ -198,12 +237,18 @@ export default function ProfileForm() {
       payload.append('FotoFile', selectedPhoto);
     }
 
-    const { data, error } = await updateUser(payload);
+    const { data, error, errors } = await updateUser(payload);
 
     setIsSaving(false);
 
     if (error) {
-      notify(error, 'error');
+      // Se há lista de detalhes, exibe no Alert inline para melhor legibilidade.
+      // O snackbar ainda aparece para notificar brevemente.
+      if (errors && errors.length > 0) {
+        setSubmitError({ message: error, errors });
+      } else {
+        notify(error, 'error');
+      }
       return;
     }
 
@@ -230,29 +275,212 @@ export default function ProfileForm() {
     setCurrentPhotoUrl(updatedProfile?.fotoURL ?? currentPhotoUrl);
     setSelectedPhoto(null);
     notify('Perfil atualizado com sucesso!', 'success');
+    onClose?.();
   };
 
+  // --- Conteúdo de loading ---
+  const loadingContent = (
+    <Stack sx={{ alignItems: 'center', justifyContent: 'center', minHeight: 240, gap: 2 }}>
+      <CircularProgress />
+      <Typography variant="body2" color="text.secondary">
+        Carregando perfil...
+      </Typography>
+    </Stack>
+  );
+
   if (loading) {
-    return (
-      <MainCard>
-        <Stack sx={{ alignItems: 'center', justifyContent: 'center', minHeight: 240, gap: 2 }}>
-          <CircularProgress />
-          <Typography variant="body2" color="text.secondary">
-            Carregando perfil...
-          </Typography>
-        </Stack>
-      </MainCard>
-    );
+    return onClose ? <DialogContent>{loadingContent}</DialogContent> : <MainCard>{loadingContent}</MainCard>;
   }
 
   if (loadError) {
-    return (
+    return onClose ? (
+      <DialogContent>
+        <Alert severity="error">{loadError}</Alert>
+      </DialogContent>
+    ) : (
       <MainCard>
         <Alert severity="error">{loadError}</Alert>
       </MainCard>
     );
   }
 
+  // --- Seção de foto (compartilhada) ---
+  const photoSection = (
+    <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 2, mb: 3 }}>
+      <Avatar src={photoPreview ?? (currentPhotoUrl || undefined)} sx={{ width: 72, height: 72, flexShrink: 0 }}>
+        <IconCamera size={28} />
+      </Avatar>
+      <Stack sx={{ gap: 0.5 }}>
+        <Typography variant="subtitle1">Foto de perfil</Typography>
+        <Button component="label" variant="outlined" size="small" startIcon={<IconCamera size={16} />} sx={{ alignSelf: 'flex-start' }}>
+          Escolher imagem
+          <input hidden type="file" accept=".png,.jpg,.jpeg,.gif" onChange={handlePhotoChange} />
+        </Button>
+        <Typography variant="caption" color="text.secondary">
+          PNG, JPG ou GIF · máx. 256 KB
+        </Typography>
+        {selectedPhoto && (
+          <Typography variant="caption" color="success.main">
+            {selectedPhoto.name}
+          </Typography>
+        )}
+        {photoError && (
+          <Typography variant="caption" color="error">
+            {photoError}
+          </Typography>
+        )}
+      </Stack>
+    </Stack>
+  );
+
+  // --- Campos do formulário (compartilhados) ---
+  const formFields = (
+    <Stack sx={{ gap: 2.5 }}>
+      {photoSection}
+
+      <Typography variant="subtitle1">Dados Pessoais</Typography>
+
+      <Box>
+        <InputLabel>Nome Completo</InputLabel>
+        <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
+      </Box>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InputLabel>E-mail</InputLabel>
+          <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InputLabel>CPF</InputLabel>
+          <OutlinedInput {...register('cpf')} placeholder="000.000.000-00" fullWidth />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InputLabel>WhatsApp</InputLabel>
+          <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <InputLabel>Telefone</InputLabel>
+          <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth />
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 1 }} />
+      <Typography variant="subtitle1">Endereço</Typography>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <InputLabel>CEP</InputLabel>
+          <OutlinedInput {...register('cep')} placeholder="00000-000" fullWidth />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 8 }}>
+          <InputLabel>Logradouro</InputLabel>
+          <OutlinedInput {...register('logradouro')} placeholder="Rua, avenida..." fullWidth />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <InputLabel>Número</InputLabel>
+          <OutlinedInput {...register('numero')} placeholder="123" fullWidth />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 8 }}>
+          <InputLabel>Complemento</InputLabel>
+          <OutlinedInput {...register('complemento')} placeholder="Apto, bloco..." fullWidth />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 5 }}>
+          <InputLabel>Bairro</InputLabel>
+          <OutlinedInput {...register('bairro')} placeholder="Bairro" fullWidth />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 5 }}>
+          <InputLabel>Cidade</InputLabel>
+          <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 2 }}>
+          <InputLabel>UF</InputLabel>
+          <OutlinedInput {...register('estado')} placeholder="UF" fullWidth error={Boolean(errors.estado)} />
+          {errors.estado?.message && <FormHelperText error>{errors.estado.message}</FormHelperText>}
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+
+  // --- Alert de erros de submissão (compartilhado) ---
+  const submitErrorAlert = submitError && (
+    <Alert severity="error" onClose={() => setSubmitError(null)}>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {submitError.message}
+      </Typography>
+      {submitError.errors && submitError.errors.length > 0 && (
+        <Box component="ul" sx={{ mt: 0.5, mb: 0, pl: 2 }}>
+          {submitError.errors.map((msg, i) => (
+            <li key={i}>
+              <Typography variant="caption">{msg}</Typography>
+            </li>
+          ))}
+        </Box>
+      )}
+    </Alert>
+  );
+
+  // --- Botão de salvar (compartilhado) ---
+  const saveButton = (
+    <Button
+      type="submit"
+      variant="contained"
+      disabled={isSaving}
+      startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
+    >
+      {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+    </Button>
+  );
+
+  // === Modo Dialog ===
+  if (onClose) {
+    return (
+      <>
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3 }}
+        >
+          <Box>
+            <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Meu Perfil</DialogTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Complete seus dados pessoais e de contato.
+            </Typography>
+          </Box>
+          <IconButton onClick={onClose} size="small">
+            <IconX size={18} />
+          </IconButton>
+        </Stack>
+
+        <Divider />
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogContent>
+            {formFields}
+            {submitErrorAlert && <Box sx={{ mt: 2 }}>{submitErrorAlert}</Box>}
+          </DialogContent>
+
+          <Divider />
+
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={onClose} variant="outlined" color="secondary" disabled={isSaving}>
+              Cancelar
+            </Button>
+            {saveButton}
+          </DialogActions>
+        </form>
+      </>
+    );
+  }
+
+  // === Modo standalone (página /profile) ===
   return (
     <MainCard>
       <Box sx={{ mb: 3 }}>
@@ -264,103 +492,16 @@ export default function ProfileForm() {
 
       <Divider sx={{ mb: 3 }} />
 
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 2, mb: 3 }}>
-        <Avatar src={photoPreview ?? (currentPhotoUrl || undefined)} sx={{ width: 72, height: 72 }}>
-          <IconCamera size={28} />
-        </Avatar>
-        <Stack sx={{ gap: 0.75 }}>
-          <Typography variant="subtitle1">Foto de perfil</Typography>
-          <Button component="label" variant="outlined" size="small" startIcon={<IconCamera size={16} />}>
-            Escolher imagem
-            <input hidden type="file" accept="image/*" onChange={handlePhotoChange} />
-          </Button>
-          {selectedPhoto && <Typography variant="caption">{selectedPhoto.name}</Typography>}
-        </Stack>
-      </Stack>
-
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack sx={{ gap: 2.5 }}>
-          <Typography variant="subtitle1">Dados Pessoais</Typography>
+          {formFields}
 
-          <Box>
-            <InputLabel>Nome Completo</InputLabel>
-            <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
-          </Box>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <InputLabel>E-mail</InputLabel>
-              <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <InputLabel>CPF</InputLabel>
-              <OutlinedInput {...register('cpf')} placeholder="000.000.000-00" fullWidth />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <InputLabel>WhatsApp</InputLabel>
-              <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <InputLabel>Telefone</InputLabel>
-              <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth />
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ my: 1 }} />
-          <Typography variant="subtitle1">Endereço</Typography>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <InputLabel>CEP</InputLabel>
-              <OutlinedInput {...register('cep')} placeholder="00000-000" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 8 }}>
-              <InputLabel>Logradouro</InputLabel>
-              <OutlinedInput {...register('logradouro')} placeholder="Rua, avenida..." fullWidth />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <InputLabel>Número</InputLabel>
-              <OutlinedInput {...register('numero')} placeholder="123" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 8 }}>
-              <InputLabel>Complemento</InputLabel>
-              <OutlinedInput {...register('complemento')} placeholder="Apto, bloco..." fullWidth />
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 5 }}>
-              <InputLabel>Bairro</InputLabel>
-              <OutlinedInput {...register('bairro')} placeholder="Bairro" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 5 }}>
-              <InputLabel>Cidade</InputLabel>
-              <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 2 }}>
-              <InputLabel>UF</InputLabel>
-              <OutlinedInput {...register('estado')} placeholder="UF" fullWidth error={Boolean(errors.estado)} />
-              {errors.estado?.message && <FormHelperText error>{errors.estado.message}</FormHelperText>}
-            </Grid>
-          </Grid>
+          {submitErrorAlert}
 
           <Divider sx={{ my: 1 }} />
 
           <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isSaving}
-              startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : undefined}
-            >
-              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-            </Button>
+            {saveButton}
           </Stack>
         </Stack>
       </form>

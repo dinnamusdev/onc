@@ -23,7 +23,7 @@ const cspHeader = `
     default-src ${defaultSources};
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com;
     style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://flagcdn.com;
+    img-src 'self' blob: data: https://flagcdn.com ${ONC_API_URL};
     font-src 'self';
     object-src 'self';
     base-uri 'self';

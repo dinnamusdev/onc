@@ -222,6 +222,8 @@ npm run build  # Production build
 npm run lint   # ESLint
 ```
 
+> ⚠️ **Importante:** O usuário roda a aplicação localmente por conta própria. **Não execute `npm run dev` nem `npm run build` para verificar as alterações** — a menos que seja explicitamente solicitado. Após implementar mudanças, informe ao usuário o que foi feito e deixe-o testar no seu ambiente.
+
 ## 📚 Documentation Files
 
 **Main Documentation:**
