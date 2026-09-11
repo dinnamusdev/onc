@@ -186,39 +186,6 @@ export async function getUserProfile(request: Request) {
   }
 }
 
-/***************************  MOCK - VERIFY RECOVERY CODE  ***************************/
-
-export async function verifyRecoveryCode(request: Request) {
-  try {
-    const body = await request.json();
-    console.log(body);
-
-    // Extract recovery code from internal token (format: mock-internal-token-{timestamp}-{code})
-    const expectedCode = body.internalToken?.split('-').pop();
-
-    if (!expectedCode || body.code !== expectedCode) {
-      return NextResponse.json({ error: 'Código de recuperação inválido' }, { status: 400 });
-    }
-
-    // Generate authorization token for password reset
-    const recoveryToken = 'mock-recovery-token-' + Date.now() + '-' + body.email;
-
-    console.log(`=== CODE VERIFICATION SUCCESS ===`);
-    console.log(`Email: ${body.email}`);
-    console.log(`Código validado: ${body.code}`);
-    console.log(`Token de autorização gerado: ${recoveryToken}`);
-    console.log(`================================`);
-
-    return NextResponse.json({
-      status: 200,
-      recoveryToken: recoveryToken,
-      message: 'Código validado com sucesso'
-    });
-  } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
-}
-
 // Export as a single object for easy import
 /***************************  MOCK - ACTIVATE ACCOUNT  ***************************/
 
@@ -249,8 +216,7 @@ const mockAuth = {
   resetPassword,
   signOut,
   getUserProfile,
-  requestCodePasswordReset,
-  verifyRecoveryCode
+  requestCodePasswordReset
 };
 
 export default mockAuth;

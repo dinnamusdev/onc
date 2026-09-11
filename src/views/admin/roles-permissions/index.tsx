@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, SyntheticEvent, MouseEvent } from 'react';
 
 // @mui
 import Avatar from '@mui/material/Avatar';
@@ -47,8 +47,7 @@ import {
   IconEdit,
   IconFilter,
   IconPlus,
-  IconSearch,
-  IconShield,
+  IconSearch,  
   IconTrash,
   IconX
 } from '@tabler/icons-react';
@@ -62,6 +61,8 @@ import CreateRoleDialog from '@/sections/roles/CreateRoleDialog';
 import {
   getRoles,
   getPermissions,
+  getSubjects,
+  getActions,
   deleteRole,
   createPermission,
   updatePermission,
@@ -69,7 +70,13 @@ import {
   updateRole,
   assignPermission,
   assignRolesToUser,
-  getUserRoles
+  getUserRoles,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  createAction,
+  updateAction,
+  deleteAction
 } from '@/utils/api/rbac';
 import { getUsers } from '@/utils/api/users';
 import { openSnackbar } from '@/states/snackbar';
@@ -104,6 +111,8 @@ interface PermissionRow {
   id: string;
   subject: string;
   action: string;
+  subjectId?: number;
+  actionId?: number;
   description: string;
   roles: string[];
 }
@@ -122,6 +131,18 @@ interface CreatePermissionData {
   permission?: string;
   description?: string;
   roles?: string[];
+}
+
+interface SubjectRow {
+  id: string | number;
+  description: string;
+  createdAt?: string;
+}
+
+interface ActionRow {
+  id: string | number;
+  description: string;
+  createdAt?: string;
 }
 
 const permissionActionValues: Record<string, string> = {
@@ -158,6 +179,29 @@ const filterPermissions = ['account.delete', 'account.view', 'account.update', '
 
 const filterRoles = ['Super Admin', 'Billing Admin', 'Admin', 'Developer', 'Product Designer'];
 
+/*************************** HELPERS ***************************/
+
+function SubjectActionDescriptionField({
+  value,
+  onChange,
+  placeholder
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <OutlinedInput
+      fullWidth
+      size="small"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      inputProps={{ maxLength: 100 }}
+    />
+  );
+}
+
 /*************************** VIEW ***************************/
 
 export default function RolesPermissionsView() {
@@ -172,8 +216,34 @@ export default function RolesPermissionsView() {
 
   const [roles, setRoles] = useState<RoleRow[]>([]);
   const [permissions, setPermissions] = useState<PermissionRow[]>([]);
+  const [subjectRows, setSubjectRows] = useState<SubjectRow[]>([]);
+  const [actionRows, setActionRows] = useState<ActionRow[]>([]);
+  const [subjectsPage, setSubjectsPage] = useState(1);
+  const [actionsPage, setActionsPage] = useState(1);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  /*************************** SUBJECT STATE ***************************/
+
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectMenuAnchorEl, setSubjectMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuSubject, setMenuSubject] = useState<SubjectRow | null>(null);
+  const [openCreateSubjectDialog, setOpenCreateSubjectDialog] = useState(false);
+  const [openEditSubjectDialog, setOpenEditSubjectDialog] = useState(false);
+  const [openDeleteSubjectDialog, setOpenDeleteSubjectDialog] = useState(false);
+  const [editSubjectDescription, setEditSubjectDescription] = useState('');
+  const [subjectDialogError, setSubjectDialogError] = useState('');
+
+  /*************************** ACTION STATE ***************************/
+
+  const [actionSearch, setActionSearch] = useState('');
+  const [actionMenuAnchorEl, setActionMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuAction, setMenuAction] = useState<ActionRow | null>(null);
+  const [openCreateActionDialog, setOpenCreateActionDialog] = useState(false);
+  const [openEditActionDialog, setOpenEditActionDialog] = useState(false);
+  const [openDeleteActionDialog, setOpenDeleteActionDialog] = useState(false);
+  const [editActionDescription, setEditActionDescription] = useState('');
+  const [actionDialogError, setActionDialogError] = useState('');
 
   /*************************** DATA LOADING (BACKEND) ***************************/
 
@@ -182,24 +252,108 @@ export default function RolesPermissionsView() {
     setDataLoading(true);
     setDataError(null);
 
-    const [rolesRes, permsRes] = await Promise.all([getRoles(), getPermissions()]);
+    const [rolesRes, permsRes, subjectsRes, actionsRes, usersRes] = await Promise.all([
+      getRoles(),
+      getPermissions(),
+      getSubjects(),
+      getActions(),
+      getUsers()
+    ]);
+
+    // Mapa id → description para resolver subjectId/actionId vindos do backend ONC
+    type LookupItem = { id: string | number; description?: string };
+    const subjectMap = new Map<number, string>(
+      ((subjectsRes.data ?? []) as LookupItem[]).map((s) => [Number(s.id), s.description || ''])
+    );
+    const actionMap = new Map<number, string>(
+      ((actionsRes.data ?? []) as LookupItem[]).map((a) => [Number(a.id), a.description || ''])
+    );
+
+    // Mapa id → Permission para resolver IDs de permissão vindos do backend ONC
+    // (GET /roles retorna RolePermissionsIntsResponseDTO com permissions: number[])
+    type AnyPerm = ApiPermission & Record<string, unknown>;
+    const permissionMap = new Map<number, AnyPerm>(
+      ((permsRes.data ?? []) as AnyPerm[]).map((p) => [Number(p.id), p])
+    );
+
+    // Mapa id → usuário para resolver UUIDs de usuário vindos do backend ONC
+    // (GET /roles retorna RolePermissionsIntsResponseDTO com users: string[])
+    // Campos suportados: nomeCompleto (ONC/mock), userName, email — todos camelCase conforme Swagger UserResponseDTO
+    type AnyUser = {
+      id?: unknown; Id?: unknown;
+      nomeCompleto?: unknown; NomeCompleto?: unknown;
+      userName?: unknown; UserName?: unknown;
+      email?: unknown; Email?: unknown;
+      [key: string]: unknown
+    };
+    const resolveUserName = (u: AnyUser, fallback: string): string =>
+      String(u.nomeCompleto || u.NomeCompleto || u.userName || u.UserName || u.email || u.Email || fallback);
+    const resolveUserUsername = (u: AnyUser): string =>
+      String(u.userName || u.UserName || u.email || u.Email || '');
+
+    // Chaves em lowercase para tolerar casing diferente de UUIDs (ONC pode serializar em maiúsculas)
+    const userMap = new Map<string, AnyUser>(
+      ((usersRes.data ?? []) as AnyUser[]).map((u) => [String(u.id ?? u.Id ?? '').toLowerCase(), u])
+    );
 
     if (rolesRes.error) {
       setRoles([]);
     } else if (Array.isArray(rolesRes.data)) {
       const mapped: RoleRow[] = (rolesRes.data as ApiRole[]).map((role) => {
-        const rolePermissions = (role.permissions ?? []).map((p) => ({
-          id: String(p.id),
-          name: p.name ?? '',
-          description: p.description ?? ''
-        }));
+        // ONC retorna permissions como number[] (só IDs); mock retorna objetos completos.
+        const rolePermissions = (role.permissions ?? []).map((p) => {
+          if (typeof p === 'number' || (typeof p !== 'object')) {
+            // Modo ONC: p é um ID numérico — resolve via mapa
+            const full = permissionMap.get(Number(p));
+            if (full) {
+              const subId = typeof full.subjectId === 'number' ? full.subjectId : undefined;
+              const actId = typeof full.actionId === 'number' ? full.actionId : undefined;
+              const subDesc = (subId != null ? subjectMap.get(subId) : undefined) ?? String(full.subject ?? '');
+              const actDesc = (actId != null ? actionMap.get(actId) : undefined) ?? String(full.action ?? full.name ?? '');
+              const label = subDesc && actDesc ? `${subDesc}.${actDesc}` : (full.description ?? `#${p}`);
+              return { id: String(full.id), name: label, description: String(full.description ?? '') };
+            }
+            return { id: String(p), name: `#${p}`, description: '' };
+          }
+          // Modo mock: p é um objeto completo
+          const pObj = p as ApiPermission;
+          return { id: String(pObj.id), name: pObj.name ?? '', description: pObj.description ?? '' };
+        });
 
-        // Processa usuários atribuídos ao role
-        const roleUsers = (role.users ?? []).map((u: any) => ({
-          id: String(u.id ?? ''),
-          name: String(u.name || u.userName || u.email || 'Usuário'),
-          username: String(u.userName || u.email || '')
-        }));
+        // ONC retorna users como string[] (UUIDs); mock retorna objetos completos.
+        // Em ambos os casos, sempre buscamos o usuário no userMap (dados de getUsers())
+        // para garantir que nomeCompleto seja exibido de forma consistente.
+        const roleUsers = (role.users ?? []).map((u: unknown) => {
+          // Extrai o ID raw em lowercase (consistente com chaves do userMap e availableUsers)
+          const rawId = (typeof u === 'string'
+            ? u
+            : String((u as AnyUser).id ?? (u as AnyUser).Id ?? '')
+          ).toLowerCase();
+
+          // Prioridade 1: userMap (fonte canônica vinda de getUsers() com nomeCompleto)
+          // Lookup em lowercase para tolerar casing diferente de UUIDs
+          const fromMap = rawId ? userMap.get(rawId.toLowerCase()) : undefined;
+          if (fromMap) {
+            return {
+              id: rawId,
+              name: resolveUserName(fromMap, rawId),
+              username: resolveUserUsername(fromMap)
+            };
+          }
+
+          // Prioridade 2: campos do próprio objeto embutido (fallback para mock offline)
+          if (typeof u !== 'string') {
+            const uObj = u as AnyUser;
+            return {
+              id: rawId,
+              name: resolveUserName(uObj, rawId),
+              username: resolveUserUsername(uObj)
+            };
+          }
+
+          // Último recurso: exibe o ID (UUID) mesmo
+          return { id: rawId, name: rawId, username: '' };
+        });
 
         const assignedUserNames = roleUsers.map((u) => u.name?.charAt(0)?.toUpperCase() || 'U');
         const extraUsersCount = Math.max(0, roleUsers.length - 4);
@@ -224,9 +378,20 @@ export default function RolesPermissionsView() {
       setPermissions([]);
     } else if (Array.isArray(permsRes.data)) {
       const mapped: PermissionRow[] = (permsRes.data as Array<ApiPermission & Record<string, unknown>>).map((perm) => {
-        const rawSubject = String(perm.subject ?? perm.Subject ?? perm.resource ?? perm.Resource ?? '');
-        const rawAction = perm.action ?? perm.Action ?? perm.name ?? perm.Name ?? '';
-        const actionValue = Array.isArray(rawAction) ? rawAction.join(', ') : String(rawAction);
+        // IDs numéricos retornados pelo backend ONC
+        const subjectId = typeof perm.subjectId === 'number' ? perm.subjectId : undefined;
+        const actionId = typeof perm.actionId === 'number' ? perm.actionId : undefined;
+
+        // Tenta descrição via lookup de ID (modo ONC); fallback para campos de texto (modo mock)
+        const rawSubject =
+          (subjectId != null ? subjectMap.get(subjectId) : undefined) ??
+          String(perm.subject ?? perm.Subject ?? perm.resource ?? perm.Resource ?? '');
+
+        const rawActionText =
+          (actionId != null ? actionMap.get(actionId) : undefined) ??
+          String(perm.action ?? perm.Action ?? perm.name ?? perm.Name ?? '');
+
+        const actionValue = Array.isArray(rawActionText) ? (rawActionText as string[]).join(', ') : rawActionText;
         const dottedParts = !rawSubject && actionValue.includes('.') ? actionValue.split('.') : [];
         const subject = rawSubject || dottedParts[0] || '';
         const action = dottedParts.length > 1 ? dottedParts.slice(1).join('.') : actionValue;
@@ -236,6 +401,8 @@ export default function RolesPermissionsView() {
           id: String(perm.id ?? perm.Id),
           subject,
           action,
+          subjectId,
+          actionId,
           description: String(perm.description ?? perm.Description ?? ''),
           roles: Array.isArray(rawRoles) ? rawRoles.map(String) : []
         };
@@ -243,6 +410,15 @@ export default function RolesPermissionsView() {
       setPermissions(mapped);
     } else {
       setPermissions([]);
+    }
+
+    // Carrega subjects e actions nas tabelas próprias
+    type LookupRow = { id: string | number; description?: string; createdAt?: string };
+    if (!subjectsRes.error && Array.isArray(subjectsRes.data)) {
+      setSubjectRows((subjectsRes.data as LookupRow[]).map((s) => ({ id: s.id, description: s.description ?? '', createdAt: s.createdAt })));
+    }
+    if (!actionsRes.error && Array.isArray(actionsRes.data)) {
+      setActionRows((actionsRes.data as LookupRow[]).map((a) => ({ id: a.id, description: a.description ?? '', createdAt: a.createdAt })));
     }
 
     const errors = [rolesRes.error, permsRes.error].filter(Boolean);
@@ -260,6 +436,132 @@ export default function RolesPermissionsView() {
   /*************************** SEARCH ***************************/
 
   const [search, setSearch] = useState('');
+
+  /*************************** SUBJECTS HANDLERS ***************************/
+
+  const filteredSubjects = useMemo(
+    () => subjectRows.filter((s) => s.description.toLowerCase().includes(subjectSearch.toLowerCase())),
+    [subjectRows, subjectSearch]
+  );
+  const totalSubjectPages = Math.max(1, Math.ceil(filteredSubjects.length / rowsPerPage));
+  const paginatedSubjects = filteredSubjects.slice((subjectsPage - 1) * rowsPerPage, subjectsPage * rowsPerPage);
+
+  const handleSubjectMenuOpen = (event: MouseEvent<HTMLElement>, subject: SubjectRow) => {
+    setSubjectMenuAnchorEl(event.currentTarget);
+    setMenuSubject(subject);
+  };
+  const handleSubjectMenuClose = () => {
+    setSubjectMenuAnchorEl(null);
+  };
+
+  const handleCreateSubjectSave = async (description: string) => {
+    setSubjectDialogError('');
+    const { data, error } = await createSubject({ description });
+    if (error) { setSubjectDialogError(error); return; }
+    const created = data as { id: string | number; description: string; createdAt?: string } | null;
+    setSubjectRows((prev) => [...prev, { id: created?.id ?? Date.now(), description, createdAt: created?.createdAt }]);
+    setOpenCreateSubjectDialog(false);
+    openSnackbar({ open: true, message: 'Alvo criado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
+
+  const handleEditSubjectOpen = () => {
+    if (!menuSubject) return;
+    setEditSubjectDescription(menuSubject.description);
+    setSubjectDialogError('');
+    handleSubjectMenuClose();
+    setOpenEditSubjectDialog(true);
+  };
+
+  const handleEditSubjectSave = async () => {
+    if (!menuSubject) return;
+    setSubjectDialogError('');
+    const { error } = await updateSubject({ id: menuSubject.id, description: editSubjectDescription });
+    if (error) { setSubjectDialogError(error); return; }
+    setSubjectRows((prev) => prev.map((s) => s.id === menuSubject.id ? { ...s, description: editSubjectDescription } : s));
+    setOpenEditSubjectDialog(false);
+    openSnackbar({ open: true, message: 'Alvo atualizado', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
+
+  const handleDeleteSubjectOpen = () => {
+    handleSubjectMenuClose();
+    setOpenDeleteSubjectDialog(true);
+  };
+
+  const handleDeleteSubjectConfirm = async () => {
+    if (!menuSubject) return;
+    const { error } = await deleteSubject(menuSubject.id);
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return;
+    }
+    setSubjectRows((prev) => prev.filter((s) => s.id !== menuSubject.id));
+    setOpenDeleteSubjectDialog(false);
+    setMenuSubject(null);
+    openSnackbar({ open: true, message: 'Alvo excluído', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
+
+  /*************************** ACTIONS HANDLERS ***************************/
+
+  const filteredActions = useMemo(
+    () => actionRows.filter((a) => a.description.toLowerCase().includes(actionSearch.toLowerCase())),
+    [actionRows, actionSearch]
+  );
+  const totalActionPages = Math.max(1, Math.ceil(filteredActions.length / rowsPerPage));
+  const paginatedActions = filteredActions.slice((actionsPage - 1) * rowsPerPage, actionsPage * rowsPerPage);
+
+  const handleActionMenuOpen = (event: MouseEvent<HTMLElement>, action: ActionRow) => {
+    setActionMenuAnchorEl(event.currentTarget);
+    setMenuAction(action);
+  };
+  const handleActionMenuClose = () => {
+    setActionMenuAnchorEl(null);
+  };
+
+  const handleCreateActionSave = async (description: string) => {
+    setActionDialogError('');
+    const { data, error } = await createAction({ description });
+    if (error) { setActionDialogError(error); return; }
+    const created = data as { id: string | number; description: string; createdAt?: string } | null;
+    setActionRows((prev) => [...prev, { id: created?.id ?? Date.now(), description, createdAt: created?.createdAt }]);
+    setOpenCreateActionDialog(false);
+    openSnackbar({ open: true, message: 'Ação criada com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
+
+  const handleEditActionOpen = () => {
+    if (!menuAction) return;
+    setEditActionDescription(menuAction.description);
+    setActionDialogError('');
+    handleActionMenuClose();
+    setOpenEditActionDialog(true);
+  };
+
+  const handleEditActionSave = async () => {
+    if (!menuAction) return;
+    setActionDialogError('');
+    const { error } = await updateAction({ id: menuAction.id, description: editActionDescription });
+    if (error) { setActionDialogError(error); return; }
+    setActionRows((prev) => prev.map((a) => a.id === menuAction.id ? { ...a, description: editActionDescription } : a));
+    setOpenEditActionDialog(false);
+    openSnackbar({ open: true, message: 'Ação atualizada', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
+
+  const handleDeleteActionOpen = () => {
+    handleActionMenuClose();
+    setOpenDeleteActionDialog(true);
+  };
+
+  const handleDeleteActionConfirm = async () => {
+    if (!menuAction) return;
+    const { error } = await deleteAction(menuAction.id);
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+      return;
+    }
+    setActionRows((prev) => prev.filter((a) => a.id !== menuAction.id));
+    setOpenDeleteActionDialog(false);
+    setMenuAction(null);
+    openSnackbar({ open: true, message: 'Ação excluída', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+  };
 
   /*************************** CREATE ***************************/
 
@@ -311,16 +613,61 @@ export default function RolesPermissionsView() {
   });
 
   // Buscar usuários disponíveis para seleção
+  // Normalização defensiva: cobre camelCase e PascalCase, alinhado ao UserResponseDTO do Swagger
   const { data: availableUsers, isLoading: usersLoading } = useSWR('/api/users', async () => {
     const { data, error } = await getUsers();
     if (error) throw new Error(error);
-    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+    type RawUser = Record<string, unknown>;
+    const list = (Array.isArray(data) ? data : []) as RawUser[];
     return list.map((u) => ({
-      id: String(u.id ?? ''),
-      name: String(u.nomeCompleto || u.userName || u.email || u.id || 'Usuário'),
-      username: String(u.userName || u.email || '')
+      // id em lowercase para ser consistente com o userMap de reloadData
+      id: String(u.id ?? u.Id ?? '').toLowerCase(),
+      name: String(u.nomeCompleto || u.NomeCompleto || u.userName || u.UserName || u.email || u.Email || u.id || 'Usuário'),
+      username: String(u.userName || u.UserName || u.email || u.Email || '')
     }));
   });
+
+  // Buscar subjects/actions para resolver subjectId/actionId → descrição nos rótulos
+  const { data: subjectsData } = useSWR('/api/rbac/subjects', async () => {
+    const { data } = await getSubjects();
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+  });
+
+  const { data: actionsData } = useSWR('/api/rbac/actions', async () => {
+    const { data } = await getActions();
+    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+  });
+
+  const subjectLookup = useMemo(
+    () => new Map<number, string>((subjectsData ?? []).map((s) => [Number(s.id), s.description || ''])),
+    [subjectsData]
+  );
+
+  const actionLookup = useMemo(
+    () => new Map<number, string>((actionsData ?? []).map((a) => [Number(a.id), a.description || ''])),
+    [actionsData]
+  );
+
+  // Resolve um objeto de permissão para um rótulo legível.
+  // Prioridade: description > subject.action > name > id
+  const resolvePermLabel = useCallback(
+    (p: {
+      id?: string | number;
+      name?: string;
+      description?: string;
+      subject?: string;
+      action?: string;
+      subjectId?: number;
+      actionId?: number;
+    }): string => {
+      if (p.description) return p.description;
+      const subject = p.subject || (p.subjectId != null ? subjectLookup.get(Number(p.subjectId)) : undefined) || '';
+      const action = p.action || (p.actionId != null ? actionLookup.get(Number(p.actionId)) : undefined) || '';
+      if (subject || action) return [subject, action].filter(Boolean).join('.');
+      return p.name ?? String(p.id ?? '');
+    },
+    [subjectLookup, actionLookup]
+  );
 
   /*************************** DELETE ROLE ***************************/
 
@@ -357,21 +704,25 @@ export default function RolesPermissionsView() {
   const handleTabChange = (_event: SyntheticEvent, value: number) => {
     setTab(value);
     setSearch('');
+    setSubjectSearch('');
+    setActionSearch('');
     setRolesPage(1);
     setPermissionsPage(1);
+    setSubjectsPage(1);
+    setActionsPage(1);
   };
 
-  const addButtonLabel = tab === 0 ? 'Novo Papel' : 'Nova Permissão';
+  const addButtonLabel =
+    tab === 0 ? 'Novo Papel' :
+    tab === 1 ? 'Nova Permissão' :
+    tab === 2 ? 'Novo Alvo' :
+    'Nova Ação';
 
   const handleAddClick = () => {
-    if (tab === 0) {
-      setOpenCreateRoleDialog(true);
-      return;
-    }
-
-    if (tab === 1) {
-      setOpenCreatePermissionDialog(true);
-    }
+    if (tab === 0) { setOpenCreateRoleDialog(true); return; }
+    if (tab === 1) { setOpenCreatePermissionDialog(true); return; }
+    if (tab === 2) { setSubjectDialogError(''); setEditSubjectDescription(''); setOpenCreateSubjectDialog(true); return; }
+    if (tab === 3) { setActionDialogError(''); setEditActionDescription(''); setOpenCreateActionDialog(true); }
   };
 
   /*************************** SEARCH ***************************/
@@ -522,7 +873,7 @@ export default function RolesPermissionsView() {
 
   /*************************** ROLE MENU ***************************/
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, role: RoleRow) => {
+  const handleMenuOpen = (event: MouseEvent<HTMLElement>, role: RoleRow) => {
     setMenuAnchorEl(event.currentTarget);
     setMenuRole(role);
   };
@@ -551,14 +902,6 @@ export default function RolesPermissionsView() {
 
   const handleEditRoleClose = () => {
     setOpenEditRoleDialog(false);
-  };
-
-  const handleRemovePermission = (permissionId: string) => {
-    setEditPermissions((current) => current.filter((permission) => permission.id !== permissionId));
-  };
-
-  const handleRemoveUser = (userId: string) => {
-    setEditUsers((current) => current.filter((user) => user.id !== userId));
   };
 
   const handleAddPermissions = (permissionIds: string[]) => {
@@ -653,40 +996,54 @@ export default function RolesPermissionsView() {
     }
     console.log('handleEditRoleSave - assignPermission concluído com sucesso');
 
-    // 3) Sincroniza a atribuição de usuários ao papel de forma exata: remove o papel
-    // dos usuários que saíram da seleção e mantém o papel apenas nos usuários selecionados.
+    // 3) Sincroniza a atribuição de usuários ao papel.
+    // Processa APENAS os usuários que mudaram: adicionados ou removidos.
+    // Isso evita chamar getUserRoles para todos os usuários do sistema,
+    // o que causaria erro 404 para usuários sem nenhum papel ainda.
     const selectedUserIds = editUsers.map((u) => String(u.id));
     const selectedUserIdSet = new Set(selectedUserIds);
-    const usersToSync = (availableUsers ?? []).map((user) => String(user.id));
+    const originalUserIdSet = new Set((menuRole.users ?? []).map((u) => String(u.id)));
+
+    // Usuários adicionados: estão em editUsers mas não estavam em menuRole.users
+    const addedUserIds = selectedUserIds.filter((id) => !originalUserIdSet.has(id));
+    // Usuários removidos: estavam em menuRole.users mas não estão em editUsers
+    const removedUserIds = Array.from(originalUserIdSet).filter((id) => !selectedUserIdSet.has(id));
+    const usersToSync = Array.from(new Set([...addedUserIds, ...removedUserIds]));
 
     console.log('handleEditRoleSave - Usuários selecionados:', selectedUserIds);
-    console.log('handleEditRoleSave - Chamando assignRolesToUser para sincronizar a atribuição final...');
+    console.log('handleEditRoleSave - Adicionados:', addedUserIds, '| Removidos:', removedUserIds);
+
+    // Helper: extrai lista de role IDs do payload do getUserRoles.
+    // O endpoint ONC pode retornar:
+    //   - array de user-role pairs: [{ role_id: 5, user_id: "uuid" }]
+    //   - array de objetos de role completos: [{ id: 5, name: "Admin" }]
+    //   - array de IDs primitivos: [5, 3]
+    //   - envelope: { roles: [...] }
+    const parseRoleIds = (payload: unknown): string[] => {
+      type RoleItem = string | number | { role_id?: string | number; roleId?: string | number; id?: string | number };
+      const items = (
+        Array.isArray(payload) ? payload : ((payload as { roles?: RoleItem[] })?.roles ?? [])
+      ) as RoleItem[];
+      return items
+        .map((item) => (typeof item === 'object' && item !== null ? item.role_id ?? item.roleId ?? item.id : item))
+        .filter((id): id is string | number => id !== undefined && id !== null)
+        .map(String);
+    };
 
     const results = await Promise.all(
       usersToSync.map(async (userId) => {
         const currentRolesResult = await getUserRoles(userId);
 
-        if (currentRolesResult.error) {
-          return { error: currentRolesResult.error };
-        }
+        // Se getUserRoles retornar erro (ex.: 404 "usuário sem papéis"), trata como lista vazia.
+        // Não propaga o erro — um usuário sem papéis ainda pode receber ou perder este papel.
+        const currentRoles: string[] = currentRolesResult.error ? [] : parseRoleIds(currentRolesResult.data);
 
-        const currentRolePayload = currentRolesResult.data as
-          | Array<string | number | { role_id?: string | number; roleId?: string | number }>
-          | { roles?: Array<string | number | { role_id?: string | number; roleId?: string | number }> }
-          | null;
-        const currentRoleItems = (Array.isArray(currentRolePayload) ? currentRolePayload : currentRolePayload?.roles ?? []) as Array<
-          | string
-          | number
-          | { role_id?: string | number; roleId?: string | number }
-        >;
-        const currentRoles = currentRoleItems
-          .map((item) => (typeof item === 'object' ? item.role_id ?? item.roleId : item))
-          .filter((id): id is string | number => id !== undefined && id !== null)
-          .map(String);
-        const nextRoles = Array.from(new Set(currentRoles.filter((existingRoleId) => existingRoleId !== roleId))).concat(
-          selectedUserIdSet.has(userId) ? [roleId] : []
-        );
+        // Calcula o próximo conjunto de papéis para este usuário
+        const nextRoles = Array.from(
+          new Set(currentRoles.filter((existingRoleId) => existingRoleId !== roleId))
+        ).concat(selectedUserIdSet.has(userId) ? [roleId] : []);
 
+        console.log(`handleEditRoleSave - userId=${userId} papéis atuais=${currentRoles} → próximos=${nextRoles}`);
         return assignRolesToUser({ userId, roles: nextRoles });
       })
     );
@@ -786,7 +1143,7 @@ export default function RolesPermissionsView() {
 
   /*************************** PERMISSION MENU ***************************/
 
-  const handlePermissionMenuOpen = (event: React.MouseEvent<HTMLElement>, permission: PermissionRow) => {
+  const handlePermissionMenuOpen = (event: MouseEvent<HTMLElement>, permission: PermissionRow) => {
     setPermissionMenuAnchorEl(event.currentTarget);
 
     setMenuPermission(permission);
@@ -804,13 +1161,16 @@ export default function RolesPermissionsView() {
     }
 
     // Prepara os dados no formato esperado pelo CreatePermissionDialog
+    // Passa IDs numéricos para o form (subjectId/actionId) além das descriptions para fallback de display
     const permissionData: PermissionData = {
       id: menuPermission.id,
-      target: menuPermission.subject, // Subject é o alvo
+      target: menuPermission.subject,
+      targetId: menuPermission.subjectId != null ? String(menuPermission.subjectId) : undefined,
       actions: menuPermission.action
         .split(',')
         .map((action) => action.trim())
         .filter(Boolean),
+      actionIds: menuPermission.actionId != null ? [String(menuPermission.actionId)] : undefined,
       description: menuPermission.description
     };
 
@@ -835,19 +1195,24 @@ export default function RolesPermissionsView() {
     console.log('handleEditPermissionSave - menuPermission:', menuPermission);
     console.log('handleEditPermissionSave - ID da permissão:', menuPermission.id);
 
-    const actions = data.actions.map(normalizePermissionAction).filter(Boolean);
-    const action = actions[0];
-    if (!action) {
+    // data.target = subjectId (string), data.actions = actionIds (string[])
+    const subjectId = data.target ? Number(data.target) : NaN;
+    const actionIds = data.actions.map(Number).filter((n) => !isNaN(n) && n > 0);
+    const firstActionId = actionIds[0];
+
+    if (!firstActionId || isNaN(subjectId)) {
       openSnackbar({ open: true, message: 'Selecione pelo menos uma ação.', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
       return false;
     }
 
-    const duplicatePermission = permissions.find(
-      (permission) =>
-        permission.id !== menuPermission.id &&
-        permission.subject.trim().toLowerCase() === data.target.trim().toLowerCase() &&
-        actions.includes(normalizePermissionAction(permission.action.split(',')[0].trim()))
-    );
+    const duplicatePermission = permissions.find((permission) => {
+      if (permission.id === menuPermission.id) return false;
+      // Comparação por IDs quando disponíveis (modo ONC); fallback por texto (modo mock)
+      if (permission.subjectId != null && !isNaN(subjectId)) {
+        return permission.subjectId === subjectId && permission.actionId === firstActionId;
+      }
+      return permission.subject.trim().toLowerCase() === data.target.trim().toLowerCase();
+    });
     if (duplicatePermission) {
       openSnackbar({
         open: true,
@@ -862,14 +1227,14 @@ export default function RolesPermissionsView() {
     // O backend mantém uma ação por permissão; a edição atualiza o registro existente.
     console.log('handleEditPermissionSave - Enviando updatePermission com:', {
       id: menuPermission.id,
-      subject: data.target,
-      action,
+      subjectId,
+      actionId: firstActionId,
       description: data.description
     });
     const { error } = await updatePermission({
       id: menuPermission.id,
-      subject: data.target,
-      action,
+      subjectId,
+      actionId: firstActionId,
       description: data.description
     });
 
@@ -880,10 +1245,10 @@ export default function RolesPermissionsView() {
     }
 
     const additionalPermissionResults = await Promise.all(
-      actions.slice(1).map((additionalAction) =>
+      actionIds.slice(1).map((additionalActionId) =>
         createPermission({
-          subject: data.target,
-          action: additionalAction,
+          subjectId,
+          actionId: additionalActionId,
           description: data.description
         })
       )
@@ -970,21 +1335,23 @@ export default function RolesPermissionsView() {
   /*************************** CREATE PERMISSION ***************************/
 
   const handleCreatePermission = async (data: CreatePermissionData) => {
-    const subject = data.target || data.name || '';
-    const actions = data.actions && data.actions.length > 0 ? data.actions : data.action ? [data.action] : [];
+    // data.target = subjectId (string), data.actions = actionIds (string[])
+    const subjectId = data.target ? Number(data.target) : NaN;
+    const rawActions = data.actions && data.actions.length > 0 ? data.actions : data.action ? [data.action] : [];
+    const actionIds = rawActions.map(Number).filter((n) => !isNaN(n) && n > 0);
 
-    if (!subject || actions.length === 0) {
+    if (isNaN(subjectId) || actionIds.length === 0) {
       setOpenCreatePermissionDialog(false);
       return;
     }
 
-    // O backend modela cada permissão como um par subject + action.
+    // O backend modela cada permissão como um par subjectId + actionId.
     // Quando várias ações são selecionadas, criamos uma permissão para cada.
     const results = await Promise.all(
-      actions.map((action) =>
+      actionIds.map((actionId) =>
         createPermission({
-          subject,
-          action,
+          subjectId,
+          actionId,
           description: data.description || ''
         })
       )
@@ -1070,6 +1437,8 @@ export default function RolesPermissionsView() {
         >
           <Tab label="Papéis" />
           <Tab label="Permissões" />
+          <Tab label="Alvo" />
+          <Tab label="Ação" />
         </Tabs>
 
         {dataLoading && (
@@ -1240,17 +1609,13 @@ export default function RolesPermissionsView() {
               >
                 <TableHead>
                   <TableRow>
-                    <TableCell padding="checkbox" sx={{ width: 52 }}>
-                      <Checkbox />
-                    </TableCell>
+                    <TableCell sx={{ width: '15%' }}>Papel</TableCell>
 
-                    <TableCell sx={{ width: '16%' }}>Papel</TableCell>
+                    <TableCell sx={{ width: '27%' }}>Descrição</TableCell>
 
-                    <TableCell sx={{ width: '38%' }}>Descrição</TableCell>
+                    <TableCell sx={{ width: '28%' }}>Usuário atribuído</TableCell>
 
-                    <TableCell sx={{ width: '20%' }}>Usuário atribuído</TableCell>
-
-                    <TableCell sx={{ width: '10%' }}>Permissão</TableCell>
+                    <TableCell sx={{ width: '24%' }}>Permissão</TableCell>
 
                     <TableCell align="right" sx={{ width: 60 }} />
                   </TableRow>
@@ -1259,9 +1624,6 @@ export default function RolesPermissionsView() {
                 <TableBody>
                   {paginatedRoles.map((role) => (
                     <TableRow key={role.id} hover>
-                      <TableCell padding="checkbox">
-                        <Checkbox />
-                      </TableCell>
 
                       <TableCell sx={{ overflow: 'hidden' }}>
                         <Typography variant="subtitle2" noWrap>
@@ -1287,41 +1649,37 @@ export default function RolesPermissionsView() {
                       </TableCell>
 
                       <TableCell>
-                        <Stack
-                          direction="row"
-                          sx={{
-                            alignItems: 'center',
-                            gap: 1,
-                            minWidth: 0
-                          }}
-                        >
-                          <AvatarGroup
-                            max={4}
-                            sx={{
-                              '& .MuiAvatar-root': {
-                                width: 28,
-                                height: 28,
-                                fontSize: 12
-                              }
-                            }}
-                          >
-                            {role.assignedUsers.map((initial, index) => (
-                              <Avatar key={index}>{initial}</Avatar>
+                        {role.users.length === 0 ? (
+                          <Typography variant="body2" color="text.disabled">—</Typography>
+                        ) : (
+                          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                            {role.users.slice(0, 3).map((u) => (
+                              <Chip key={u.id} label={u.name} size="small" color="success" variant="outlined" />
                             ))}
-                          </AvatarGroup>
-
-                          {role.extraUsersCount > 0 && (
-                            <Typography variant="caption" color="text.secondary" noWrap>
-                              +{role.extraUsersCount}
-                            </Typography>
-                          )}
-                        </Stack>
+                            {role.users.length > 3 && (
+                              <Typography variant="caption" color="text.secondary">
+                                +{role.users.length - 3}
+                              </Typography>
+                            )}
+                          </Stack>
+                        )}
                       </TableCell>
 
                       <TableCell>
-                        <Typography variant="body2" noWrap>
-                          {role.permissionCount}
-                        </Typography>
+                        {role.permissions.length === 0 ? (
+                          <Typography variant="body2" color="text.disabled">—</Typography>
+                        ) : (
+                          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                            {role.permissions.slice(0, 3).map((p) => (
+                              <Chip key={p.id} label={p.description || p.name || String(p.id)} size="small" color="primary" variant="outlined" />
+                            ))}
+                            {role.permissions.length > 3 && (
+                              <Typography variant="caption" color="text.secondary">
+                                +{role.permissions.length - 3}
+                              </Typography>
+                            )}
+                          </Stack>
+                        )}
                       </TableCell>
 
                       <TableCell align="right">
@@ -1497,17 +1855,12 @@ export default function RolesPermissionsView() {
               >
                 <TableHead>
                   <TableRow>
-                    <TableCell padding="checkbox" sx={{ width: 52 }}>
-                      <Checkbox />
-                    </TableCell>
 
                     <TableCell sx={{ width: '12%' }}>Alvo</TableCell>
 
                     <TableCell sx={{ width: '15%' }}>Ações</TableCell>
 
-                    <TableCell sx={{ width: '38%' }}>Descrição</TableCell>
-
-                    <TableCell sx={{ width: '25%' }}>Papéis</TableCell>
+                    <TableCell sx={{ width: '63%' }}>Descrição</TableCell>
 
                     <TableCell align="right" sx={{ width: 60 }} />
                   </TableRow>
@@ -1516,10 +1869,7 @@ export default function RolesPermissionsView() {
                 <TableBody>
                   {paginatedPermissions.map((permission) => (
                     <TableRow key={permission.id} hover>
-                      <TableCell padding="checkbox">
-                        <Checkbox />
-                      </TableCell>
-
+                      
                       <TableCell
                         sx={{
                           overflow: 'hidden'
@@ -1733,6 +2083,142 @@ export default function RolesPermissionsView() {
                     flexWrap: 'nowrap'
                   }
                 }}
+              />
+            </Stack>
+          </>
+        )}
+
+        {/* ===================================================== */}
+        {/* ABA ALVO (SUBJECT)                                   */}
+        {/* ===================================================== */}
+
+        {tab === 2 && (
+          <>
+            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+              <OutlinedInput
+                fullWidth
+                size="small"
+                placeholder="Pesquisar alvo..."
+                value={subjectSearch}
+                onChange={(e) => { setSubjectSearch(e.target.value); setSubjectsPage(1); }}
+                startAdornment={<InputAdornment position="start"><IconSearch size={18} /></InputAdornment>}
+              />
+            </Box>
+
+            <TableContainer sx={{ overflowX: 'auto' }}>
+              <Table sx={{ tableLayout: 'fixed', minWidth: 500 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: '15%' }}>ID</TableCell>
+                    <TableCell>Descrição</TableCell>
+                    <TableCell align="right" sx={{ width: 60 }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedSubjects.map((subject) => (
+                    <TableRow key={subject.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">{String(subject.id)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2">{subject.description}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={(e) => handleSubjectMenuOpen(e, subject)}>
+                          <IconDotsVertical size={18} />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedSubjects.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                          Nenhum alvo encontrado.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Stack direction="row" sx={{ justifyContent: 'center', alignItems: 'center', p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Pagination
+                count={totalSubjectPages}
+                page={subjectsPage}
+                onChange={(_, value) => setSubjectsPage(value)}
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
+              />
+            </Stack>
+          </>
+        )}
+
+        {/* ===================================================== */}
+        {/* ABA AÇÃO (ACTION)                                    */}
+        {/* ===================================================== */}
+
+        {tab === 3 && (
+          <>
+            <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+              <OutlinedInput
+                fullWidth
+                size="small"
+                placeholder="Pesquisar ação..."
+                value={actionSearch}
+                onChange={(e) => { setActionSearch(e.target.value); setActionsPage(1); }}
+                startAdornment={<InputAdornment position="start"><IconSearch size={18} /></InputAdornment>}
+              />
+            </Box>
+
+            <TableContainer sx={{ overflowX: 'auto' }}>
+              <Table sx={{ tableLayout: 'fixed', minWidth: 500 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ width: '15%' }}>ID</TableCell>
+                    <TableCell>Descrição</TableCell>
+                    <TableCell align="right" sx={{ width: 60 }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedActions.map((action) => (
+                    <TableRow key={action.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">{String(action.id)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="subtitle2">{action.description}</Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={(e) => handleActionMenuOpen(e, action)}>
+                          <IconDotsVertical size={18} />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {paginatedActions.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                          Nenhuma ação encontrada.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Stack direction="row" sx={{ justifyContent: 'center', alignItems: 'center', p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Pagination
+                count={totalActionPages}
+                page={actionsPage}
+                onChange={(_, value) => setActionsPage(value)}
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
               />
             </Stack>
           </>
@@ -2217,11 +2703,11 @@ export default function RolesPermissionsView() {
                     multiple
                     options={(availablePermissions ?? []).map((permission) => ({
                       id: String(permission.id),
-                      label: permission.name || `${permission.subject ?? ''}.${permission.action ?? ''}`.replace(/^\./, '').replace(/\.$/, '') || String(permission.id)
+                      label: resolvePermLabel(permission)
                     }))}
                     value={editPermissions.map((permission) => ({
                       id: String(permission.id),
-                      label: permission.name || String(permission.id)
+                      label: resolvePermLabel(permission)
                     }))}
                     onChange={(_event, value) => {
                       const nextPermissionIds = new Set(value.map((item) => String(item.id)));
@@ -2230,7 +2716,7 @@ export default function RolesPermissionsView() {
                           .filter((permission) => nextPermissionIds.has(String(permission.id)))
                           .map((permission) => ({
                             id: String(permission.id),
-                            name: permission.name || `${permission.subject ?? ''}.${permission.action ?? ''}`.replace(/^\./, '').replace(/\.$/, '') || String(permission.id),
+                            name: resolvePermLabel(permission),
                             description: permission.description ?? ''
                           }))
                       );
@@ -2562,7 +3048,13 @@ export default function RolesPermissionsView() {
       {/* MODAL CRIAR PAPEL                                    */}
       {/* ===================================================== */}
 
-      <CreateRoleDialog open={openCreateRoleDialog} onClose={() => setOpenCreateRoleDialog(false)} onCreate={handleCreateRole} />
+      <CreateRoleDialog
+        open={openCreateRoleDialog}
+        onClose={() => setOpenCreateRoleDialog(false)}
+        onCreate={handleCreateRole}
+        userOptions={availableUsers ?? []}
+        usersLoading={usersLoading}
+      />
 
       {/* ===================================================== */}
       {/* MODAL SELECIONAR PERMISSÕES                          */}
@@ -2713,6 +3205,240 @@ export default function RolesPermissionsView() {
         onClose={() => setOpenCreatePermissionDialog(false)}
         onCreate={handleCreatePermission}
       />
+
+      {/* ===================================================== */}
+      {/* MENU ALVO                                             */}
+      {/* ===================================================== */}
+
+      <Menu anchorEl={subjectMenuAnchorEl} open={Boolean(subjectMenuAnchorEl)} onClose={handleSubjectMenuClose}
+        PaperProps={{ sx: { borderRadius: 2, minWidth: 140 } }}>
+        <MenuItem onClick={handleEditSubjectOpen} sx={{ gap: 1 }}>
+          <IconEdit size={16} /> Editar
+        </MenuItem>
+        <MenuItem onClick={handleDeleteSubjectOpen} sx={{ gap: 1, color: 'error.main' }}>
+          <IconTrash size={16} /> Excluir
+        </MenuItem>
+      </Menu>
+
+      {/* ===================================================== */}
+      {/* MENU AÇÃO                                             */}
+      {/* ===================================================== */}
+
+      <Menu anchorEl={actionMenuAnchorEl} open={Boolean(actionMenuAnchorEl)} onClose={handleActionMenuClose}
+        PaperProps={{ sx: { borderRadius: 2, minWidth: 140 } }}>
+        <MenuItem onClick={handleEditActionOpen} sx={{ gap: 1 }}>
+          <IconEdit size={16} /> Editar
+        </MenuItem>
+        <MenuItem onClick={handleDeleteActionOpen} sx={{ gap: 1, color: 'error.main' }}>
+          <IconTrash size={16} /> Excluir
+        </MenuItem>
+      </Menu>
+
+      {/* ===================================================== */}
+      {/* DIALOG CRIAR ALVO                                     */}
+      {/* ===================================================== */}
+
+      <Dialog open={openCreateSubjectDialog} onClose={() => setOpenCreateSubjectDialog(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
+          <Box>
+            <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Novo Alvo</DialogTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Alvos são entidades do sistema sobre as quais as permissões atuam.
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setOpenCreateSubjectDialog(false)} size="small"
+            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+            <IconX size={18} />
+          </IconButton>
+        </Stack>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          {subjectDialogError && <Alert severity="error" sx={{ mb: 2 }}>{subjectDialogError}</Alert>}
+          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
+          <SubjectActionDescriptionField
+            value={editSubjectDescription}
+            onChange={setEditSubjectDescription}
+            placeholder="Ex: usuario, produto, fatura"
+          />
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenCreateSubjectDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" onClick={() => handleCreateSubjectSave(editSubjectDescription)}
+            disabled={editSubjectDescription.trim().length < 3}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Salvar Alvo</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* DIALOG EDITAR ALVO                                    */}
+      {/* ===================================================== */}
+
+      <Dialog open={openEditSubjectDialog} onClose={() => setOpenEditSubjectDialog(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
+          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Alvo</DialogTitle>
+          <IconButton onClick={() => setOpenEditSubjectDialog(false)} size="small"
+            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+            <IconX size={18} />
+          </IconButton>
+        </Stack>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          {subjectDialogError && <Alert severity="error" sx={{ mb: 2 }}>{subjectDialogError}</Alert>}
+          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
+          <SubjectActionDescriptionField
+            value={editSubjectDescription}
+            onChange={setEditSubjectDescription}
+            placeholder="Ex: usuario, produto, fatura"
+          />
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenEditSubjectDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" onClick={handleEditSubjectSave}
+            disabled={editSubjectDescription.trim().length < 3}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Alvo</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* DIALOG DELETAR ALVO                                   */}
+      {/* ===================================================== */}
+
+      <Dialog open={openDeleteSubjectDialog} onClose={() => setOpenDeleteSubjectDialog(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 22, fontWeight: 600, px: 3, py: 2.5 }}>
+          Excluir Alvo
+          <IconButton size="small" onClick={() => setOpenDeleteSubjectDialog(false)}><IconX size={18} /></IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 4 }}>
+          <Stack sx={{ alignItems: 'center', textAlign: 'center', gap: 2 }}>
+            <Box sx={{ width: 120, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, bgcolor: 'grey.50', color: 'error.main' }}>
+              <IconTrash size={56} stroke={1.2} />
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>Tem certeza que deseja excluir?</Typography>
+            <Typography variant="body1" color="text.secondary">
+              O alvo <Typography component="span" color="primary.main" fontWeight={500}>{menuSubject?.description}</Typography> será excluído permanentemente.
+              Permissões associadas a este alvo podem ser afetadas.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenDeleteSubjectDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteSubjectConfirm}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Excluir</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* DIALOG CRIAR AÇÃO                                     */}
+      {/* ===================================================== */}
+
+      <Dialog open={openCreateActionDialog} onClose={() => setOpenCreateActionDialog(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
+          <Box>
+            <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Nova Ação</DialogTitle>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Ações definem o que pode ser feito sobre um alvo (ex: ler, criar, deletar).
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setOpenCreateActionDialog(false)} size="small"
+            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+            <IconX size={18} />
+          </IconButton>
+        </Stack>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          {actionDialogError && <Alert severity="error" sx={{ mb: 2 }}>{actionDialogError}</Alert>}
+          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
+          <SubjectActionDescriptionField
+            value={editActionDescription}
+            onChange={setEditActionDescription}
+            placeholder="Ex: ler, criar, atualizar, deletar"
+          />
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenCreateActionDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" onClick={() => handleCreateActionSave(editActionDescription)}
+            disabled={editActionDescription.trim().length < 3}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Salvar Ação</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* DIALOG EDITAR AÇÃO                                    */}
+      {/* ===================================================== */}
+
+      <Dialog open={openEditActionDialog} onClose={() => setOpenEditActionDialog(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
+          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Ação</DialogTitle>
+          <IconButton onClick={() => setOpenEditActionDialog(false)} size="small"
+            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+            <IconX size={18} />
+          </IconButton>
+        </Stack>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 2.5 }}>
+          {actionDialogError && <Alert severity="error" sx={{ mb: 2 }}>{actionDialogError}</Alert>}
+          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
+          <SubjectActionDescriptionField
+            value={editActionDescription}
+            onChange={setEditActionDescription}
+            placeholder="Ex: ler, criar, atualizar, deletar"
+          />
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenEditActionDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" onClick={handleEditActionSave}
+            disabled={editActionDescription.trim().length < 3}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Ação</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===================================================== */}
+      {/* DIALOG DELETAR AÇÃO                                   */}
+      {/* ===================================================== */}
+
+      <Dialog open={openDeleteActionDialog} onClose={() => setOpenDeleteActionDialog(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 22, fontWeight: 600, px: 3, py: 2.5 }}>
+          Excluir Ação
+          <IconButton size="small" onClick={() => setOpenDeleteActionDialog(false)}><IconX size={18} /></IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ px: 3, py: 4 }}>
+          <Stack sx={{ alignItems: 'center', textAlign: 'center', gap: 2 }}>
+            <Box sx={{ width: 120, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, bgcolor: 'grey.50', color: 'error.main' }}>
+              <IconTrash size={56} stroke={1.2} />
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>Tem certeza que deseja excluir?</Typography>
+            <Typography variant="body1" color="text.secondary">
+              A ação <Typography component="span" color="primary.main" fontWeight={500}>{menuAction?.description}</Typography> será excluída permanentemente.
+              Permissões associadas a esta ação podem ser afetadas.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+          <Button variant="outlined" color="secondary" onClick={() => setOpenDeleteActionDialog(false)}
+            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteActionConfirm}
+            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Excluir</Button>
+        </DialogActions>
+      </Dialog>
 
     </Stack>
   );

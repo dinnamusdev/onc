@@ -5,8 +5,10 @@ export interface Role {
   name: string;
   description?: string;
   isSystem?: boolean;
-  permissions?: Permission[];
-  users?: Array<{ id: string | number; name: string; username?: string }>;
+  // ONC retorna number[] (IDs); mock retorna Permission[]
+  permissions?: (number | Permission)[];
+  // ONC retorna string[] (UUIDs); mock retorna objetos completos
+  users?: (string | { id: string | number; name: string; username?: string })[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -15,8 +17,10 @@ export interface Permission {
   id: string | number;
   name?: string;
   subject?: string;
+  subjectId?: number;
   resource?: string;
   action?: string;
+  actionId?: number;
   conditions?: string;
   fields?: string;
   description?: string;
@@ -25,8 +29,8 @@ export interface Permission {
 }
 
 export interface CreatePermissionRequest {
-  subject?: string;
-  action?: string;
+  subjectId?: number;
+  actionId?: number;
   conditions?: string;
   fields?: string;
   description?: string;
@@ -34,8 +38,8 @@ export interface CreatePermissionRequest {
 
 export interface UpdatePermissionRequest {
   id: string | number;
-  subject?: string;
-  action?: string;
+  subjectId?: number;
+  actionId?: number;
   conditions?: string;
   fields?: string;
   description?: string;

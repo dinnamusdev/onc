@@ -57,7 +57,9 @@ export async function createRole(request: Request) {
     }
 
     const data = await res.json();
-    return NextResponse.json(data, { status: 201 });
+    // Desempacota o envelope ServiceResponse { data: Role } se necessário
+    const role = data?.data ?? data;
+    return NextResponse.json(role, { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
@@ -139,6 +141,10 @@ export async function getPermissions(request: Request) {
     });
 
     if (!res.ok) {
+      // Backend retorna 404 quando a lista está vazia; trata como array vazio
+      if (res.status === 404) {
+        return NextResponse.json([], { status: 200 });
+      }
       const error = await res.json().catch(() => ({}));
       return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch permissions' }, { status: res.status });
     }
@@ -162,6 +168,7 @@ export async function createPermission(request: Request) {
     console.log('ONC createPermission - Body recebido:', body);
 
     // Swagger: POST /auth/api/Permission/permissions (PermissionCreateDTO)
+    // PermissionCreateDTO exige subjectId (int) e actionId (int)
     const res = await fetch(`${ONC_API}/auth/api/Permission/permissions`, {
       method: 'POST',
       headers: {
@@ -169,8 +176,8 @@ export async function createPermission(request: Request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        subject: body.subject,
-        action: body.action,
+        subjectId: Number(body.subjectId),
+        actionId: Number(body.actionId),
         conditions: body.conditions ?? null,
         fields: body.fields ?? null,
         description: body.description ?? null
@@ -204,6 +211,7 @@ export async function updatePermission(request: Request) {
     console.log('ONC updatePermission - ID:', id, 'UpdateData:', updateData);
 
     // Swagger: PUT /auth/api/Permission/permissions?permissionId= (PermissionUpdateDTO)
+    // PermissionUpdateDTO exige subjectId (int) e actionId (int)
     const res = await fetch(`${ONC_API}/auth/api/Permission/permissions?permissionId=${id}`, {
       method: 'PUT',
       headers: {
@@ -211,8 +219,8 @@ export async function updatePermission(request: Request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        subject: updateData.subject,
-        action: updateData.action,
+        subjectId: Number(updateData.subjectId),
+        actionId: Number(updateData.actionId),
         conditions: updateData.conditions ?? null,
         fields: updateData.fields ?? null,
         description: updateData.description ?? null
@@ -412,6 +420,325 @@ export async function assignRolesToUser(request: Request) {
   }
 }
 
+/***************************  ONC - GET SUBJECTS  ***************************/
+
+export async function getSubjects(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+
+    // Backend: GET /auth/api/Permission/subjects -> SubjectListServiceResponse { data: Subject[] }
+    const res = await fetch(`${ONC_API}/auth/api/Permission/subjects`, {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch subjects' }, { status: res.status });
+    }
+
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(Array.isArray(data) ? data : [data], { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - GET SUBJECT BY ID  ***************************/
+
+export async function getSubjectById(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const subjectId = searchParams.get('subjectId') ?? searchParams.get('id');
+
+    const res = await fetch(`${ONC_API}/auth/api/Permission/subject-by-id?subjectId=${subjectId}`, {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch subject' }, { status: res.status });
+    }
+
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - CREATE SUBJECT  ***************************/
+
+export async function createSubject(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+
+    // Swagger: POST /auth/api/Permission/subjects (SubjectCreateDTO { description: string 3-100 })
+    const res = await fetch(`${ONC_API}/auth/api/Permission/subjects`, {
+      method: 'POST',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ description: body.description })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to create subject' }, { status: res.status });
+    }
+
+    const data = await res.json();
+    return NextResponse.json(data, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - UPDATE SUBJECT  ***************************/
+
+export async function updateSubject(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+    const { id, subjectId, ...updateData } = body;
+    const sid = subjectId ?? id;
+
+    // Swagger: PUT /auth/api/Permission/subjects?subjectId= (SubjectUpdateDTO { description: string 3-100 })
+    const res = await fetch(`${ONC_API}/auth/api/Permission/subjects?subjectId=${sid}`, {
+      method: 'PUT',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ description: updateData.description })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to update subject' }, { status: res.status });
+    }
+
+    return NextResponse.json({ message: 'Subject updated' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - DELETE SUBJECT  ***************************/
+
+export async function deleteSubject(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') ?? searchParams.get('subjectId');
+
+    const res = await fetch(`${ONC_API}/auth/api/Permission/subjects?subjectId=${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to delete subject' }, { status: res.status });
+    }
+
+    return NextResponse.json({ message: 'Subject deleted' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - GET ACTIONS  ***************************/
+
+export async function getActions(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+
+    // Backend: GET /auth/api/Permission/actions -> ActionResponseDTOListServiceResponse { data: Action[] }
+    const res = await fetch(`${ONC_API}/auth/api/Permission/actions`, {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch actions' }, { status: res.status });
+    }
+
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(Array.isArray(data) ? data : [data], { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - GET ACTION BY ID  ***************************/
+
+export async function getActionById(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const actionId = searchParams.get('actionId') ?? searchParams.get('id');
+
+    const res = await fetch(`${ONC_API}/auth/api/Permission/action-by-id?actionId=${actionId}`, {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to fetch action' }, { status: res.status });
+    }
+
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - CREATE ACTION  ***************************/
+
+export async function createAction(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+
+    // Swagger: POST /auth/api/Permission/actions (ActionCreateDTO { description: string })
+    const res = await fetch(`${ONC_API}/auth/api/Permission/actions`, {
+      method: 'POST',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ description: body.description })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to create action' }, { status: res.status });
+    }
+
+    return NextResponse.json({ message: 'Action created' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - UPDATE ACTION  ***************************/
+
+export async function updateAction(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+    const { id, actionId, ...updateData } = body;
+    const aid = actionId ?? id;
+
+    // Swagger: PUT /auth/api/Permission/actions?actionId= (ActionUpdateDTO { description: string req 3-100 })
+    const res = await fetch(`${ONC_API}/auth/api/Permission/actions?actionId=${aid}`, {
+      method: 'PUT',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ description: updateData.description })
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to update action' }, { status: res.status });
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - DELETE ACTION  ***************************/
+
+export async function deleteAction(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id') ?? searchParams.get('actionId');
+
+    // Swagger: DELETE /auth/api/Permission/actions?actionId=
+    const res = await fetch(`${ONC_API}/auth/api/Permission/actions?actionId=${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to delete action' }, { status: res.status });
+    }
+
+    return NextResponse.json({ message: 'Action deleted' }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - ASSIGN USER PERMISSIONS  ***************************/
+
+export async function assignUserPermissions(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+
+    // Swagger: PUT /auth/api/Permission/user-permissions
+    // Body: array of UserPermissionCreateDTO { user_id, permission_id, effect (4-5 chars) }
+    const userPermissions = body.permissions.map((permId: string | number) => ({
+      user_id: String(body.userId),
+      permission_id: Number(permId),
+      effect: body.effect ?? 'allow'
+    }));
+
+    const res = await fetch(`${ONC_API}/auth/api/Permission/user-permissions`, {
+      method: 'PUT',
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(userPermissions)
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      return NextResponse.json({ error: error?.message || error?.title || 'Failed to assign user permissions' }, { status: res.status });
+    }
+
+    const data = await res.json().catch(() => ({}));
+    return NextResponse.json(data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
 // Export as a single object for easy import
 const oncRbac = {
   getRoles,
@@ -425,7 +752,18 @@ const oncRbac = {
   assignPermission,
   removePermission,
   getUserRoles,
-  assignRolesToUser
+  assignRolesToUser,
+  getSubjects,
+  getSubjectById,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  getActions,
+  getActionById,
+  createAction,
+  updateAction,
+  deleteAction,
+  assignUserPermissions
 };
 
 export default oncRbac;

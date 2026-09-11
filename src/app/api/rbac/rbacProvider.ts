@@ -14,6 +14,14 @@ interface RbacProvider {
   removePermission: (request: Request) => Promise<Response>;
   getUserRoles: (request: Request) => Promise<Response>;
   assignRolesToUser: (request: Request) => Promise<Response>;
+  getSubjects: (request: Request) => Promise<Response>;
+  createSubject: (request: Request) => Promise<Response>;
+  updateSubject: (request: Request) => Promise<Response>;
+  deleteSubject: (request: Request) => Promise<Response>;
+  getActions: (request: Request) => Promise<Response>;
+  createAction: (request: Request) => Promise<Response>;
+  updateAction: (request: Request) => Promise<Response>;
+  deleteAction: (request: Request) => Promise<Response>;
 }
 
 const rbacProviderMapping: Record<string, () => Promise<RbacProvider>> = {

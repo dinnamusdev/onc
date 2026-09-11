@@ -254,34 +254,6 @@ export async function requestCodePasswordReset(request: Request) {
   }
 }
 
-/***************************  ONC - VERIFY RECOVERY CODE  ***************************/
-
-export async function verifyRecoveryCode(request: Request) {
-  try {
-    const body = await request.json();
-
-    const res = await fetch(`${ONC_API}/auth/api/Login/verify-recovery-code`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: body.email,
-        code: body.code,
-        internalToken: body.internalToken
-      })
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      return NextResponse.json({ error: data?.message || data?.title || 'Verification failed' }, { status: res.status });
-    }
-
-    return NextResponse.json(data, { status: 200 });
-  } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
-}
-
 /***************************  ONC - GET USER PROFILE  ***************************/
 
 export async function getUserProfile(request: Request) {
@@ -297,6 +269,73 @@ export async function getUserProfile(request: Request) {
 
     const data = await res.json();
     return NextResponse.json(Array.isArray(data) ? data[0] : data, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - LOGIN BY USERNAME  ***************************/
+
+export async function loginByUsername(request: Request) {
+  try {
+    const body = await request.json();
+
+    // Swagger: POST /auth/api/Login/login-by-username (LoginRequestUsername { userName, password })
+    const res = await fetch(`${ONC_API}/auth/api/Login/login-by-username`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userName: body.userName ?? body.username, password: body.password })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json({ error: data?.message || data?.title || 'Invalid credentials' }, { status: res.status });
+    }
+
+    const payload = data?.data ?? data;
+    const token =
+      typeof payload === 'string' ? payload : (payload?.token ?? payload?.accessToken ?? payload?.access_token ?? payload?.jwtToken ?? '');
+
+    const claims = token ? decodeJwtClaims(token) : {};
+    const role = (claims[CLAIM_ROLE] as string) ?? (claims['role'] as string) ?? 'user';
+
+    const user = {
+      id: (claims[CLAIM_NAMEID] as string) ?? (claims['sub'] as string) ?? '',
+      name: (claims[CLAIM_NAME] as string) ?? '',
+      email: (claims[CLAIM_EMAIL] as string) ?? '',
+      role
+    };
+
+    return NextResponse.json({ ...user, access_token: token, token }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+/***************************  ONC - GET USER BY ID  ***************************/
+
+export async function getUserById(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    // Swagger: GET /auth/api/Users/user-by-id?id={uuid}
+    const res = await fetch(`${ONC_API}/auth/api/Users/user-by-id?id=${id}`, {
+      headers: {
+        ...(authHeader ? { Authorization: authHeader } : {}),
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Failed to fetch user' }, { status: res.status });
+    }
+
+    const payload = await res.json();
+    const data = payload?.data ?? payload;
+    return NextResponse.json(data, { status: 200 });
   } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
@@ -340,7 +379,9 @@ export async function activateAccount(request: Request) {
 // Export as a single object for easy import
 const oncAuth = {
   login,
+  loginByUsername,
   getUser,
+  getUserById,
   signUp,
   activateAccount,
   forgotPassword,
@@ -348,8 +389,7 @@ const oncAuth = {
   signOut,
   resend,
   getUserProfile,
-  requestCodePasswordReset,
-  verifyRecoveryCode
+  requestCodePasswordReset
 };
 
 export default oncAuth;
