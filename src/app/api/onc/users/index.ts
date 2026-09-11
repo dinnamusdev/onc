@@ -182,7 +182,17 @@ export async function updateUser(request: Request) {
       }
 
       const errorRecord = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
-      return NextResponse.json({ error: errorRecord.message || errorRecord.title || 'Failed to update user' }, { status: res.status });
+      const rawErrors = errorRecord.errors;
+      // Normaliza para string[] independentemente se o backend retornou array ou { campo: [msgs] }
+      const errorsList: string[] = Array.isArray(rawErrors)
+        ? (rawErrors as string[])
+        : rawErrors && typeof rawErrors === 'object'
+          ? (Object.values(rawErrors as Record<string, string[]>) as string[][]).flat()
+          : [];
+      return NextResponse.json(
+        { error: errorRecord.message || errorRecord.title || 'Failed to update user', errors: errorsList },
+        { status: res.status }
+      );
     }
 
     const data = responseText ? JSON.parse(responseText) : null;

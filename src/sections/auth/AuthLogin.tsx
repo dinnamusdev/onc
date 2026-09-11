@@ -25,6 +25,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 // @project
 import { APP_DEFAULT_PATH, AUTH_USER_KEY } from '@/config';
 import { login } from '@/utils/api/auth';
+import { getUsers } from '@/utils/api/users';
 import { emailSchema, passwordSchema } from '@/utils/validation-schema/common';
 
 // @icons
@@ -83,7 +84,20 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
         return;
       }
 
+      // Salva primeiro para que o interceptor axios passe o token nas próximas chamadas.
       localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data));
+
+      // Enriquece com dados do perfil completo (fotoURL, nomeCompleto, etc.)
+      // para que o header exiba a foto corretamente já no primeiro carregamento.
+      const email = (data as Record<string, unknown>)?.email as string | undefined;
+      if (email) {
+        const { data: users } = await getUsers({ email });
+        const profile = Array.isArray(users) ? users[0] : users;
+        if (profile) {
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ ...(data as Record<string, unknown>), ...profile }));
+        }
+      }
+
       router.replace(APP_DEFAULT_PATH);
     });
   };

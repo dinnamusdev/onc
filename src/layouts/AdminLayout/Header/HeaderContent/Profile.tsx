@@ -7,6 +7,7 @@ import { useTheme } from '@mui/material/styles';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
+import Dialog from '@mui/material/Dialog';
 import Divider from '@mui/material/Divider';
 import Fade from '@mui/material/Fade';
 import List from '@mui/material/List';
@@ -25,6 +26,7 @@ import useSWR from 'swr';
 import { ThemeDirection } from '@/config';
 import MainCard from '@/components/MainCard';
 import Profile from '@/components/Profile';
+import ProfileForm from '@/sections/users/ProfileForm';
 import { AuthRole, AvatarSize } from '@/enum';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import { logout } from '@/utils/api/auth';
@@ -58,13 +60,15 @@ export default function ProfileSection() {
   const registeredUser = registeredUsers?.[0];
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [openProfile, setOpenProfile] = useState(false);
 
   const open = Boolean(anchorEl);
   const id = open ? 'profile-action-popper' : undefined;
   const buttonStyle = { borderRadius: 2, p: 1 };
 
   const profileData: ProfileProps = {
-    avatar: { src: userData?.fotoURL || undefined, size: AvatarSize.XS },
+    // Prioriza fotoURL do perfil completo (SWR); cai para o valor persistido no AuthContext.
+    avatar: { src: registeredUser?.fotoURL || userData?.fotoURL || undefined, size: AvatarSize.XS },
     title:
       registeredUser?.nomeCompleto ||
       registeredUser?.userName ||
@@ -121,7 +125,10 @@ export default function ProfileSection() {
                   />
                   <Divider sx={{ my: 1 }} />
                   <List disablePadding>
-                    <ListItemButton href="/profile" sx={{ ...buttonStyle, my: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => { setAnchorEl(null); setOpenProfile(true); }}
+                      sx={{ ...buttonStyle, my: 0.5 }}
+                    >
                       <ListItemIcon>
                         <IconSettings size={16} />
                       </ListItemIcon>
@@ -146,6 +153,10 @@ export default function ProfileSection() {
           </Fade>
         )}
       </Popper>
+
+      <Dialog open={openProfile} onClose={() => setOpenProfile(false)} maxWidth="sm" fullWidth scroll="paper">
+        <ProfileForm onClose={() => setOpenProfile(false)} />
+      </Dialog>
     </>
   );
 }
