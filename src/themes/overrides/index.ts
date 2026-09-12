@@ -27,9 +27,11 @@ import Dialog from './Dialog';
 import DialogActions from './DialogActions';
 import DialogContent from './DialogContent';
 import DialogTitle from './DialogTitle';
+import FilledInput from './FilledInput';
 import FormControlLabel from './FormControlLabel';
 import FormHelperText from './FormHelperText';
 import IconButton from './IconButton';
+import Input from './Input';
 import InputAdornment from './InputAdornment';
 import InputLabel from './InputLabel';
 import LinearProgress from './LinearProgress';
@@ -55,6 +57,7 @@ import TableCell from './TableCell';
 import TableHead from './TableHead';
 import TableRow from './TableRow';
 import Tabs from './Tabs';
+import TextField from './TextField';
 import Tooltip from './Tooltip';
 
 /***************************  OVERRIDES - MAIN  ***************************/
@@ -83,9 +86,11 @@ export default function ComponentsOverrides(theme: Theme) {
     DialogActions(),
     DialogContent(),
     DialogTitle(),
+    FilledInput(theme),
     FormControlLabel(theme),
     FormHelperText(theme),
     IconButton(theme),
+    Input(theme),
     InputAdornment(theme),
     InputLabel(theme),
     LinearProgress(theme),
@@ -111,6 +116,7 @@ export default function ComponentsOverrides(theme: Theme) {
     TableHead(theme),
     TableRow(theme),
     Tabs(theme),
+    TextField(theme),
     Tooltip(theme)
   );
 }

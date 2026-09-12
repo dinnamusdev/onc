@@ -38,15 +38,8 @@ import { IconCamera, IconPlus, IconX } from '@tabler/icons-react';
 // @project
 import { emailSchema } from '@/utils/validation-schema/common';
 import { createUser, updateUser, getUsers } from '@/utils/api/users';
-import { getRoles, assignRolesToUser } from '@/utils/api/rbac';
 
 /***************************  TYPES  ***************************/
-
-// Opção de perfil (papel) exibida no Autocomplete.
-interface RoleOption {
-  id: string;
-  label: string;
-}
 
 // Usuário em edição (subconjunto do UserResponseDTO retornado pelo backend).
 export interface EditableUser {
@@ -75,7 +68,6 @@ interface UserFormInput {
   email: string;
   password: string;
   rePassword: string;
-  roles: string[];
   isAtivo: boolean;
   // Dados cadastrais (PUT /auth/api/Users) — usados apenas na edição
   nomeCompleto: string;
@@ -105,7 +97,6 @@ const emptyValues: UserFormInput = {
   email: '',
   password: '',
   rePassword: '',
-  roles: [],
   isAtivo: true,
   nomeCompleto: '',
   cpf: '',
@@ -144,17 +135,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
     formState: { errors }
   } = useForm<UserFormInput>({ defaultValues: emptyValues });
 
-  // Carrega a lista de papéis para o Autocomplete de perfis.
-  const { data: roleOptions, isLoading: rolesLoading } = useSWR<RoleOption[]>('/api/rbac/roles', async () => {
-    const { data, error } = await getRoles();
-    if (error) throw new Error(error);
-    const list = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
-    return list.map((r) => ({
-      id: String(r.id ?? ''),
-      label: String(r.name || r.roleName || r.nome || r.id || '')
-    }));
-  });
-
   // Preenche o formulário ao abrir (edição) ou limpa (criação).
   useEffect(() => {
     if (!open) return;
@@ -169,7 +149,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
         ...emptyValues,
         userName: user.userName ?? '',
         email: user.email ?? '',
-        roles: user.roles ?? [],
         isAtivo: user.isAtivo ?? true,
         nomeCompleto: user.nomeCompleto ?? '',
         cpf: user.cpf ?? '',
@@ -215,12 +194,8 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
 
   const handleTabChange = (_event: SyntheticEvent, value: number) => setTab(value);
 
-  // Resolve os ids dos papéis selecionados (Autocomplete guarda os rótulos).
-  const resolveSelectedRoleIds = (labels: string[]) => (roleOptions ?? []).filter((r) => labels.includes(r.label)).map((r) => r.id);
-
   const onSubmit: SubmitHandler<UserFormInput> = async (data) => {
     setSubmitError('');
-    const selectedRoleIds = resolveSelectedRoleIds(data.roles);
 
     if (isEditMode && user?.id) {
       // ------- EDIÇÃO: PUT /auth/api/Users (multipart/form-data) -------
@@ -251,10 +226,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
       }
 
       const { data: response, error } = await updateUser(fd);
-
-      if (!error && selectedRoleIds.length > 0) {
-        await assignRolesToUser({ userId: user.id, roles: selectedRoleIds });
-      }
 
       setIsSubmitting(false);
 
@@ -291,17 +262,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
       rePassword: data.rePassword
     });
 
-    // Para vincular os perfis, precisamos do id do usuário recém-criado.
-    // O register-account retorna apenas uma mensagem, então buscamos por e-mail.
-    if (!error && selectedRoleIds.length > 0) {
-      const { data: usersData } = await getUsers({ email: data.email });
-      const created = Array.isArray(usersData) ? (usersData[0] as Record<string, unknown> | undefined) : undefined;
-      const newUserId = created?.id ? String(created.id) : '';
-      if (newUserId) {
-        await assignRolesToUser({ userId: newUserId, roles: selectedRoleIds });
-      }
-    }
-
     setIsSubmitting(false);
 
     if (error) {
@@ -314,36 +274,72 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 2.5,
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh'
+        }
+      }}
+    >
       <Stack
         direction="row"
         sx={{
           alignItems: 'flex-start',
           justifyContent: 'space-between',
           px: 3,
-          pt: 3
+          pt: 3,
+          pb: 2.5
         }}
       >
         <Box>
-          <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>{isEditMode ? 'Editar Usuário' : 'Adicionar Novo Usuário'}</DialogTitle>
+          <DialogTitle
+            sx={{
+              p: 0,
+              fontSize: 22,
+              lineHeight: 1.3,
+              fontWeight: 600,
+              color: 'text.primary'
+            }}
+          >
+            {isEditMode ? 'Editar Usuário' : 'Adicionar Novo Usuário'}
+          </DialogTitle>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+              fontSize: 14
+            }}
+          >
             {isEditMode
               ? 'Atualize os dados básicos e as informações cadastrais do usuário.'
               : 'Cadastro básico. O usuário receberá um e-mail para ativar a conta e completar o perfil.'}
           </Typography>
         </Box>
 
-        <IconButton onClick={handleClose} size="small">
-          <IconX size={18} />
+        <IconButton
+          onClick={handleClose}
+          size="small"
+          sx={{
+            width: 44,
+            height: 44,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1.5,
+            flexShrink: 0
+          }}
+        >
+          <IconX size={19} />
         </IconButton>
       </Stack>
-
-      {/* ABAS — padrão do form de papéis e permissões */}
-      <Tabs value={tab} onChange={handleTabChange} sx={{ px: 3, mt: 1 }}>
-        <Tab label="Dados Básicos" />
-        {isEditMode && <Tab label="Dados Cadastrais" />}
-      </Tabs>
 
       <Divider />
 
@@ -352,69 +348,61 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
         <input type="text" name="fakeusernameremembered" style={{ display: 'none' }} />
         <input type="password" name="fakepasswordremembered" style={{ display: 'none' }} />
 
-        <DialogContent>
+        {/* ABAS — padrão do form de papéis e permissões */}
+        <Tabs value={tab} onChange={handleTabChange} sx={{ px: 3, pt: 2 }}>
+          <Tab label="Dados Básicos" />
+          {isEditMode && <Tab label="Dados Cadastrais" />}
+        </Tabs>
+
+        <DialogContent
+          sx={{
+            px: 3,
+            py: 2.5,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            flex: 1,
+            backgroundColor: 'action.hover'
+          }}
+        >
           {/* ===================== ABA 1: DADOS BÁSICOS ===================== */}
           <Stack sx={{ gap: 2.5, display: tab === 0 ? 'flex' : 'none' }}>
             <Box>
-              <InputLabel>Nome de usuário *</InputLabel>
+              <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Nome de usuário *</InputLabel>
               <OutlinedInput
                 {...register('userName', { required: 'O nome de usuário é obrigatório' })}
                 placeholder="ex. john.doe"
                 fullWidth
                 autoComplete="off"
                 error={Boolean(errors.userName)}
+                sx={{
+                  height: 40,
+                  borderRadius: 1.5,
+                  backgroundColor: 'background.paper'
+                }}
               />
               {errors.userName?.message && <FormHelperText error>{errors.userName.message}</FormHelperText>}
             </Box>
 
             <Box>
-              <InputLabel>E-mail *</InputLabel>
+              <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>E-mail *</InputLabel>
               <OutlinedInput
                 {...register('email', emailSchema)}
                 placeholder="exemplo@gmail.com"
                 fullWidth
                 autoComplete="off"
                 error={Boolean(errors.email)}
+                sx={{
+                  height: 40,
+                  borderRadius: 1.5,
+                  backgroundColor: 'background.paper'
+                }}
               />
               {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
             </Box>
 
-            {/* Perfis (papéis) que o usuário vai pertencer */}
-            <Box>
-              <InputLabel sx={{ mb: 1 }}>Perfis</InputLabel>
-              {rolesLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Controller
-                  name="roles"
-                  control={control}
-                  render={({ field }) => (
-                    <Autocomplete
-                      multiple
-                      options={(roleOptions ?? []).map((r) => r.label)}
-                      value={field.value}
-                      onChange={(_event, value) => field.onChange(value)}
-                      noOptionsText="Nenhum perfil encontrado"
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          placeholder={field.value.length ? '' : '+ Atribuir Perfis'}
-                          InputProps={{
-                            ...params.InputProps,
-                            startAdornment:
-                              field.value.length === 0 ? <IconPlus size={16} style={{ marginLeft: 8 }} /> : params.InputProps.startAdornment
-                          }}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
-            </Box>
-
             {/* Status (Ativo/Bloqueado) */}
             <Box>
-              <InputLabel sx={{ mb: 1 }}>Status</InputLabel>
+              <InputLabel sx={{ mb: 1, fontSize: 14, color: 'text.primary' }}>Status</InputLabel>
               <RadioGroup
                 row
                 value={watch('isAtivo') ? 'ativo' : 'bloqueado'}
@@ -430,7 +418,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
             {!isEditMode && (
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>Senha *</InputLabel>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Senha *</InputLabel>
                   <OutlinedInput
                     {...register('password', { required: !isEditMode ? 'A senha é obrigatória' : false })}
                     type="password"
@@ -438,12 +426,17 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     fullWidth
                     autoComplete="new-password"
                     error={Boolean(errors.password)}
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
                   />
                   {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>Confirmar Senha *</InputLabel>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Confirmar Senha *</InputLabel>
                   <OutlinedInput
                     {...register('rePassword', { required: !isEditMode ? 'A confirmação de senha é obrigatória' : false })}
                     type="password"
@@ -451,6 +444,11 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     fullWidth
                     autoComplete="new-password"
                     error={Boolean(errors.rePassword)}
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
                   />
                   {errors.rePassword?.message && <FormHelperText error>{errors.rePassword.message}</FormHelperText>}
                 </Grid>
@@ -461,90 +459,237 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
           {/* ===================== ABA 2: DADOS CADASTRAIS (edição) ===================== */}
           {isEditMode && (
             <Stack sx={{ gap: 2.5, display: tab === 1 ? 'flex' : 'none' }}>
-
               {/* Foto de perfil */}
-              <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
+              <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 2 }}>
                 <Avatar
                   src={photoPreview ?? (currentPhotoUrl || undefined)}
-                  sx={{ width: 72, height: 72 }}
+                  sx={{ width: 72, height: 72, flexShrink: 0 }}
                 >
                   <IconCamera size={28} />
                 </Avatar>
-                <Stack sx={{ gap: 0.75 }}>
-                  <Typography variant="subtitle2">Foto de perfil</Typography>
+                <Stack sx={{ gap: 0.5 }}>
+                  <Typography variant="subtitle1">Foto de perfil</Typography>
                   <Button
                     component="label"
                     variant="outlined"
                     size="small"
                     startIcon={<IconCamera size={16} />}
+                    sx={{ alignSelf: 'flex-start' }}
                   >
-                    {currentPhotoUrl || photoPreview ? 'Alterar imagem' : 'Escolher imagem'}
+                    Escolher imagem
                     <input hidden type="file" accept="image/*" onChange={handlePhotoChange} />
                   </Button>
+                  <Typography variant="caption" color="text.secondary">
+                    PNG, JPG ou GIF · máx. 256 KB
+                  </Typography>
                   {selectedPhoto && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="success.main">
                       {selectedPhoto.name}
                     </Typography>
                   )}
                 </Stack>
               </Stack>
 
-              <Divider />
-
-              <Box>
-                <InputLabel>Nome Completo</InputLabel>
-                <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth autoComplete="off" />
-              </Box>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontSize: 16,
+                  fontWeight: 600
+                }}
+              >
+                Dados Pessoais
+              </Typography>
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>CPF</InputLabel>
-                  <OutlinedInput {...register('cpf')} placeholder="000.000.000-00" fullWidth autoComplete="off" />
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Nome Completo</InputLabel>
+                  <OutlinedInput
+                    {...register('nomeCompleto')}
+                    placeholder="Nome completo"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
                 </Grid>
-
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>WhatsApp</InputLabel>
-                  <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth autoComplete="off" />
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>CPF</InputLabel>
+                  <OutlinedInput
+                    {...register('cpf')}
+                    placeholder="000.000.000-00"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
                 </Grid>
+              </Grid>
 
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>Telefone</InputLabel>
-                  <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth autoComplete="off" />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>CEP</InputLabel>
-                  <OutlinedInput {...register('cep')} placeholder="00000-000" fullWidth autoComplete="off" />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 8 }}>
-                  <InputLabel>Logradouro</InputLabel>
-                  <OutlinedInput {...register('logradouro')} placeholder="Rua, avenida..." fullWidth autoComplete="off" />
-                </Grid>
-
+              <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <InputLabel>Número</InputLabel>
-                  <OutlinedInput {...register('numero')} placeholder="123" fullWidth autoComplete="off" />
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>E-mail</InputLabel>
+                  <OutlinedInput
+                    {...register('email')}
+                    placeholder="exemplo@gmail.com"
+                    fullWidth
+                    autoComplete="off"
+                    readOnly
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
                 </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>Complemento</InputLabel>
-                  <OutlinedInput {...register('complemento')} placeholder="Apto, bloco..." fullWidth autoComplete="off" />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <InputLabel>Bairro</InputLabel>
-                  <OutlinedInput {...register('bairro')} placeholder="Bairro" fullWidth autoComplete="off" />
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 8 }}>
-                  <InputLabel>Cidade</InputLabel>
-                  <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth autoComplete="off" />
-                </Grid>
-
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <InputLabel>Estado</InputLabel>
-                  <OutlinedInput {...register('estado')} placeholder="UF" fullWidth autoComplete="off" />
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>WhatsApp</InputLabel>
+                  <OutlinedInput
+                    {...register('whatsapp')}
+                    placeholder="(00) 00000-0000"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Telefone</InputLabel>
+                  <OutlinedInput
+                    {...register('telefone')}
+                    placeholder="(00) 0000-0000"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 1 }} />
+
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontSize: 16,
+                  fontWeight: 600
+                }}
+              >
+                Endereço
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 2 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>CEP</InputLabel>
+                  <OutlinedInput
+                    {...register('cep')}
+                    placeholder="00000-000"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Logradouro</InputLabel>
+                  <OutlinedInput
+                    {...register('logradouro')}
+                    placeholder="Rua, avenida..."
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 2 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Número</InputLabel>
+                  <OutlinedInput
+                    {...register('numero')}
+                    placeholder="123"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Complemento</InputLabel>
+                  <OutlinedInput
+                    {...register('complemento')}
+                    placeholder="Apto, bloco..."
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, sm: 5 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Bairro</InputLabel>
+                  <OutlinedInput
+                    {...register('bairro')}
+                    placeholder="Bairro"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 2 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>UF</InputLabel>
+                  <OutlinedInput
+                    {...register('estado')}
+                    placeholder="UF"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 5 }}>
+                  <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Cidade</InputLabel>
+                  <OutlinedInput
+                    {...register('cidade')}
+                    placeholder="Cidade"
+                    fullWidth
+                    autoComplete="off"
+                    sx={{
+                      height: 40,
+                      borderRadius: 1.5,
+                      backgroundColor: 'background.paper'
+                    }}
+                  />
                 </Grid>
               </Grid>
             </Stack>
@@ -564,17 +709,32 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
         >
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={handleClose} color="secondary" variant="outlined" disabled={isSubmitting}>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+            <Button
+              onClick={handleClose}
+              color="secondary"
+              variant="outlined"
+              disabled={isSubmitting}
+              sx={{
+                minWidth: 108,
+                height: 44,
+                borderRadius: 1.5
+              }}
+            >
               Cancelar
             </Button>
 
             <Button
               type="submit"
               variant="contained"
-              color="error"
+              color="primary"
               disabled={isSubmitting}
               startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+              sx={{
+                minWidth: 170,
+                height: 44,
+                borderRadius: 1.5
+              }}
             >
               {isSubmitting ? (isEditMode ? 'Salvando...' : 'Criando...') : isEditMode ? 'Salvar Alterações' : 'Criar Usuário'}
             </Button>

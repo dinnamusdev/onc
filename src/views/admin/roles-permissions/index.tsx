@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, SyntheticEvent, MouseEvent }
 
 // @mui
 import Avatar from '@mui/material/Avatar';
+import { useTheme } from '@mui/material/styles';
 import AvatarGroup from '@mui/material/AvatarGroup';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -205,6 +206,8 @@ function SubjectActionDescriptionField({
 /*************************** VIEW ***************************/
 
 export default function RolesPermissionsView() {
+    const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const [tab, setTab] = useState(0);
 
   const [rolesPage, setRolesPage] = useState(1);
@@ -1654,7 +1657,20 @@ export default function RolesPermissionsView() {
                         ) : (
                           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
                             {role.users.slice(0, 3).map((u) => (
-                              <Chip key={u.id} label={u.name} size="small" color="success" variant="outlined" />
+                              <Chip
+                                key={u.id}
+                                label={u.name}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  color: 'success.main',
+                                  borderColor: 'success.main',
+                                  backgroundColor: 'rgba(46, 139, 87, 0.06)',
+                                  '& .MuiChip-label': {
+                                    color: 'inherit'
+                                  }
+                                }}
+                              />
                             ))}
                             {role.users.length > 3 && (
                               <Typography variant="caption" color="text.secondary">
@@ -1671,7 +1687,20 @@ export default function RolesPermissionsView() {
                         ) : (
                           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
                             {role.permissions.slice(0, 3).map((p) => (
-                              <Chip key={p.id} label={p.description || p.name || String(p.id)} size="small" color="primary" variant="outlined" />
+                              <Chip
+                              key={p.id}
+                              label={p.description || p.name || String(p.id)}
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                color: 'error.main',
+                                borderColor: 'error.main',
+                                backgroundColor: 'rgba(214, 69, 69, 0.06)',
+                                '& .MuiChip-label': {
+                                  color: 'inherit'
+                                }
+                              }}
+                            />
                             ))}
                             {role.permissions.length > 3 && (
                               <Typography variant="caption" color="text.secondary">
@@ -3238,7 +3267,7 @@ export default function RolesPermissionsView() {
       {/* DIALOG CRIAR ALVO                                     */}
       {/* ===================================================== */}
 
-      <Dialog open={openCreateSubjectDialog} onClose={() => setOpenCreateSubjectDialog(false)} maxWidth="xs" fullWidth
+      <Dialog open={openCreateSubjectDialog} onClose={() => setOpenCreateSubjectDialog(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 2.5 } }}>
         <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
           <Box>
@@ -3276,34 +3305,132 @@ export default function RolesPermissionsView() {
       {/* DIALOG EDITAR ALVO                                    */}
       {/* ===================================================== */}
 
-      <Dialog open={openEditSubjectDialog} onClose={() => setOpenEditSubjectDialog(false)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: 2.5 } }}>
-        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
-          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Alvo</DialogTitle>
-          <IconButton onClick={() => setOpenEditSubjectDialog(false)} size="small"
-            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
-            <IconX size={18} />
-          </IconButton>
-        </Stack>
-        <Divider />
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          {subjectDialogError && <Alert severity="error" sx={{ mb: 2 }}>{subjectDialogError}</Alert>}
-          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
-          <SubjectActionDescriptionField
-            value={editSubjectDescription}
-            onChange={setEditSubjectDescription}
-            placeholder="Ex: usuario, produto, fatura"
-          />
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-          <Button variant="outlined" color="secondary" onClick={() => setOpenEditSubjectDialog(false)}
-            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleEditSubjectSave}
-            disabled={editSubjectDescription.trim().length < 3}
-            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Alvo</Button>
-        </DialogActions>
-      </Dialog>
+      <Dialog
+  open={openEditSubjectDialog}
+  onClose={() => setOpenEditSubjectDialog(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      width: '100%',
+      maxWidth: 520,
+      minWidth: 0,
+      margin: 2,
+      borderRadius: 2.5,
+      overflow: 'hidden'
+    }
+  }}
+>
+  <Stack
+    direction="row"
+    sx={{
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      px: 3,
+      pt: 3,
+      pb: 2.5
+    }}
+  >
+    <DialogTitle
+      sx={{
+        p: 0,
+        fontSize: 22,
+        lineHeight: 1.3,
+        fontWeight: 600,
+        color: 'text.primary'
+      }}
+    >
+      Editar Alvo
+    </DialogTitle>
+
+    <IconButton
+      onClick={() => setOpenEditSubjectDialog(false)}
+      size="small"
+      sx={{
+        width: 44,
+        height: 44,
+        flexShrink: 0,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1.5
+      }}
+    >
+      <IconX size={18} />
+    </IconButton>
+  </Stack>
+
+  <Divider />
+
+  <DialogContent
+    sx={{
+      px: 3,
+      py: 3,
+      overflow: 'hidden'
+    }}
+  >
+    {subjectDialogError && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {subjectDialogError}
+      </Alert>
+    )}
+
+    <InputLabel
+      sx={{
+        mb: 0.75,
+        fontSize: 14,
+        color: 'text.primary'
+      }}
+    >
+      Descrição *
+    </InputLabel>
+
+    <SubjectActionDescriptionField
+      value={editSubjectDescription}
+      onChange={setEditSubjectDescription}
+      placeholder="Ex: usuario, produto, fatura"
+    />
+  </DialogContent>
+
+  <Divider />
+
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2.5,
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 1
+    }}
+  >
+    <Button
+      variant="outlined"
+      color="secondary"
+      onClick={() => setOpenEditSubjectDialog(false)}
+      sx={{
+        minWidth: 120,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Cancelar
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={handleEditSubjectSave}
+      disabled={editSubjectDescription.trim().length < 3}
+      sx={{
+        minWidth: 140,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Atualizar Alvo
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* ===================================================== */}
       {/* DIALOG DELETAR ALVO                                   */}
@@ -3341,7 +3468,7 @@ export default function RolesPermissionsView() {
       {/* DIALOG CRIAR AÇÃO                                     */}
       {/* ===================================================== */}
 
-      <Dialog open={openCreateActionDialog} onClose={() => setOpenCreateActionDialog(false)} maxWidth="xs" fullWidth
+      <Dialog open={openCreateActionDialog} onClose={() => setOpenCreateActionDialog(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 2.5 } }}>
         <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
           <Box>
@@ -3379,34 +3506,132 @@ export default function RolesPermissionsView() {
       {/* DIALOG EDITAR AÇÃO                                    */}
       {/* ===================================================== */}
 
-      <Dialog open={openEditActionDialog} onClose={() => setOpenEditActionDialog(false)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: 2.5 } }}>
-        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
-          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Ação</DialogTitle>
-          <IconButton onClick={() => setOpenEditActionDialog(false)} size="small"
-            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
-            <IconX size={18} />
-          </IconButton>
-        </Stack>
-        <Divider />
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          {actionDialogError && <Alert severity="error" sx={{ mb: 2 }}>{actionDialogError}</Alert>}
-          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
-          <SubjectActionDescriptionField
-            value={editActionDescription}
-            onChange={setEditActionDescription}
-            placeholder="Ex: ler, criar, atualizar, deletar"
-          />
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-          <Button variant="outlined" color="secondary" onClick={() => setOpenEditActionDialog(false)}
-            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleEditActionSave}
-            disabled={editActionDescription.trim().length < 3}
-            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Ação</Button>
-        </DialogActions>
-      </Dialog>
+      <Dialog
+  open={openEditActionDialog}
+  onClose={() => setOpenEditActionDialog(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      width: '100%',
+      maxWidth: 520,
+      minWidth: 0,
+      margin: 2,
+      borderRadius: 2.5,
+      overflow: 'hidden'
+    }
+  }}
+>
+  <Stack
+    direction="row"
+    sx={{
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      px: 3,
+      pt: 3,
+      pb: 2.5
+    }}
+  >
+    <DialogTitle
+      sx={{
+        p: 0,
+        fontSize: 22,
+        lineHeight: 1.3,
+        fontWeight: 600,
+        color: 'text.primary'
+      }}
+    >
+      Editar Ação
+    </DialogTitle>
+
+    <IconButton
+      onClick={() => setOpenEditActionDialog(false)}
+      size="small"
+      sx={{
+        width: 44,
+        height: 44,
+        flexShrink: 0,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1.5
+      }}
+    >
+      <IconX size={18} />
+    </IconButton>
+  </Stack>
+
+  <Divider />
+
+  <DialogContent
+    sx={{
+      px: 3,
+      py: 3,
+      overflow: 'hidden'
+    }}
+  >
+    {actionDialogError && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {actionDialogError}
+      </Alert>
+    )}
+
+    <InputLabel
+      sx={{
+        mb: 0.75,
+        fontSize: 14,
+        color: 'text.primary'
+      }}
+    >
+      Descrição *
+    </InputLabel>
+
+    <SubjectActionDescriptionField
+      value={editActionDescription}
+      onChange={setEditActionDescription}
+      placeholder="Ex: ler, criar, atualizar, deletar"
+    />
+  </DialogContent>
+
+  <Divider />
+
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2.5,
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 1
+    }}
+  >
+    <Button
+      variant="outlined"
+      color="secondary"
+      onClick={() => setOpenEditActionDialog(false)}
+      sx={{
+        minWidth: 120,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Cancelar
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={handleEditActionSave}
+      disabled={editActionDescription.trim().length < 3}
+      sx={{
+        minWidth: 140,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Atualizar Ação
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* ===================================================== */}
       {/* DIALOG DELETAR AÇÃO                                   */}

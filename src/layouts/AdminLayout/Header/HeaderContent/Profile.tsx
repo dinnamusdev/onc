@@ -154,7 +154,15 @@ export default function ProfileSection() {
         )}
       </Popper>
 
-      <Dialog open={openProfile} onClose={() => setOpenProfile(false)} maxWidth="sm" fullWidth scroll="paper">
+      <Dialog open={openProfile} onClose={() => setOpenProfile(false)} maxWidth={false} fullWidth scroll="paper" sx={{ maxWidth: '1600px', margin: 'auto' }}
+        PaperProps={{
+          sx: {
+            borderRadius: 2.5,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '90vh'
+          }
+        }}>
         <ProfileForm onClose={() => setOpenProfile(false)} />
       </Dialog>
     </>

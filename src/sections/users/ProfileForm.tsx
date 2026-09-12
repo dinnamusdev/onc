@@ -340,15 +340,10 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
 
       <Typography variant="subtitle1">Dados Pessoais</Typography>
 
-      <Box>
-        <InputLabel>Nome Completo</InputLabel>
-        <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
-      </Box>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <InputLabel>E-mail</InputLabel>
-          <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
+          <InputLabel>Nome Completo</InputLabel>
+          <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <InputLabel>CPF</InputLabel>
@@ -357,11 +352,15 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
       </Grid>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <InputLabel>E-mail</InputLabel>
+          <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>WhatsApp</InputLabel>
           <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>Telefone</InputLabel>
           <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth />
         </Grid>
@@ -371,22 +370,19 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
       <Typography variant="subtitle1">Endereço</Typography>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid size={{ xs: 12, sm: 2 }}>
           <InputLabel>CEP</InputLabel>
           <OutlinedInput {...register('cep')} placeholder="00000-000" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>Logradouro</InputLabel>
           <OutlinedInput {...register('logradouro')} placeholder="Rua, avenida..." fullWidth />
         </Grid>
-      </Grid>
-
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid size={{ xs: 12, sm: 2 }}>
           <InputLabel>Número</InputLabel>
           <OutlinedInput {...register('numero')} placeholder="123" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>Complemento</InputLabel>
           <OutlinedInput {...register('complemento')} placeholder="Apto, bloco..." fullWidth />
         </Grid>
@@ -397,14 +393,14 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
           <InputLabel>Bairro</InputLabel>
           <OutlinedInput {...register('bairro')} placeholder="Bairro" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 5 }}>
-          <InputLabel>Cidade</InputLabel>
-          <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth />
-        </Grid>
         <Grid size={{ xs: 12, sm: 2 }}>
           <InputLabel>UF</InputLabel>
           <OutlinedInput {...register('estado')} placeholder="UF" fullWidth error={Boolean(errors.estado)} />
           {errors.estado?.message && <FormHelperText error>{errors.estado.message}</FormHelperText>}
+        </Grid>
+        <Grid size={{ xs: 12, sm: 5 }}>
+          <InputLabel>Cidade</InputLabel>
+          <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth />
         </Grid>
       </Grid>
     </Stack>
