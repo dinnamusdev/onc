@@ -33,11 +33,19 @@ import { Controller, useForm, SubmitHandler } from 'react-hook-form';
 import useSWR from 'swr';
 
 // @icons
-import { IconCamera, IconPlus, IconX } from '@tabler/icons-react';
+import { IconCamera, IconEye, IconEyeOff, IconPlus, IconX } from '@tabler/icons-react';
 
 // @project
 import { emailSchema } from '@/utils/validation-schema/common';
 import { createUser, updateUser, getUsers } from '@/utils/api/users';
+import { getAddressByCep } from '@/utils/api/cep';
+import { formatCPF, formatCEP, formatPhone } from '@/utils/format';
+import { getStateOptions } from '@/data/brazilianStates';
+import { getMunicipiosByUf } from '@/utils/api/ibge';
+import { openSnackbar } from '@/states/snackbar';
+
+// @types
+import { SnackbarProps } from '@/types/snackbar';
 
 /***************************  TYPES  ***************************/
 
@@ -119,11 +127,21 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
   const [tab, setTab] = useState(0);
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRePassword, setShowRePassword] = useState(false);
 
   // Estados de foto — somente relevantes no modo edição
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // Estados de CEP — autofill com mensagens
+  const [loadingCep, setLoadingCep] = useState(false);
+  const [cepError, setCepError] = useState('');
+  const [cepMessage, setCepMessage] = useState('');
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
 
   const {
     control,
@@ -166,7 +184,39 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
       setCurrentPhotoUrl('');
       reset(emptyValues);
     }
+    setCepError('');
+    setCepMessage('');
+    setLoadingCep(false);
   }, [open, user, reset]);
+
+  // Sincroniza selectedState com o valor do campo "estado" do form
+  useEffect(() => {
+    const estadoValue = watch('estado');
+    setSelectedState(estadoValue || '');
+  }, [watch('estado'), watch]);
+
+  // Carrega cidades quando UF muda
+  useEffect(() => {
+    if (!selectedState) {
+      setCities([]);
+      return;
+    }
+
+    const loadCities = async () => {
+      try {
+        setLoadingCities(true);
+        const municipios = await getMunicipiosByUf(selectedState);
+        setCities(municipios);
+      } catch (error) {
+        console.error('Erro ao carregar cidades:', error);
+        setCities([]);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    loadCities();
+  }, [selectedState]);
 
   // Gera/revoga URL de preview a cada vez que um novo arquivo é escolhido.
   useEffect(() => {
@@ -183,12 +233,91 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
     setSelectedPhoto(event.target.files?.[0] ?? null);
   };
 
+  const handleCepChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    const cleanCep = value.replace(/\D/g, '');
+    const formatted = formatCEP(value);
+
+    setValue('cep', formatted, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+
+    setCepError('');
+    setCepMessage('');
+
+    if (cleanCep.length !== 8) {
+      if (cleanCep.length > 0) {
+        setCepMessage('CEP incompleto');
+      }
+      return;
+    }
+
+    try {
+      setLoadingCep(true);
+      setCepMessage('Procurando endereço...');
+
+      const address = await getAddressByCep(cleanCep);
+
+      setValue('logradouro', address.logradouro || '', {
+        shouldDirty: true
+      });
+
+      setValue('bairro', address.bairro || '', {
+        shouldDirty: true
+      });
+
+      setValue('cidade', address.localidade || '', {
+        shouldDirty: true
+      });
+
+      setValue('estado', address.uf || '', {
+        shouldDirty: true
+      });
+
+      setCepMessage('');
+    } catch (error) {
+      console.error('Erro ao consultar CEP:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao consultar CEP';
+      setCepError(errorMessage);
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCPF(event.target.value);
+    setValue('cpf', formatted, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const handleWhatsappChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(event.target.value);
+    setValue('whatsapp', formatted, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
+  const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(event.target.value);
+    setValue('telefone', formatted, {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  };
+
   const handleClose = () => {
     reset(emptyValues);
     setSubmitError('');
     setTab(0);
     setSelectedPhoto(null);
     setPhotoPreview(null);
+    setCepError('');
+    setCepMessage('');
+    setLoadingCep(false);
     onClose();
   };
 
@@ -234,6 +363,15 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
         return;
       }
 
+      // Mensagem de sucesso
+      openSnackbar({
+        open: true,
+        message: 'Usuário atualizado com sucesso!',
+        variant: 'alert',
+        severity: 'success',
+        alert: { color: 'success' }
+      } as SnackbarProps);
+
       // Atualiza a URL da foto exibida se uma nova imagem foi salva
       if (photoChanged) {
         const refreshed = await getUsers({ email: data.email });
@@ -268,6 +406,15 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
       setSubmitError(error || 'Não foi possível criar o usuário.');
       return;
     }
+
+    // Mensagem de sucesso
+    openSnackbar({
+      open: true,
+      message: 'Usuário criado com sucesso!',
+      variant: 'alert',
+      severity: 'success',
+      alert: { color: 'success' }
+    } as SnackbarProps);
 
     onCreate?.(response ?? data);
     handleClose();
@@ -360,8 +507,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
             py: 2.5,
             overflowY: 'auto',
             overflowX: 'hidden',
-            flex: 1,
-            backgroundColor: 'action.hover'
+            flex: 1
           }}
         >
           {/* ===================== ABA 1: DADOS BÁSICOS ===================== */}
@@ -421,15 +567,26 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Senha *</InputLabel>
                   <OutlinedInput
                     {...register('password', { required: !isEditMode ? 'A senha é obrigatória' : false })}
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="Senha"
                     fullWidth
                     autoComplete="new-password"
                     error={Boolean(errors.password)}
+                    endAdornment={
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                      </IconButton>
+                    }
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
-                      backgroundColor: 'background.paper'
+                      backgroundColor: 'background.paper',
+                      pr: 0.5
                     }}
                   />
                   {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
@@ -439,15 +596,26 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Confirmar Senha *</InputLabel>
                   <OutlinedInput
                     {...register('rePassword', { required: !isEditMode ? 'A confirmação de senha é obrigatória' : false })}
-                    type="password"
+                    type={showRePassword ? 'text' : 'password'}
                     placeholder="Confirmar Senha"
                     fullWidth
                     autoComplete="new-password"
                     error={Boolean(errors.rePassword)}
+                    endAdornment={
+                      <IconButton
+                        onClick={() => setShowRePassword(!showRePassword)}
+                        edge="end"
+                        size="small"
+                        tabIndex={-1}
+                      >
+                        {showRePassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                      </IconButton>
+                    }
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
-                      backgroundColor: 'background.paper'
+                      backgroundColor: 'background.paper',
+                      pr: 0.5
                     }}
                   />
                   {errors.rePassword?.message && <FormHelperText error>{errors.rePassword.message}</FormHelperText>}
@@ -522,6 +690,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     placeholder="000.000.000-00"
                     fullWidth
                     autoComplete="off"
+                    onChange={handleCpfChange}
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
@@ -554,6 +723,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     placeholder="(00) 00000-0000"
                     fullWidth
                     autoComplete="off"
+                    onChange={handleWhatsappChange}
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
@@ -568,6 +738,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     placeholder="(00) 0000-0000"
                     fullWidth
                     autoComplete="off"
+                    onChange={handleTelefoneChange}
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
@@ -596,13 +767,18 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                     {...register('cep')}
                     placeholder="00000-000"
                     fullWidth
+                    onChange={handleCepChange}
                     autoComplete="off"
+                    error={Boolean(cepError)}
+                    endAdornment={loadingCep ? <CircularProgress size={18} /> : undefined}
                     sx={{
                       height: 40,
                       borderRadius: 1.5,
                       backgroundColor: 'background.paper'
                     }}
                   />
+                  {cepError && <FormHelperText error>{cepError}</FormHelperText>}
+                  {cepMessage && <FormHelperText>{cepMessage}</FormHelperText>}
                 </Grid>
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Logradouro</InputLabel>
@@ -665,30 +841,63 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                 </Grid>
                 <Grid size={{ xs: 12, sm: 2 }}>
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>UF</InputLabel>
-                  <OutlinedInput
-                    {...register('estado')}
-                    placeholder="UF"
-                    fullWidth
-                    autoComplete="off"
-                    sx={{
-                      height: 40,
-                      borderRadius: 1.5,
-                      backgroundColor: 'background.paper'
+                  <Autocomplete
+                    options={getStateOptions()}
+                    value={getStateOptions().find((opt) => opt.value === selectedState) || null}
+                    onChange={(_, option) => {
+                      const newState = option?.value || '';
+                      setSelectedState(newState);
+                      setValue('estado', newState);
+                      setValue('cidade', '');
                     }}
+                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                    getOptionLabel={(option) => option.label}
+                    inputValue={selectedState}
+                    onInputChange={() => {}} // Prevent free input
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="UF"
+                        autoComplete="off"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            height: 40,
+                            borderRadius: 1.5,
+                            backgroundColor: 'background.paper'
+                          }
+                        }}
+                      />
+                    )}
+                    fullWidth
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 5 }}>
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Cidade</InputLabel>
-                  <OutlinedInput
-                    {...register('cidade')}
-                    placeholder="Cidade"
-                    fullWidth
-                    autoComplete="off"
-                    sx={{
-                      height: 40,
-                      borderRadius: 1.5,
-                      backgroundColor: 'background.paper'
+                  <Autocomplete
+                    options={cities.map((city) => ({ label: city, value: city }))}
+                    value={cities.map((city) => ({ label: city, value: city })).find((opt) => opt.value === watch('cidade')) || null}
+                    onChange={(_, option) => {
+                      setValue('cidade', option?.value || '');
                     }}
+                    isOptionEqualToValue={(option, value) => option.value === value.value}
+                    getOptionLabel={(option) => option.label}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Cidade"
+                        autoComplete="off"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            height: 40,
+                            borderRadius: 1.5,
+                            backgroundColor: 'background.paper'
+                          }
+                        }}
+                      />
+                    )}
+                    fullWidth
+                    disabled={!selectedState}
+                    loading={loadingCities}
                   />
                 </Grid>
               </Grid>
