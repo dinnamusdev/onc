@@ -80,29 +80,55 @@ export async function createUser(request: Request) {
     const origin = request.headers.get('origin') || new URL(request.url).origin;
     const urlCallback = `${origin}/activate-account`;
 
+    console.log('[createUser] Iniciando criação de usuário');
+    console.log('[createUser] Origin:', origin);
+    console.log('[createUser] URL Callback:', urlCallback);
+    console.log('[createUser] Email:', body.email);
+    console.log('[createUser] UserName:', body.userName);
+
+    const requestPayload = {
+      userName: body.userName,
+      email: body.email,
+      password: body.password,
+      rePassword: body.rePassword
+    };
+
+    console.log('[createUser] Enviando para:', `${ONC_API}/auth/api/Register/register-account`);
+    console.log('[createUser] Headers:', { 'Content-Type': 'application/json', url_callback: urlCallback });
+
     const res = await fetch(`${ONC_API}/auth/api/Register/register-account`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         url_callback: urlCallback
       },
-      body: JSON.stringify({
-        userName: body.userName,
-        email: body.email,
-        password: body.password,
-        rePassword: body.rePassword
-      })
+      body: JSON.stringify(requestPayload)
     });
 
+    console.log('[createUser] Status da resposta:', res.status);
+    console.log('[createUser] Headers da resposta:', Object.fromEntries(res.headers.entries()));
+
+    const responseText = await res.text();
+    console.log('[createUser] Body da resposta:', responseText);
+
     if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      return NextResponse.json({ error: error?.message || error?.title || 'Failed to create user' }, { status: res.status });
+      let error: unknown = {};
+      try {
+        error = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        error = { raw: responseText };
+      }
+      console.log('[createUser] Erro ao criar usuário:', error);
+      const errorRecord = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
+      return NextResponse.json({ error: errorRecord.message || errorRecord.title || 'Failed to create user' }, { status: res.status });
     }
 
-    const data = await res.json();
+    const data = responseText ? JSON.parse(responseText) : null;
+    console.log('[createUser] Usuário criado com sucesso:', data);
     return NextResponse.json(data, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  } catch (error) {
+    console.error('[createUser] Erro na requisição:', error);
+    return NextResponse.json({ error: 'Server error', details: String(error) }, { status: 500 });
   }
 }
 

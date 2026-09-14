@@ -431,7 +431,7 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
           borderRadius: 2.5,
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh'
+          maxHeight: 'unset'
         }
       }}
     >
@@ -458,18 +458,18 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
             {isEditMode ? 'Editar Usuário' : 'Adicionar Novo Usuário'}
           </DialogTitle>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{
-              mt: 0.5,
-              fontSize: 14
-            }}
-          >
-            {isEditMode
-              ? 'Atualize os dados básicos e as informações cadastrais do usuário.'
-              : 'Cadastro básico. O usuário receberá um e-mail para ativar a conta e completar o perfil.'}
-          </Typography>
+          {isEditMode && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 0.5,
+                fontSize: 14
+              }}
+            >
+              Atualize os dados básicos e as informações cadastrais do usuário.
+            </Typography>
+          )}
         </Box>
 
         <IconButton
@@ -505,9 +505,8 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
           sx={{
             px: 3,
             py: 2.5,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            flex: 1
+            overflowY: 'hidden',
+            overflowX: 'hidden'
           }}
         >
           {/* ===================== ABA 1: DADOS BÁSICOS ===================== */}
@@ -658,16 +657,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                 </Stack>
               </Stack>
 
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontSize: 16,
-                  fontWeight: 600
-                }}
-              >
-                Dados Pessoais
-              </Typography>
-
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <InputLabel sx={{ mb: 0.75, fontSize: 14, color: 'text.primary' }}>Nome Completo</InputLabel>
@@ -747,18 +736,6 @@ export default function CreateUserDialog({ open, onClose, onCreate, onUpdated, u
                   />
                 </Grid>
               </Grid>
-
-              <Divider sx={{ my: 1 }} />
-
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontSize: 16,
-                  fontWeight: 600
-                }}
-              >
-                Endereço
-              </Typography>
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 2 }}>

@@ -663,10 +663,10 @@ export default function RolesPermissionsView() {
       subjectId?: number;
       actionId?: number;
     }): string => {
-      if (p.description) return p.description;
       const subject = p.subject || (p.subjectId != null ? subjectLookup.get(Number(p.subjectId)) : undefined) || '';
       const action = p.action || (p.actionId != null ? actionLookup.get(Number(p.actionId)) : undefined) || '';
       if (subject || action) return [subject, action].filter(Boolean).join('.');
+      if (p.description) return p.description;
       return p.name ?? String(p.id ?? '');
     },
     [subjectLookup, actionLookup]

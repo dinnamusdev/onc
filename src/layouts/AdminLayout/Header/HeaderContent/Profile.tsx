@@ -160,7 +160,7 @@ export default function ProfileSection() {
             borderRadius: 2.5,
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '90vh'
+            maxHeight: 'unset'
           }
         }}>
         <ProfileForm onClose={() => setOpenProfile(false)} />

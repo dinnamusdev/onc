@@ -19,19 +19,19 @@ export const brazilianStates: BrazilianState[] = [
   { code: 'MG', name: 'Minas Gerais' },
   { code: 'PA', name: 'Pará' },
   { code: 'PB', name: 'Paraíba' },
-  { code: 'PR', name: 'Paraná' },
   { code: 'PE', name: 'Pernambuco' },
   { code: 'PI', name: 'Piauí' },
+  { code: 'PR', name: 'Paraná' },
   { code: 'RJ', name: 'Rio de Janeiro' },
   { code: 'RN', name: 'Rio Grande do Norte' },
-  { code: 'RS', name: 'Rio Grande do Sul' },
   { code: 'RO', name: 'Rondônia' },
   { code: 'RR', name: 'Roraima' },
+  { code: 'RS', name: 'Rio Grande do Sul' },
   { code: 'SC', name: 'Santa Catarina' },
-  { code: 'SP', name: 'São Paulo' },
   { code: 'SE', name: 'Sergipe' },
+  { code: 'SP', name: 'São Paulo' },
   { code: 'TO', name: 'Tocantins' }
-];
+].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
 export const getStateByCode = (code: string): BrazilianState | undefined => {
   return brazilianStates.find((state) => state.code === code);

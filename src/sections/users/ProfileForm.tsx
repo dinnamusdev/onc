@@ -457,8 +457,6 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
     <Stack sx={{ gap: 2.5 }}>
       {photoSection}
 
-      <Typography variant="subtitle1">Dados Pessoais</Typography>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <InputLabel>Nome Completo</InputLabel>
@@ -484,9 +482,6 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
           <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth onChange={handleTelefoneChange} />
         </Grid>
       </Grid>
-
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle1">Endereço</Typography>
 
       <Grid container spacing={2}>
  <Grid size={{ xs: 12, sm: 2 }}>
@@ -612,9 +607,6 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
         >
           <Box>
             <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Meu Perfil</DialogTitle>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Complete seus dados pessoais e de contato.
-            </Typography>
           </Box>
           <IconButton onClick={onClose} size="small">
             <IconX size={18} />
@@ -624,7 +616,14 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
         <Divider />
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogContent>
+          <DialogContent
+            sx={{
+              px: 3,
+              py: 2.5,
+              overflowY: 'hidden',
+              overflowX: 'hidden'
+            }}
+          >
             {formFields}
             {submitErrorAlert && <Box sx={{ mt: 2 }}>{submitErrorAlert}</Box>}
           </DialogContent>
@@ -647,9 +646,6 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
     <MainCard>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4">Meu Perfil</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Complete seus dados pessoais e de contato.
-        </Typography>
       </Box>
 
       <Divider sx={{ mb: 3 }} />
