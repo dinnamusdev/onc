@@ -176,10 +176,6 @@ const normalizePermissionAction = (action: string) => {
 
 /*************************** FILTER DATA ***************************/
 
-const filterPermissions = ['account.delete', 'account.view', 'account.update', 'account.edit', 'account.user'];
-
-const filterRoles = ['Super Admin', 'Billing Admin', 'Admin', 'Developer', 'Product Designer'];
-
 /*************************** HELPERS ***************************/
 
 function SubjectActionDescriptionField({
@@ -313,7 +309,7 @@ export default function RolesPermissionsView() {
               const actId = typeof full.actionId === 'number' ? full.actionId : undefined;
               const subDesc = (subId != null ? subjectMap.get(subId) : undefined) ?? String(full.subject ?? '');
               const actDesc = (actId != null ? actionMap.get(actId) : undefined) ?? String(full.action ?? full.name ?? '');
-              const label = subDesc && actDesc ? `${subDesc}.${actDesc}` : (full.description ?? `#${p}`);
+              const label = subDesc && actDesc ? `${subDesc} - ${actDesc}` : (full.description ?? `#${p}`);
               return { id: String(full.id), name: label, description: String(full.description ?? '') };
             }
             return { id: String(p), name: `#${p}`, description: '' };
@@ -615,6 +611,14 @@ export default function RolesPermissionsView() {
     return (data ?? []) as ApiPermission[];
   });
 
+  // Debug: log das permissões quando carregam
+  useEffect(() => {
+    if (availablePermissions && availablePermissions.length > 0) {
+      console.log('[DEBUG] Permissões carregadas:', availablePermissions);
+      console.log('[DEBUG] Primeira permissão estrutura:', availablePermissions[0]);
+    }
+  }, [availablePermissions]);
+
   // Buscar usuários disponíveis para seleção
   // Normalização defensiva: cobre camelCase e PascalCase, alinhado ao UserResponseDTO do Swagger
   const { data: availableUsers, isLoading: usersLoading } = useSWR('/api/users', async () => {
@@ -630,29 +634,43 @@ export default function RolesPermissionsView() {
     }));
   });
 
-  // Buscar subjects/actions para resolver subjectId/actionId → descrição nos rótulos
+  // Buscar subjects/actions para resolver subjectId/actionId → names nos rótulos
   const { data: subjectsData } = useSWR('/api/rbac/subjects', async () => {
     const { data } = await getSubjects();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    if (data && Array.isArray(data)) {
+      console.log('[DEBUG] Subjects carregados:', data);
+      console.log('[DEBUG] Primeiro subject:', data[0]);
+    }
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
   const { data: actionsData } = useSWR('/api/rbac/actions', async () => {
     const { data } = await getActions();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    if (data && Array.isArray(data)) {
+      console.log('[DEBUG] Actions carregadas:', data);
+      console.log('[DEBUG] Primeira action:', data[0]);
+    }
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
-  const subjectLookup = useMemo(
-    () => new Map<number, string>((subjectsData ?? []).map((s) => [Number(s.id), s.description || ''])),
-    [subjectsData]
-  );
+  const subjectLookup = useMemo(() => {
+    const map = new Map<number, string>((subjectsData ?? []).map((s) =>
+      [Number(s.id), s.name || s.description || '']
+    ));
+    console.log('[DEBUG] subjectLookup criado:', Array.from(map.entries()));
+    return map;
+  }, [subjectsData]);
 
-  const actionLookup = useMemo(
-    () => new Map<number, string>((actionsData ?? []).map((a) => [Number(a.id), a.description || ''])),
-    [actionsData]
-  );
+  const actionLookup = useMemo(() => {
+    const map = new Map<number, string>((actionsData ?? []).map((a) =>
+      [Number(a.id), a.name || a.description || '']
+    ));
+    console.log('[DEBUG] actionLookup criado:', Array.from(map.entries()));
+    return map;
+  }, [actionsData]);
 
   // Resolve um objeto de permissão para um rótulo legível.
-  // Prioridade: description > subject.action > name > id
+  // Prioridade: subject.action > description > name > id
   const resolvePermLabel = useCallback(
     (p: {
       id?: string | number;
@@ -663,11 +681,28 @@ export default function RolesPermissionsView() {
       subjectId?: number;
       actionId?: number;
     }): string => {
+      console.log('[resolvePermLabel] Permissão recebida:', p);
+      console.log('[resolvePermLabel] subjectLookup size:', subjectLookup.size);
+      console.log('[resolvePermLabel] actionLookup size:', actionLookup.size);
+      
       const subject = p.subject || (p.subjectId != null ? subjectLookup.get(Number(p.subjectId)) : undefined) || '';
       const action = p.action || (p.actionId != null ? actionLookup.get(Number(p.actionId)) : undefined) || '';
-      if (subject || action) return [subject, action].filter(Boolean).join('.');
-      if (p.description) return p.description;
-      return p.name ?? String(p.id ?? '');
+      
+      console.log('[resolvePermLabel] subject resolvido:', subject);
+      console.log('[resolvePermLabel] action resolvido:', action);
+      
+      if (subject || action) {
+        const result = [subject, action].filter(Boolean).join(' - ');
+        console.log('[resolvePermLabel] Resultado (subject.action):', result);
+        return result;
+      }
+      if (p.description) {
+        console.log('[resolvePermLabel] Usando description:', p.description);
+        return p.description;
+      }
+      const fallback = p.name ?? String(p.id ?? '');
+      console.log('[resolvePermLabel] Usando fallback:', fallback);
+      return fallback;
     },
     [subjectLookup, actionLookup]
   );
@@ -807,11 +842,13 @@ export default function RolesPermissionsView() {
     setOpenFilterDialog(false);
   };
 
-  const filteredPermissionOptions = filterPermissions.filter((permission) =>
-    permission.toLowerCase().includes(permissionFilterSearch.toLowerCase())
-  );
+  const filteredPermissionOptions = permissions
+    .map((permission) => `${permission.subject} - ${permission.action}`)
+    .filter((permission) => permission.toLowerCase().includes(permissionFilterSearch.toLowerCase()));
 
-  const filteredRoleOptions = filterRoles.filter((role) => role.toLowerCase().includes(roleFilterSearch.toLowerCase()));
+  const filteredRoleOptions = roles
+    .map((role) => role.name)
+    .filter((role) => role.toLowerCase().includes(roleFilterSearch.toLowerCase()));
 
   /*************************** VISIBLE ROLES ***************************/
 
@@ -916,7 +953,7 @@ export default function RolesPermissionsView() {
       .filter((p) => selectedPermissionIds.includes(String(p.id)))
       .map((p) => ({
         id: String(p.id),
-        name: p.name || `${p.subject}.${p.action}`,
+        name: p.name || `${p.subject} - ${p.action}`,
         description: p.description || ''
       }));
 
@@ -1333,6 +1370,7 @@ export default function RolesPermissionsView() {
     await reloadData();
     setRolesPage(1);
     setOpenCreateRoleDialog(false);
+    openSnackbar({ open: true, message: 'Papel criado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
   };
 
   /*************************** CREATE PERMISSION ***************************/
@@ -1500,18 +1538,21 @@ export default function RolesPermissionsView() {
                 }}
               />
 
-              <Button
-                variant="outlined"
-                color="secondary"
-                startIcon={<IconFilter size={16} />}
-                onClick={handleFilterOpen}
-                sx={{
-                  minWidth: 108,
-                  height: 40
-                }}
-              >
-                Filtrar
-              </Button>
+              {/* Botão Filtrar - apenas para abas de Papéis (0) e Permissões (1) */}
+              {tab !== 2 && tab !== 3 && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<IconFilter size={16} />}
+                  onClick={handleFilterOpen}
+                  sx={{
+                    minWidth: 108,
+                    height: 40
+                  }}
+                >
+                  Filtrar
+                </Button>
+              )}
             </Stack>
 
             {/* FILTROS ATIVOS */}
@@ -1689,7 +1730,7 @@ export default function RolesPermissionsView() {
                             {role.permissions.slice(0, 3).map((p) => (
                               <Chip
                               key={p.id}
-                              label={p.description || p.name || String(p.id)}
+                              label={p.name || p.description || String(p.id)}
                               size="small"
                               variant="outlined"
                               sx={{
@@ -3120,7 +3161,7 @@ export default function RolesPermissionsView() {
               options={availablePermissions?.map((p) => String(p.id)) || []}
               getOptionLabel={(id) => {
                 const perm = availablePermissions?.find((p) => String(p.id) === id);
-                return perm?.name || `${perm?.subject}.${perm?.action}` || id;
+                return perm?.name || `${perm?.subject} - ${perm?.action}` || id;
               }}
               value={selectedPermissionIds}
               onChange={(_event, value) => handleAddPermissions(value)}
@@ -3131,7 +3172,7 @@ export default function RolesPermissionsView() {
                 return (
                   <li key={key} {...optionProps}>
                     <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                    {perm?.name || `${perm?.subject}.${perm?.action}` || option}
+                    {perm?.name || `${perm?.subject} - ${perm?.action}` || option}
                   </li>
                 );
               }}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import useSWR from 'swr';
 
 // @mui
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -40,8 +41,8 @@ import Typography from '@mui/material/Typography';
 // @icons
 import {
   IconBan,
-  IconCalendar,
   IconCheck,
+  IconCalendar,
   IconChevronLeft,
   IconChevronRight,
   IconDotsVertical,
@@ -55,7 +56,9 @@ import {
 
 // @project
 import CreateUserDialog, { EditableUser } from '@/sections/users/CreateUserDialog';
-import { getUsers, getUserById } from '@/utils/api/users';
+import { getUsers, getUserById, updateUser } from '@/utils/api/users';
+import { getRoles } from '@/utils/api/rbac';
+import { openSnackbar } from '@/states/snackbar';
 
 /***************************  MOCK DATA  ***************************/
 
@@ -145,12 +148,26 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
   // Modal bloquear
   const [openBlockDialog, setOpenBlockDialog] = useState(false);
 
-  // Modal deletar
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  // Modal desbloquear
+  const [openUnblockDialog, setOpenUnblockDialog] = useState(false);
 
-  const roles = ['Gestor', 'Admin', 'Gerente', 'Atendente', 'Developer', 'Engineer'];
+  // Carregar roles reais da API
+  const { data: rolesData } = useSWR('/api/roles', getRoles);
+  const roles = (rolesData?.data || []).map((role: Record<string, unknown>) => String(role.name || role.userName || ''));
 
-  const statuses: UserRow['status'][] = ['Ativo', 'Pendente', 'Denunciado', 'Bloqueado'];
+  // Extrai statuses únicos dos usuários carregados (dinâmico do backend)
+  const statuses: UserRow['status'][] = useMemo(() => {
+    const uniqueStatuses = new Set<UserRow['status']>();
+    users.forEach((user) => {
+      if (user.status) {
+        uniqueStatuses.add(user.status);
+      }
+    });
+    return Array.from(uniqueStatuses).sort();
+  }, [users]);
+
+  // Filtra roles válidos (não vazio)
+  const validRoles = roles.filter((r: string) => r.trim() !== '');
 
   const allSelected = selected.length === users.length && users.length > 0;
 
@@ -215,44 +232,111 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     setOpenBlockDialog(false);
   };
 
-  const handleBlockConfirm = () => {
+  const handleBlockConfirm = async () => {
     if (!menuUser) return;
 
-    setUsers((current) =>
-      current.map((user) =>
-        user.id === menuUser.id
-          ? {
-              ...user,
-              status: 'Bloqueado'
-            }
-          : user
-      )
-    );
+    try {
+      // Busca todos os dados do usuário
+      const { data, error: fetchError } = await getUserById(menuUser.id);
+      if (fetchError || !data) {
+        openSnackbar({ open: true, message: 'Erro ao buscar dados do usuário', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+        return;
+      }
 
-    setOpenBlockDialog(false);
-    setMenuUser(null);
+      const userData = data as Record<string, unknown>;
+
+      // Bloquear: PUT /api/users com todos os campos + isAtivo: false
+      const { error } = await updateUser({
+        id: menuUser.id,
+        userName: userData.userName ? String(userData.userName) : '',
+        email: userData.email ? String(userData.email) : '',
+        nomeCompleto: userData.nomeCompleto ? String(userData.nomeCompleto) : '',
+        cpf: userData.cpf ? String(userData.cpf) : '',
+        whatsapp: userData.whatsapp ? String(userData.whatsapp) : '',
+        telefone: userData.telefone ? String(userData.telefone) : '',
+        logradouro: userData.logradouro ? String(userData.logradouro) : '',
+        numero: userData.numero ? String(userData.numero) : '',
+        complemento: userData.complemento ? String(userData.complemento) : '',
+        bairro: userData.bairro ? String(userData.bairro) : '',
+        cidade: userData.cidade ? String(userData.cidade) : '',
+        estado: userData.estado ? String(userData.estado) : '',
+        cep: userData.cep ? String(userData.cep) : '',
+        isAtivo: false
+      });
+
+      if (error) {
+        openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+        return;
+      }
+
+      // Recarrega dados do backend
+      await reloadData();
+
+      setOpenBlockDialog(false);
+      setMenuUser(null);
+      openSnackbar({ open: true, message: 'Usuário bloqueado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+    } catch (err) {
+      openSnackbar({ open: true, message: 'Erro ao bloquear usuário', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    }
   };
 
-  /*************************** DELETAR ***************************/
+  /*************************** DESBLOQUEAR ***************************/
 
-  const handleDeleteOpen = () => {
+  const handleUnblockOpen = () => {
     handleMenuClose();
-    setOpenDeleteDialog(true);
+    setOpenUnblockDialog(true);
   };
 
-  const handleDeleteClose = () => {
-    setOpenDeleteDialog(false);
+  const handleUnblockClose = () => {
+    setOpenUnblockDialog(false);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleUnblockConfirm = async () => {
     if (!menuUser) return;
 
-    setUsers((current) => current.filter((user) => user.id !== menuUser.id));
+    try {
+      // Busca todos os dados do usuário
+      const { data, error: fetchError } = await getUserById(menuUser.id);
+      if (fetchError || !data) {
+        openSnackbar({ open: true, message: 'Erro ao buscar dados do usuário', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+        return;
+      }
 
-    setSelected((current) => current.filter((id) => id !== menuUser.id));
+      const userData = data as Record<string, unknown>;
 
-    setOpenDeleteDialog(false);
-    setMenuUser(null);
+      // Desbloquear: PUT /api/users com todos os campos + isAtivo: true
+      const { error } = await updateUser({
+        id: menuUser.id,
+        userName: userData.userName ? String(userData.userName) : '',
+        email: userData.email ? String(userData.email) : '',
+        nomeCompleto: userData.nomeCompleto ? String(userData.nomeCompleto) : '',
+        cpf: userData.cpf ? String(userData.cpf) : '',
+        whatsapp: userData.whatsapp ? String(userData.whatsapp) : '',
+        telefone: userData.telefone ? String(userData.telefone) : '',
+        logradouro: userData.logradouro ? String(userData.logradouro) : '',
+        numero: userData.numero ? String(userData.numero) : '',
+        complemento: userData.complemento ? String(userData.complemento) : '',
+        bairro: userData.bairro ? String(userData.bairro) : '',
+        cidade: userData.cidade ? String(userData.cidade) : '',
+        estado: userData.estado ? String(userData.estado) : '',
+        cep: userData.cep ? String(userData.cep) : '',
+        isAtivo: true
+      });
+
+      if (error) {
+        openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+        return;
+      }
+
+      // Recarrega dados do backend
+      await reloadData();
+
+      setOpenUnblockDialog(false);
+      setMenuUser(null);
+      openSnackbar({ open: true, message: 'Usuário desbloqueado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
+    } catch (err) {
+      openSnackbar({ open: true, message: 'Erro ao desbloquear usuário', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
+    }
   };
 
   /*************************** SELEÇÃO ***************************/
@@ -550,9 +634,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                 </TableCell>
 
                 <TableCell>Perfil</TableCell>
-                <TableCell>Papéis</TableCell>
-                <TableCell>Última atividade</TableCell>
-                <TableCell>Data</TableCell>
+                <TableCell>Data de cadastro</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right" />
               </TableRow>
@@ -560,9 +642,13 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
             <TableBody>
               {paginatedUsers.map((user) => (
-                <TableRow key={user.id} hover>
+                <TableRow
+                  key={user.id}
+                  hover
+                  sx={user.status === 'Bloqueado' ? { opacity: 0.6, backgroundColor: 'action.disabledBackground' } : {}}
+                >
                   <TableCell padding="checkbox">
-                    <Checkbox checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} />
+                    <Checkbox checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} disabled={user.status === 'Bloqueado'} />
                   </TableCell>
 
                   <TableCell>
@@ -576,9 +662,18 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                       <Avatar sx={{ width: 32, height: 32 }}>{user.name?.charAt(0) || 'U'}</Avatar>
 
                       <Box>
-                        <Typography variant="subtitle2">{user.name}</Typography>
+                        <Typography
+                          variant="subtitle2"
+                          sx={user.status === 'Bloqueado' ? { textDecoration: 'line-through', color: 'text.disabled' } : {}}
+                        >
+                          {user.name}
+                        </Typography>
 
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={user.status === 'Bloqueado' ? { textDecoration: 'line-through', color: 'text.disabled' } : {}}
+                        >
                           {user.username}
                         </Typography>
                       </Box>
@@ -586,33 +681,13 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                   </TableCell>
 
                   <TableCell>
-                    <Stack
-                      direction="row"
-                      sx={{
-                        gap: 0.5,
-                        flexWrap: 'wrap'
-                      }}
-                    >
-                      {user.roles.map((role) => (
-                        <Chip key={role} label={role} size="small" variant="outlined" />
-                      ))}
-                    </Stack>
-                  </TableCell>
-
-                  <TableCell>
-                    <Typography variant="body2">{user.lastActivity}</Typography>
-
-                    <Typography variant="caption" color="text.secondary">
-                      {user.lastActivityDate}
+                    <Typography variant="body2" sx={user.status === 'Bloqueado' ? { textDecoration: 'line-through', color: 'text.disabled' } : {}}>
+                      {user.date}
                     </Typography>
                   </TableCell>
 
                   <TableCell>
-                    <Typography variant="body2">{user.date}</Typography>
-                  </TableCell>
-
-                  <TableCell>
-                    <Chip label={user.status} size="small" color={statusColorMap[user.status]} />
+                    <Chip label={user.status === 'Bloqueado' ? 'Bloqueado' : user.status} size="small" color={user.status === 'Bloqueado' ? 'error' : (statusColorMap[user.status] || 'default')} />
                   </TableCell>
 
                   {/* TRÊS PONTINHOS */}
@@ -626,7 +701,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
               {paginatedUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={5} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                       Nenhum usuário encontrado.
                     </Typography>
@@ -810,30 +885,32 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
           <Typography variant="body2">Editar</Typography>
         </MenuItem>
 
-        <MenuItem
-          onClick={handleBlockOpen}
-          sx={{
-            gap: 1.5,
-            py: 1.25,
-            px: 2
-          }}
-        >
-          <IconBan size={18} />
-          <Typography variant="body2">Bloquear</Typography>
-        </MenuItem>
-
-        <MenuItem
-          onClick={handleDeleteOpen}
-          sx={{
-            gap: 1.5,
-            py: 1.25,
-            px: 2,
-            color: 'error.main'
-          }}
-        >
-          <IconTrash size={18} />
-          <Typography variant="body2">Deletar</Typography>
-        </MenuItem>
+        {menuUser?.status === 'Bloqueado' ? (
+          <MenuItem
+            onClick={handleUnblockOpen}
+            sx={{
+              gap: 1.5,
+              py: 1.25,
+              px: 2,
+              color: 'success.main'
+            }}
+          >
+            <IconCheck size={18} />
+            <Typography variant="body2">Desbloquear</Typography>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={handleBlockOpen}
+            sx={{
+              gap: 1.5,
+              py: 1.25,
+              px: 2
+            }}
+          >
+            <IconBan size={18} />
+            <Typography variant="body2">Bloquear</Typography>
+          </MenuItem>
+        )}
       </Menu>
 
       {/* ========================================================= */}
@@ -931,13 +1008,13 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
       </Dialog>
 
       {/* ========================================================= */}
-      {/* MODAL DELETAR USUÁRIO                                    */}
+      {/* MODAL DESBLOQUEAR USUÁRIO                                 */}
       {/* ========================================================= */}
 
       <Dialog
-        open={openDeleteDialog}
-        onClose={handleDeleteClose}
-        maxWidth="sm"
+        open={openUnblockDialog}
+        onClose={handleUnblockClose}
+        maxWidth="xs"
         fullWidth
         PaperProps={{
           sx: {
@@ -949,22 +1026,18 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: 24,
-            fontWeight: 600,
-            px: 3,
-            py: 2.5
+            justifyContent: 'space-between'
           }}
         >
-          Deletar usuário
-          <IconButton size="small" onClick={handleDeleteClose}>
+          Desbloquear usuário
+          <IconButton size="small" onClick={handleUnblockClose}>
             <IconX size={18} />
           </IconButton>
         </DialogTitle>
 
         <Divider />
 
-        <DialogContent sx={{ px: 3, py: 4 }}>
+        <DialogContent sx={{ py: 3 }}>
           <Stack
             sx={{
               alignItems: 'center',
@@ -972,46 +1045,24 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
               gap: 2
             }}
           >
-            <Box
+            <Avatar
               sx={{
-                width: 180,
-                height: 150,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 2,
-                bgcolor: 'grey.50'
+                width: 64,
+                height: 64,
+                bgcolor: 'success.lighter',
+                color: 'success.main'
               }}
             >
-              <IconTrash size={72} stroke={1.2} color="currentColor" />
-            </Box>
+              <IconCheck size={28} />
+            </Avatar>
 
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 600
-              }}
-            >
-              Tem certeza que deseja deletar?
-            </Typography>
+            <Typography variant="h6">Tem certeza que deseja desbloquear?</Typography>
 
-            <Typography
-              variant="body1"
-              color="text.secondary"
-              sx={{
-                maxWidth: 500
-              }}
-            >
-              {menuUser ? (
+            <Typography variant="body2" color="text.secondary">
+              {menuUser && (
                 <>
-                  Ao deletar o usuário{' '}
-                  <Typography component="span" color="primary.main" fontWeight={500}>
-                    {menuUser.name}
-                  </Typography>{' '}
-                  todos os registros relacionados serão removidos. Tenha cuidado com esta ação.
+                  O usuário <strong>{menuUser.name}</strong> será desbloqueado e poderá acessar o sistema normalmente.
                 </>
-              ) : (
-                'Esta ação não poderá ser desfeita.'
               )}
             </Typography>
           </Stack>
@@ -1026,12 +1077,12 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
             py: 2
           }}
         >
-          <Button variant="outlined" onClick={handleDeleteClose}>
+          <Button variant="outlined" onClick={handleUnblockClose}>
             Cancelar
           </Button>
 
-          <Button variant="contained" color="error" startIcon={<IconTrash size={18} />} onClick={handleDeleteConfirm}>
-            Deletar
+          <Button variant="contained" color="success" onClick={handleUnblockConfirm}>
+            Desbloquear
           </Button>
         </DialogActions>
       </Dialog>
@@ -1107,7 +1158,7 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                 )}
               </Stack>
 
-              {roles.map((role) => (
+              {validRoles.map((role: string) => (
                 <Stack
                   key={role}
                   direction="row"
@@ -1121,34 +1172,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                   <Checkbox
                     size="small"
                     checked={selectedRoles.includes(role)}
-                    icon={
-                      <Box
-                        sx={{
-                          width: 14,
-                          height: 14,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 0.5
-                        }}
-                      />
-                    }
-                    checkedIcon={
-                      <Box
-                        sx={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 0.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: 'primary.main',
-                          color: 'white'
-                        }}
-                      >
-                        <IconCheck size={11} />
-                      </Box>
-                    }
-                    sx={{ p: 0.5 }}
                   />
 
                   <Typography variant="body2">{role}</Typography>
@@ -1193,34 +1216,6 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
                   <Checkbox
                     size="small"
                     checked={selectedStatuses.includes(status)}
-                    icon={
-                      <Box
-                        sx={{
-                          width: 14,
-                          height: 14,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 0.5
-                        }}
-                      />
-                    }
-                    checkedIcon={
-                      <Box
-                        sx={{
-                          width: 14,
-                          height: 14,
-                          borderRadius: 0.5,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          bgcolor: 'primary.main',
-                          color: 'white'
-                        }}
-                      >
-                        <IconCheck size={11} />
-                      </Box>
-                    }
-                    sx={{ p: 0.5 }}
                   />
 
                   <Typography variant="body2">{status}</Typography>

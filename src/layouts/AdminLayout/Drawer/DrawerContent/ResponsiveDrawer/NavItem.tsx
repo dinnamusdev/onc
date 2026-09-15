@@ -77,7 +77,7 @@ export default function NavItem({ item, level = 0 }: Props) {
         })
       }}
     >
-      {level === 0 && (
+      {item.icon && (
         <ListItemIcon>
           <DynamicIcon name={item.icon as DynamicIconProps['name']} color={iconcolor} size={18} stroke={1.5} />
         </ListItemIcon>
