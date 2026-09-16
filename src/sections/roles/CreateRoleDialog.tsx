@@ -98,31 +98,31 @@ export default function CreateRoleDialog({ open, onClose, onCreate, userOptions 
   // Buscar subjects/actions para resolver subjectId/actionId → descrição
   const { data: subjectsData } = useSWR('/api/rbac/subjects', async () => {
     const { data } = await getSubjects();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
   const { data: actionsData } = useSWR('/api/rbac/actions', async () => {
     const { data } = await getActions();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
   const subjectMap = useMemo<LookupMap>(
-    () => new Map((subjectsData ?? []).map((s) => [Number(s.id), s.description || ''])),
+    () => new Map((subjectsData ?? []).map((s) => [Number(s.id), s.name || s.description || ''])),
     [subjectsData]
   );
 
   const actionMap = useMemo<LookupMap>(
-    () => new Map((actionsData ?? []).map((a) => [Number(a.id), a.description || ''])),
+    () => new Map((actionsData ?? []).map((a) => [Number(a.id), a.name || a.description || ''])),
     [actionsData]
   );
 
   // Rótulo legível para uma permissão.
-  // Prioridade: description > subject.action > name > id
+  // Prioridade: subject.action > description > name > id
   const permissionLabel = (p: Permission): string => {
-    if (p.description) return p.description;
     const subject = p.subject || (p.subjectId != null ? subjectMap.get(Number(p.subjectId)) : undefined) || '';
     const action = p.action || (p.actionId != null ? actionMap.get(Number(p.actionId)) : undefined) || '';
-    if (subject || action) return [subject, action].filter(Boolean).join('.');
+    if (subject || action) return [subject, action].filter(Boolean).join(' - ');
+    if (p.description) return p.description;
     return p.name ?? String(p.id);
   };
 

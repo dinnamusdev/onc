@@ -112,6 +112,11 @@ export default function NavItem({ item, level = 0 }: Props) {
           </ListItemAvatar>
         </ButtonBase>
       )}
+      {level > 0 && item.icon && (
+        <ListItemIcon sx={{ minWidth: 32 }}>
+          <DynamicIcon name={item.icon as DynamicIconProps['name']} color={iconcolor} size={18} stroke={1.5} />
+        </ListItemIcon>
+      )}
       {level > 0 && <ListItemText primary={<FormattedMessage id={item.title} />} />}
     </ListItemButton>
   );

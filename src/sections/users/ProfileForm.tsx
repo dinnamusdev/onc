@@ -1,9 +1,14 @@
 'use client';
 
 import { ChangeEvent, useEffect, useState } from 'react';
+import { getAddressByCep } from '@/utils/api/cep';
+import { formatCPF, formatCEP, formatPhone } from '@/utils/format';
+import { getStateOptions } from '@/data/brazilianStates';
+import { getMunicipiosByUf } from '@/utils/api/ibge';
 
 // @mui
 import Alert from '@mui/material/Alert';
+import Autocomplete from '@mui/material/Autocomplete';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -18,6 +23,7 @@ import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 // @third-party
@@ -88,7 +94,13 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
   };
 
   const [loading, setLoading] = useState(true);
+  const [loadingCep, setLoadingCep] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [cepError, setCepError] = useState('');
+  const [cepMessage, setCepMessage] = useState('');
+  const [selectedState, setSelectedState] = useState<string>('');
+  const [cities, setCities] = useState<string[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [submitError, setSubmitError] = useState<{ message: string; errors?: string[] } | null>(null);
@@ -101,8 +113,86 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors }
   } = useForm<ProfileFormInput>({ defaultValues: emptyForm });
+
+const handleCepChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const value = event.target.value;
+  const cleanCep = value.replace(/\D/g, '');
+  const formatted = formatCEP(value);
+
+  setValue('cep', formatted, {
+    shouldDirty: true,
+    shouldValidate: true
+  });
+
+  setCepError('');
+  setCepMessage('');
+
+  if (cleanCep.length !== 8) {
+    if (cleanCep.length > 0) {
+      setCepMessage('CEP incompleto');
+    }
+    return;
+  }
+
+  try {
+    setLoadingCep(true);
+    setCepMessage('Procurando endereço...');
+
+    const address = await getAddressByCep(cleanCep);
+
+    setValue('logradouro', address.logradouro || '', {
+      shouldDirty: true
+    });
+
+    setValue('bairro', address.bairro || '', {
+      shouldDirty: true
+    });
+
+    setValue('cidade', address.localidade || '', {
+      shouldDirty: true
+    });
+
+    setValue('estado', address.uf || '', {
+      shouldDirty: true
+    });
+
+    setCepMessage('');
+  } catch (error) {
+    console.error('Erro ao consultar CEP:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro ao consultar CEP';
+    setCepError(errorMessage);
+  } finally {
+    setLoadingCep(false);
+  }
+};
+
+const handleCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const formatted = formatCPF(event.target.value);
+  setValue('cpf', formatted, {
+    shouldDirty: true,
+    shouldValidate: true
+  });
+};
+
+const handleWhatsappChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const formatted = formatPhone(event.target.value);
+  setValue('whatsapp', formatted, {
+    shouldDirty: true,
+    shouldValidate: true
+  });
+};
+
+const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const formatted = formatPhone(event.target.value);
+  setValue('telefone', formatted, {
+    shouldDirty: true,
+    shouldValidate: true
+  });
+};
 
   // Carrega o perfil do usuário logado:
   // 1) pega o e-mail das claims do JWT (disponível no AuthContext),
@@ -171,6 +261,35 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedPhoto]);
+
+  // Sincroniza selectedState com o valor do campo "estado" do form
+  useEffect(() => {
+    const estadoValue = watch('estado');
+    setSelectedState(estadoValue || '');
+  }, [watch('estado'), watch]);
+
+  // Carrega cidades quando UF muda
+  useEffect(() => {
+    if (!selectedState) {
+      setCities([]);
+      return;
+    }
+
+    const loadCities = async () => {
+      try {
+        setLoadingCities(true);
+        const municipios = await getMunicipiosByUf(selectedState);
+        setCities(municipios);
+      } catch (error) {
+        console.error('Erro ao carregar cidades:', error);
+        setCities([]);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+
+    loadCities();
+  }, [selectedState]);
 
   const ACCEPTED_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
   const MAX_PHOTO_SIZE_BYTES = 256 * 1024; // 256 KB
@@ -338,55 +457,55 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
     <Stack sx={{ gap: 2.5 }}>
       {photoSection}
 
-      <Typography variant="subtitle1">Dados Pessoais</Typography>
-
-      <Box>
-        <InputLabel>Nome Completo</InputLabel>
-        <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
-      </Box>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <InputLabel>E-mail</InputLabel>
-          <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
+          <InputLabel>Nome Completo</InputLabel>
+          <OutlinedInput {...register('nomeCompleto')} placeholder="Nome completo" fullWidth />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <InputLabel>CPF</InputLabel>
-          <OutlinedInput {...register('cpf')} placeholder="000.000.000-00" fullWidth />
+          <OutlinedInput {...register('cpf')} placeholder="000.000.000-00" fullWidth onChange={handleCpfChange} />
         </Grid>
       </Grid>
-
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <InputLabel>WhatsApp</InputLabel>
-          <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <InputLabel>Telefone</InputLabel>
-          <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth />
-        </Grid>
-      </Grid>
-
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle1">Endereço</Typography>
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <InputLabel>CEP</InputLabel>
-          <OutlinedInput {...register('cep')} placeholder="00000-000" fullWidth />
+          <InputLabel>E-mail</InputLabel>
+          <OutlinedInput {...register('email')} placeholder="exemplo@gmail.com" fullWidth readOnly />
         </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <InputLabel>WhatsApp</InputLabel>
+          <OutlinedInput {...register('whatsapp')} placeholder="(00) 00000-0000" fullWidth onChange={handleWhatsappChange} />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <InputLabel>Telefone</InputLabel>
+          <OutlinedInput {...register('telefone')} placeholder="(00) 0000-0000" fullWidth onChange={handleTelefoneChange} />
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+ <Grid size={{ xs: 12, sm: 2 }}>
+  <InputLabel>CEP</InputLabel>
+  <OutlinedInput
+  {...register('cep')}
+  placeholder="00000-000"
+  fullWidth
+  onChange={handleCepChange}
+  endAdornment={loadingCep ? <CircularProgress size={18} /> : undefined}
+  error={Boolean(cepError)}
+/>
+  {cepError && <FormHelperText error>{cepError}</FormHelperText>}
+  {cepMessage && <FormHelperText>{cepMessage}</FormHelperText>}
+</Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>Logradouro</InputLabel>
           <OutlinedInput {...register('logradouro')} placeholder="Rua, avenida..." fullWidth />
         </Grid>
-      </Grid>
-
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 4 }}>
+        <Grid size={{ xs: 12, sm: 2 }}>
           <InputLabel>Número</InputLabel>
           <OutlinedInput {...register('numero')} placeholder="123" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 8 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <InputLabel>Complemento</InputLabel>
           <OutlinedInput {...register('complemento')} placeholder="Apto, bloco..." fullWidth />
         </Grid>
@@ -397,14 +516,52 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
           <InputLabel>Bairro</InputLabel>
           <OutlinedInput {...register('bairro')} placeholder="Bairro" fullWidth />
         </Grid>
-        <Grid size={{ xs: 12, sm: 5 }}>
-          <InputLabel>Cidade</InputLabel>
-          <OutlinedInput {...register('cidade')} placeholder="Cidade" fullWidth />
-        </Grid>
         <Grid size={{ xs: 12, sm: 2 }}>
           <InputLabel>UF</InputLabel>
-          <OutlinedInput {...register('estado')} placeholder="UF" fullWidth error={Boolean(errors.estado)} />
+          <Autocomplete
+            options={getStateOptions()}
+            value={getStateOptions().find((opt) => opt.value === selectedState) || null}
+            onChange={(_, option) => {
+              const newState = option?.value || '';
+              setSelectedState(newState);
+              setValue('estado', newState);
+              setValue('cidade', '');
+            }}
+            isOptionEqualToValue={(option, value) => option.value === value.value}
+            getOptionLabel={(option) => option.label}
+            inputValue={selectedState}
+            onInputChange={() => {}} // Prevent free input
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="UF"
+                error={Boolean(errors.estado)}
+              />
+            )}
+            fullWidth
+          />
           {errors.estado?.message && <FormHelperText error>{errors.estado.message}</FormHelperText>}
+        </Grid>
+        <Grid size={{ xs: 12, sm: 5 }}>
+          <InputLabel>Cidade</InputLabel>
+          <Autocomplete
+            options={cities.map((city) => ({ label: city, value: city }))}
+            value={cities.map((city) => ({ label: city, value: city })).find((opt) => opt.value === watch('cidade')) || null}
+            onChange={(_, option) => {
+              setValue('cidade', option?.value || '');
+            }}
+            isOptionEqualToValue={(option, value) => option.value === value.value}
+            getOptionLabel={(option) => option.label}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Cidade"
+              />
+            )}
+            fullWidth
+            disabled={!selectedState}
+            loading={loadingCities}
+          />
         </Grid>
       </Grid>
     </Stack>
@@ -450,9 +607,6 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
         >
           <Box>
             <DialogTitle sx={{ p: 0, fontSize: 18, fontWeight: 600 }}>Meu Perfil</DialogTitle>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              Complete seus dados pessoais e de contato.
-            </Typography>
           </Box>
           <IconButton onClick={onClose} size="small">
             <IconX size={18} />
@@ -462,7 +616,14 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
         <Divider />
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogContent>
+          <DialogContent
+            sx={{
+              px: 3,
+              py: 2.5,
+              overflowY: 'hidden',
+              overflowX: 'hidden'
+            }}
+          >
             {formFields}
             {submitErrorAlert && <Box sx={{ mt: 2 }}>{submitErrorAlert}</Box>}
           </DialogContent>
@@ -485,9 +646,6 @@ export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
     <MainCard>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4">Meu Perfil</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          Complete seus dados pessoais e de contato.
-        </Typography>
       </Box>
 
       <Divider sx={{ mb: 3 }} />

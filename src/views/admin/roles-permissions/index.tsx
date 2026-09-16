@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, SyntheticEvent, MouseEvent }
 
 // @mui
 import Avatar from '@mui/material/Avatar';
+import { useTheme } from '@mui/material/styles';
 import AvatarGroup from '@mui/material/AvatarGroup';
 import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -175,10 +176,6 @@ const normalizePermissionAction = (action: string) => {
 
 /*************************** FILTER DATA ***************************/
 
-const filterPermissions = ['account.delete', 'account.view', 'account.update', 'account.edit', 'account.user'];
-
-const filterRoles = ['Super Admin', 'Billing Admin', 'Admin', 'Developer', 'Product Designer'];
-
 /*************************** HELPERS ***************************/
 
 function SubjectActionDescriptionField({
@@ -205,6 +202,8 @@ function SubjectActionDescriptionField({
 /*************************** VIEW ***************************/
 
 export default function RolesPermissionsView() {
+    const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const [tab, setTab] = useState(0);
 
   const [rolesPage, setRolesPage] = useState(1);
@@ -310,7 +309,7 @@ export default function RolesPermissionsView() {
               const actId = typeof full.actionId === 'number' ? full.actionId : undefined;
               const subDesc = (subId != null ? subjectMap.get(subId) : undefined) ?? String(full.subject ?? '');
               const actDesc = (actId != null ? actionMap.get(actId) : undefined) ?? String(full.action ?? full.name ?? '');
-              const label = subDesc && actDesc ? `${subDesc}.${actDesc}` : (full.description ?? `#${p}`);
+              const label = subDesc && actDesc ? `${subDesc} - ${actDesc}` : (full.description ?? `#${p}`);
               return { id: String(full.id), name: label, description: String(full.description ?? '') };
             }
             return { id: String(p), name: `#${p}`, description: '' };
@@ -612,6 +611,14 @@ export default function RolesPermissionsView() {
     return (data ?? []) as ApiPermission[];
   });
 
+  // Debug: log das permissões quando carregam
+  useEffect(() => {
+    if (availablePermissions && availablePermissions.length > 0) {
+      console.log('[DEBUG] Permissões carregadas:', availablePermissions);
+      console.log('[DEBUG] Primeira permissão estrutura:', availablePermissions[0]);
+    }
+  }, [availablePermissions]);
+
   // Buscar usuários disponíveis para seleção
   // Normalização defensiva: cobre camelCase e PascalCase, alinhado ao UserResponseDTO do Swagger
   const { data: availableUsers, isLoading: usersLoading } = useSWR('/api/users', async () => {
@@ -627,29 +634,43 @@ export default function RolesPermissionsView() {
     }));
   });
 
-  // Buscar subjects/actions para resolver subjectId/actionId → descrição nos rótulos
+  // Buscar subjects/actions para resolver subjectId/actionId → names nos rótulos
   const { data: subjectsData } = useSWR('/api/rbac/subjects', async () => {
     const { data } = await getSubjects();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    if (data && Array.isArray(data)) {
+      console.log('[DEBUG] Subjects carregados:', data);
+      console.log('[DEBUG] Primeiro subject:', data[0]);
+    }
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
   const { data: actionsData } = useSWR('/api/rbac/actions', async () => {
     const { data } = await getActions();
-    return (data ?? []) as Array<{ id: string | number; description?: string }>;
+    if (data && Array.isArray(data)) {
+      console.log('[DEBUG] Actions carregadas:', data);
+      console.log('[DEBUG] Primeira action:', data[0]);
+    }
+    return (data ?? []) as Array<{ id: string | number; name?: string; description?: string }>;
   });
 
-  const subjectLookup = useMemo(
-    () => new Map<number, string>((subjectsData ?? []).map((s) => [Number(s.id), s.description || ''])),
-    [subjectsData]
-  );
+  const subjectLookup = useMemo(() => {
+    const map = new Map<number, string>((subjectsData ?? []).map((s) =>
+      [Number(s.id), s.name || s.description || '']
+    ));
+    console.log('[DEBUG] subjectLookup criado:', Array.from(map.entries()));
+    return map;
+  }, [subjectsData]);
 
-  const actionLookup = useMemo(
-    () => new Map<number, string>((actionsData ?? []).map((a) => [Number(a.id), a.description || ''])),
-    [actionsData]
-  );
+  const actionLookup = useMemo(() => {
+    const map = new Map<number, string>((actionsData ?? []).map((a) =>
+      [Number(a.id), a.name || a.description || '']
+    ));
+    console.log('[DEBUG] actionLookup criado:', Array.from(map.entries()));
+    return map;
+  }, [actionsData]);
 
   // Resolve um objeto de permissão para um rótulo legível.
-  // Prioridade: description > subject.action > name > id
+  // Prioridade: subject.action > description > name > id
   const resolvePermLabel = useCallback(
     (p: {
       id?: string | number;
@@ -660,11 +681,28 @@ export default function RolesPermissionsView() {
       subjectId?: number;
       actionId?: number;
     }): string => {
-      if (p.description) return p.description;
+      console.log('[resolvePermLabel] Permissão recebida:', p);
+      console.log('[resolvePermLabel] subjectLookup size:', subjectLookup.size);
+      console.log('[resolvePermLabel] actionLookup size:', actionLookup.size);
+      
       const subject = p.subject || (p.subjectId != null ? subjectLookup.get(Number(p.subjectId)) : undefined) || '';
       const action = p.action || (p.actionId != null ? actionLookup.get(Number(p.actionId)) : undefined) || '';
-      if (subject || action) return [subject, action].filter(Boolean).join('.');
-      return p.name ?? String(p.id ?? '');
+      
+      console.log('[resolvePermLabel] subject resolvido:', subject);
+      console.log('[resolvePermLabel] action resolvido:', action);
+      
+      if (subject || action) {
+        const result = [subject, action].filter(Boolean).join(' - ');
+        console.log('[resolvePermLabel] Resultado (subject.action):', result);
+        return result;
+      }
+      if (p.description) {
+        console.log('[resolvePermLabel] Usando description:', p.description);
+        return p.description;
+      }
+      const fallback = p.name ?? String(p.id ?? '');
+      console.log('[resolvePermLabel] Usando fallback:', fallback);
+      return fallback;
     },
     [subjectLookup, actionLookup]
   );
@@ -804,11 +842,13 @@ export default function RolesPermissionsView() {
     setOpenFilterDialog(false);
   };
 
-  const filteredPermissionOptions = filterPermissions.filter((permission) =>
-    permission.toLowerCase().includes(permissionFilterSearch.toLowerCase())
-  );
+  const filteredPermissionOptions = permissions
+    .map((permission) => `${permission.subject} - ${permission.action}`)
+    .filter((permission) => permission.toLowerCase().includes(permissionFilterSearch.toLowerCase()));
 
-  const filteredRoleOptions = filterRoles.filter((role) => role.toLowerCase().includes(roleFilterSearch.toLowerCase()));
+  const filteredRoleOptions = roles
+    .map((role) => role.name)
+    .filter((role) => role.toLowerCase().includes(roleFilterSearch.toLowerCase()));
 
   /*************************** VISIBLE ROLES ***************************/
 
@@ -913,7 +953,7 @@ export default function RolesPermissionsView() {
       .filter((p) => selectedPermissionIds.includes(String(p.id)))
       .map((p) => ({
         id: String(p.id),
-        name: p.name || `${p.subject}.${p.action}`,
+        name: p.name || `${p.subject} - ${p.action}`,
         description: p.description || ''
       }));
 
@@ -1330,6 +1370,7 @@ export default function RolesPermissionsView() {
     await reloadData();
     setRolesPage(1);
     setOpenCreateRoleDialog(false);
+    openSnackbar({ open: true, message: 'Papel criado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
   };
 
   /*************************** CREATE PERMISSION ***************************/
@@ -1497,18 +1538,21 @@ export default function RolesPermissionsView() {
                 }}
               />
 
-              <Button
-                variant="outlined"
-                color="secondary"
-                startIcon={<IconFilter size={16} />}
-                onClick={handleFilterOpen}
-                sx={{
-                  minWidth: 108,
-                  height: 40
-                }}
-              >
-                Filtrar
-              </Button>
+              {/* Botão Filtrar - apenas para abas de Papéis (0) e Permissões (1) */}
+              {tab !== 2 && tab !== 3 && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  startIcon={<IconFilter size={16} />}
+                  onClick={handleFilterOpen}
+                  sx={{
+                    minWidth: 108,
+                    height: 40
+                  }}
+                >
+                  Filtrar
+                </Button>
+              )}
             </Stack>
 
             {/* FILTROS ATIVOS */}
@@ -1654,7 +1698,20 @@ export default function RolesPermissionsView() {
                         ) : (
                           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
                             {role.users.slice(0, 3).map((u) => (
-                              <Chip key={u.id} label={u.name} size="small" color="success" variant="outlined" />
+                              <Chip
+                                key={u.id}
+                                label={u.name}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  color: 'success.main',
+                                  borderColor: 'success.main',
+                                  backgroundColor: 'rgba(46, 139, 87, 0.06)',
+                                  '& .MuiChip-label': {
+                                    color: 'inherit'
+                                  }
+                                }}
+                              />
                             ))}
                             {role.users.length > 3 && (
                               <Typography variant="caption" color="text.secondary">
@@ -1671,7 +1728,20 @@ export default function RolesPermissionsView() {
                         ) : (
                           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
                             {role.permissions.slice(0, 3).map((p) => (
-                              <Chip key={p.id} label={p.description || p.name || String(p.id)} size="small" color="primary" variant="outlined" />
+                              <Chip
+                              key={p.id}
+                              label={p.name || p.description || String(p.id)}
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                color: 'error.main',
+                                borderColor: 'error.main',
+                                backgroundColor: 'rgba(214, 69, 69, 0.06)',
+                                '& .MuiChip-label': {
+                                  color: 'inherit'
+                                }
+                              }}
+                            />
                             ))}
                             {role.permissions.length > 3 && (
                               <Typography variant="caption" color="text.secondary">
@@ -3091,7 +3161,7 @@ export default function RolesPermissionsView() {
               options={availablePermissions?.map((p) => String(p.id)) || []}
               getOptionLabel={(id) => {
                 const perm = availablePermissions?.find((p) => String(p.id) === id);
-                return perm?.name || `${perm?.subject}.${perm?.action}` || id;
+                return perm?.name || `${perm?.subject} - ${perm?.action}` || id;
               }}
               value={selectedPermissionIds}
               onChange={(_event, value) => handleAddPermissions(value)}
@@ -3102,7 +3172,7 @@ export default function RolesPermissionsView() {
                 return (
                   <li key={key} {...optionProps}>
                     <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-                    {perm?.name || `${perm?.subject}.${perm?.action}` || option}
+                    {perm?.name || `${perm?.subject} - ${perm?.action}` || option}
                   </li>
                 );
               }}
@@ -3238,7 +3308,7 @@ export default function RolesPermissionsView() {
       {/* DIALOG CRIAR ALVO                                     */}
       {/* ===================================================== */}
 
-      <Dialog open={openCreateSubjectDialog} onClose={() => setOpenCreateSubjectDialog(false)} maxWidth="xs" fullWidth
+      <Dialog open={openCreateSubjectDialog} onClose={() => setOpenCreateSubjectDialog(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 2.5 } }}>
         <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
           <Box>
@@ -3276,34 +3346,132 @@ export default function RolesPermissionsView() {
       {/* DIALOG EDITAR ALVO                                    */}
       {/* ===================================================== */}
 
-      <Dialog open={openEditSubjectDialog} onClose={() => setOpenEditSubjectDialog(false)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: 2.5 } }}>
-        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
-          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Alvo</DialogTitle>
-          <IconButton onClick={() => setOpenEditSubjectDialog(false)} size="small"
-            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
-            <IconX size={18} />
-          </IconButton>
-        </Stack>
-        <Divider />
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          {subjectDialogError && <Alert severity="error" sx={{ mb: 2 }}>{subjectDialogError}</Alert>}
-          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
-          <SubjectActionDescriptionField
-            value={editSubjectDescription}
-            onChange={setEditSubjectDescription}
-            placeholder="Ex: usuario, produto, fatura"
-          />
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-          <Button variant="outlined" color="secondary" onClick={() => setOpenEditSubjectDialog(false)}
-            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleEditSubjectSave}
-            disabled={editSubjectDescription.trim().length < 3}
-            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Alvo</Button>
-        </DialogActions>
-      </Dialog>
+      <Dialog
+  open={openEditSubjectDialog}
+  onClose={() => setOpenEditSubjectDialog(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      width: '100%',
+      maxWidth: 520,
+      minWidth: 0,
+      margin: 2,
+      borderRadius: 2.5,
+      overflow: 'hidden'
+    }
+  }}
+>
+  <Stack
+    direction="row"
+    sx={{
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      px: 3,
+      pt: 3,
+      pb: 2.5
+    }}
+  >
+    <DialogTitle
+      sx={{
+        p: 0,
+        fontSize: 22,
+        lineHeight: 1.3,
+        fontWeight: 600,
+        color: 'text.primary'
+      }}
+    >
+      Editar Alvo
+    </DialogTitle>
+
+    <IconButton
+      onClick={() => setOpenEditSubjectDialog(false)}
+      size="small"
+      sx={{
+        width: 44,
+        height: 44,
+        flexShrink: 0,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1.5
+      }}
+    >
+      <IconX size={18} />
+    </IconButton>
+  </Stack>
+
+  <Divider />
+
+  <DialogContent
+    sx={{
+      px: 3,
+      py: 3,
+      overflow: 'hidden'
+    }}
+  >
+    {subjectDialogError && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {subjectDialogError}
+      </Alert>
+    )}
+
+    <InputLabel
+      sx={{
+        mb: 0.75,
+        fontSize: 14,
+        color: 'text.primary'
+      }}
+    >
+      Descrição *
+    </InputLabel>
+
+    <SubjectActionDescriptionField
+      value={editSubjectDescription}
+      onChange={setEditSubjectDescription}
+      placeholder="Ex: usuario, produto, fatura"
+    />
+  </DialogContent>
+
+  <Divider />
+
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2.5,
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 1
+    }}
+  >
+    <Button
+      variant="outlined"
+      color="secondary"
+      onClick={() => setOpenEditSubjectDialog(false)}
+      sx={{
+        minWidth: 120,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Cancelar
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={handleEditSubjectSave}
+      disabled={editSubjectDescription.trim().length < 3}
+      sx={{
+        minWidth: 140,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Atualizar Alvo
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* ===================================================== */}
       {/* DIALOG DELETAR ALVO                                   */}
@@ -3341,7 +3509,7 @@ export default function RolesPermissionsView() {
       {/* DIALOG CRIAR AÇÃO                                     */}
       {/* ===================================================== */}
 
-      <Dialog open={openCreateActionDialog} onClose={() => setOpenCreateActionDialog(false)} maxWidth="xs" fullWidth
+      <Dialog open={openCreateActionDialog} onClose={() => setOpenCreateActionDialog(false)} maxWidth="sm" fullWidth
         PaperProps={{ sx: { borderRadius: 2.5 } }}>
         <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
           <Box>
@@ -3379,34 +3547,132 @@ export default function RolesPermissionsView() {
       {/* DIALOG EDITAR AÇÃO                                    */}
       {/* ===================================================== */}
 
-      <Dialog open={openEditActionDialog} onClose={() => setOpenEditActionDialog(false)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: 2.5 } }}>
-        <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2 }}>
-          <DialogTitle sx={{ p: 0, fontSize: 20, fontWeight: 600 }}>Editar Ação</DialogTitle>
-          <IconButton onClick={() => setOpenEditActionDialog(false)} size="small"
-            sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
-            <IconX size={18} />
-          </IconButton>
-        </Stack>
-        <Divider />
-        <DialogContent sx={{ px: 3, py: 2.5 }}>
-          {actionDialogError && <Alert severity="error" sx={{ mb: 2 }}>{actionDialogError}</Alert>}
-          <InputLabel sx={{ mb: 0.5 }}>Descrição *</InputLabel>
-          <SubjectActionDescriptionField
-            value={editActionDescription}
-            onChange={setEditActionDescription}
-            placeholder="Ex: ler, criar, atualizar, deletar"
-          />
-        </DialogContent>
-        <Divider />
-        <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
-          <Button variant="outlined" color="secondary" onClick={() => setOpenEditActionDialog(false)}
-            sx={{ minWidth: 100, height: 40, borderRadius: 1.5 }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleEditActionSave}
-            disabled={editActionDescription.trim().length < 3}
-            sx={{ minWidth: 140, height: 40, borderRadius: 1.5 }}>Atualizar Ação</Button>
-        </DialogActions>
-      </Dialog>
+      <Dialog
+  open={openEditActionDialog}
+  onClose={() => setOpenEditActionDialog(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      width: '100%',
+      maxWidth: 520,
+      minWidth: 0,
+      margin: 2,
+      borderRadius: 2.5,
+      overflow: 'hidden'
+    }
+  }}
+>
+  <Stack
+    direction="row"
+    sx={{
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      px: 3,
+      pt: 3,
+      pb: 2.5
+    }}
+  >
+    <DialogTitle
+      sx={{
+        p: 0,
+        fontSize: 22,
+        lineHeight: 1.3,
+        fontWeight: 600,
+        color: 'text.primary'
+      }}
+    >
+      Editar Ação
+    </DialogTitle>
+
+    <IconButton
+      onClick={() => setOpenEditActionDialog(false)}
+      size="small"
+      sx={{
+        width: 44,
+        height: 44,
+        flexShrink: 0,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 1.5
+      }}
+    >
+      <IconX size={18} />
+    </IconButton>
+  </Stack>
+
+  <Divider />
+
+  <DialogContent
+    sx={{
+      px: 3,
+      py: 3,
+      overflow: 'hidden'
+    }}
+  >
+    {actionDialogError && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {actionDialogError}
+      </Alert>
+    )}
+
+    <InputLabel
+      sx={{
+        mb: 0.75,
+        fontSize: 14,
+        color: 'text.primary'
+      }}
+    >
+      Descrição *
+    </InputLabel>
+
+    <SubjectActionDescriptionField
+      value={editActionDescription}
+      onChange={setEditActionDescription}
+      placeholder="Ex: ler, criar, atualizar, deletar"
+    />
+  </DialogContent>
+
+  <Divider />
+
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2.5,
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 1
+    }}
+  >
+    <Button
+      variant="outlined"
+      color="secondary"
+      onClick={() => setOpenEditActionDialog(false)}
+      sx={{
+        minWidth: 120,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Cancelar
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={handleEditActionSave}
+      disabled={editActionDescription.trim().length < 3}
+      sx={{
+        minWidth: 140,
+        height: 40,
+        borderRadius: 1.5
+      }}
+    >
+      Atualizar Ação
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* ===================================================== */}
       {/* DIALOG DELETAR AÇÃO                                   */}

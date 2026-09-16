@@ -17,18 +17,26 @@ const pages: NavItemType = {
       icon: 'IconLayoutDashboard'
     },
     {
-      id: 'users',
-      title: 'Usuários',
-      type: 'item',
-      url: '/users',
-      icon: 'IconUsers'
-    },
-    {
-      id: 'roles-permissions',
-      title: 'Papéis e Permissões',
-      type: 'item',
-      url: '/roles-permissions',
-      icon: 'IconShieldLock'
+      id: 'seguranca',
+      title: 'Segurança',
+      type: 'collapse',
+      icon: 'IconShield',
+      children: [
+        {
+          id: 'users',
+          title: 'Usuários',
+          type: 'item',
+          url: '/users',
+          icon: 'IconUsers'
+        },
+        {
+          id: 'roles-permissions',
+          title: 'Papéis e Permissões',
+          type: 'item',
+          url: '/roles-permissions',
+          icon: 'IconShieldLock'
+        }
+      ]
     }
   ]
 };
