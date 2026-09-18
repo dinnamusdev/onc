@@ -5,11 +5,16 @@ import Drawer from '@mui/material/Drawer';
 // @project
 import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from '@/config';
 
+// Sidebar background color (gentelella-inspired dark wine/brown)
+export const SIDEBAR_BG = '#2C1810';
+export const SIDEBAR_BG_DARKER = '#231410';
+
 // Mixin for common ) (open/closed) drawer state0....
-const commonDrawerStyles = (theme: Theme) =>
+const commonDrawerStyles = (_theme: Theme) =>
   ({
-    borderRight: `1px solid ${theme.vars.palette.grey[300]}`,
-    overflowX: 'hidden'
+    borderRight: 'none',
+    overflowX: 'hidden',
+    backgroundColor: SIDEBAR_BG
   }) as CSSObject;
 
 // Mixin for opened drawer state

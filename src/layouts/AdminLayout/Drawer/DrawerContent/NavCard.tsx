@@ -131,7 +131,7 @@ export default function NavCard({ isMiniDrawer }: NavCardProps) {
   return (
     <>
       {!isMiniDrawer ? (
-        <MainCard sx={{ p: 1.5, bgcolor: 'grey.50', boxShadow: 'none', mb: 3 }}>
+        <MainCard sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.22)', boxShadow: 'none', mb: 3, border: '1px solid rgba(255,255,255,0.10)', '& .MuiTypography-root': { color: 'rgba(255,255,255,0.82)' }, '& .MuiTypography-caption': { color: 'rgba(255,255,255,0.55)' } }}>
           <CardContent title={data.title} description={data.description} icon={data.icon} />
         </MainCard>
       ) : (

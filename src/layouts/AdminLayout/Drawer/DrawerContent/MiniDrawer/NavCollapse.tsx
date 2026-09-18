@@ -145,15 +145,15 @@ export default function NavCollapse({ item, level = 0 }: Props) {
 
   const isSelected = (level > 0 && open) || miniMenuOpened || selected === item.id;
 
-  // level === 0 - list item button avatar style
+  // level === 0 - list item button avatar style (icon in dark sidebar)
   const listItemAvatarStyle = {
     my: 0.5,
-    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'action.hover' } },
+    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(255,255,255,0.07)' } },
     '&.Mui-selected': {
       bgcolor: 'transparent',
-      '& .MuiListItemAvatar-root': { bgcolor: 'primary.lighter', ...theme.applyStyles('dark', { bgcolor: 'primary.main' }) },
-      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'primary.light' } },
-      '&.Mui-focusVisible': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'primary.light' } }
+      '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.30)' },
+      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.45)' } },
+      '&.Mui-focusVisible': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.30)' } }
     }
   };
 
@@ -172,7 +172,15 @@ export default function NavCollapse({ item, level = 0 }: Props) {
     }
   };
 
-  const iconcolor = isSelected && colorScheme === ThemeMode.DARK ? theme.vars.palette.background.default : theme.vars.palette.text.primary;
+  // level 0: icon in dark sidebar → always white-ish; level > 0: popup over white bg → theme colors
+  const iconcolor =
+    level === 0
+      ? isSelected
+        ? '#FFCDD2'
+        : 'rgba(255,255,255,0.82)'
+      : isSelected && colorScheme === ThemeMode.DARK
+        ? theme.vars.palette.background.default
+        : theme.vars.palette.text.primary;
 
   return (
     <>

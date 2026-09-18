@@ -25,13 +25,20 @@ export default function DrawerHeader({ open }: Props) {
   return (
     <Box sx={{ width: 1, px: 2, py: { xs: 2, md: 2.5 } }}>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: open ? 'space-between' : 'center', height: 36 }}>
-        {open && <Logo />}
+        {open && (
+          <Box sx={{ filter: 'brightness(0) invert(1)', opacity: 0.9 }}>
+            <Logo />
+          </Box>
+        )}
         <IconButton
           aria-label="open drawer"
           onClick={() => handlerDrawerOpen(!drawerOpen)}
           size="small"
-          color="secondary"
-          variant="outlined"
+          sx={{
+            color: 'rgba(255,255,255,0.70)',
+            border: '1px solid rgba(255,255,255,0.20)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.35)' }
+          }}
         >
           {!drawerOpen ? <IconLayoutSidebarRightCollapse size={20} /> : <IconLayoutSidebarLeftCollapse size={20} />}
         </IconButton>

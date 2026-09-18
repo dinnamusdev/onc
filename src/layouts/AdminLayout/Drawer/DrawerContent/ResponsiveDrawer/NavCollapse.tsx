@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 // @mui
-import { useColorScheme, useTheme } from '@mui/material/styles';
 import Collapse from '@mui/material/Collapse';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -15,7 +14,6 @@ import Typography from '@mui/material/Typography';
 // @project
 import NavItem from './NavItem';
 import DynamicIcon from '@/components/DynamicIcon';
-import { ThemeMode } from '@/config';
 import { AuthRole } from '@/enum';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import useMenuCollapse from '@/hooks/useMenuCollapse';
@@ -30,6 +28,12 @@ import { DynamicIconProps } from '@/types/tabler';
 // @assets
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 
+// Sidebar dark theme color tokens
+const SIDEBAR_TEXT = 'rgba(255,255,255,0.82)';
+const SIDEBAR_TEXT_ACTIVE = '#FFCDD2';
+const SIDEBAR_ACTIVE_BG = 'rgba(183,28,28,0.20)';
+const SIDEBAR_HOVER_BG = 'rgba(255,255,255,0.07)';
+
 // @style
 const verticalDivider = {
   '&:after': {
@@ -40,7 +44,7 @@ const verticalDivider = {
     height: `calc(100% + 2px)`,
     width: '1px',
     opacity: 1,
-    bgcolor: 'divider'
+    bgcolor: 'rgba(255,255,255,0.15)'
   }
 };
 
@@ -81,8 +85,6 @@ interface Props {
 /***************************  RESPONSIVE DRAWER - COLLAPSE  ***************************/
 
 export default function NavCollapse({ item, level = 0 }: Props) {
-  const theme = useTheme();
-  const { colorScheme } = useColorScheme();
   const { userData } = useCurrentUser();
 
   const [open, setOpen] = useState<boolean>(false);
@@ -99,34 +101,36 @@ export default function NavCollapse({ item, level = 0 }: Props) {
     setOpen(!open);
   };
 
-  const iconcolor =
-    (open || selected === item.id) && colorScheme === ThemeMode.DARK
-      ? theme.vars.palette.background.default
-      : theme.vars.palette.text.primary;
+  const isActive = open || selected === item.id;
+  const iconcolor = isActive ? SIDEBAR_TEXT_ACTIVE : SIDEBAR_TEXT;
 
   return (
     <>
       <ListItemButton
         id={`${item.id}-btn`}
-        selected={open || selected === item.id}
+        selected={isActive}
         sx={{
           my: 0.25,
-          color: 'text.primary',
+          color: SIDEBAR_TEXT,
+          '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
           '&.Mui-selected': {
-            color: 'text.primary',
-            ...theme.applyStyles('dark', { color: 'background.default' }),
-            '&.Mui-focusVisible': { bgcolor: 'primary.light' }
+            color: SIDEBAR_TEXT,
+            bgcolor: SIDEBAR_ACTIVE_BG,
+            '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
+            '&.Mui-focusVisible': { bgcolor: SIDEBAR_ACTIVE_BG }
           }
         }}
         onClick={handleClick}
       >
         {level === 0 && (
-          <ListItemIcon>
+          <ListItemIcon sx={{ color: 'inherit' }}>
             <DynamicIcon name={item.icon as DynamicIconProps['name']} color={iconcolor} size={18} stroke={1.5} />
           </ListItemIcon>
         )}
         <ListItemText primary={<FormattedMessage id={item.title} />} sx={{ mb: '-1px' }} />
-        {open ? <IconChevronUp size={18} stroke={1.5} /> : <IconChevronDown size={18} stroke={1.5} />}
+        {open
+          ? <IconChevronUp size={18} stroke={1.5} color={SIDEBAR_TEXT} />
+          : <IconChevronDown size={18} stroke={1.5} color={SIDEBAR_TEXT} />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
         <List component="div" sx={{ p: 0, pl: 3, position: 'relative', ...verticalDivider }}>
@@ -136,3 +140,5 @@ export default function NavCollapse({ item, level = 0 }: Props) {
     </>
   );
 }
+
+
