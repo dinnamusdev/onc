@@ -47,7 +47,7 @@ export default function Header() {
 
   // AppBar props, including styles that vary based on drawer state and screen size
   const appBar: AppBarProps = {
-    color: 'inherit',
+    color: 'default',
     position: 'fixed',
     elevation: 0,
     sx: {

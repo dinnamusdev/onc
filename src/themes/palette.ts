@@ -13,7 +13,7 @@ export function buildPalette() {
   const secondaryMain = '#5A5C78'; // Hosting/secondary/40 - secondary
 
   const divider = '#EFEDF4'; // Hosting/neutral/94 - surface container
-  const background = '#FFF';
+  const background = '#E8E4F0'; // Hosting/neutral/93 - slightly deeper for card contrast (gentelella style)
 
   const disabled = '#777680'; // Hosting/neutral variant/50 - outline
   const disabledBackground = '#E4E1E6'; // Hosting/neutral/90 - surface container highest
@@ -80,7 +80,8 @@ export function buildPalette() {
     },
     divider,
     background: {
-      default: background
+      default: background,
+      paper: '#FFFFFF' // cards, drawer, modal — branco sobre fundo cinza
     },
     action: {
       hover: withAlpha(secondaryMain, 0.05),
@@ -163,8 +164,8 @@ export function buildPalette() {
     },
     divider: dividerDark,
     background: {
-      default: backgroundDark,
-      paper: backgroundDark
+      default: backgroundDark,      // #0F0D13 — fundo mais escuro possível
+      paper: '#1B1B1F'              // #1B1B1F (grey.100 dark) — cards ligeiramente mais claros
     },
     action: {
       hover: withAlpha(secondaryMainDark, 0.05),

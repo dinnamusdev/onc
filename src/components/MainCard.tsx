@@ -9,8 +9,8 @@ import { SxProps, Theme } from '@mui/material/styles';
 export default function MainCard({ children, sx = {}, ref, ...others }: CardProps) {
   const defaultSx: SxProps<Theme> = (theme) => ({
     p: { xs: 1.75, sm: 2.25, md: 3 },
-    border: `1px solid ${theme.vars.palette.divider}`,
-    borderRadius: 4,
+    border: `1px solid ${theme.vars.palette.grey[200]}`,
+    borderRadius: 3,
     boxShadow: theme.vars.customShadows.section
   });
 

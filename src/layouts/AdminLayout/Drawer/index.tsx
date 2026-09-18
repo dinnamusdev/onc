@@ -10,7 +10,7 @@ import Box from '@mui/material/Box';
 // @project
 import DrawerHeader from './DrawerHeader';
 import DrawerContent from './DrawerContent';
-import MiniDrawerStyled from './MiniDrawerStyled';
+import MiniDrawerStyled, { SIDEBAR_BG } from './MiniDrawerStyled';
 
 import { handlerDrawerOpen, useGetMenuMaster } from '@/states/menu';
 import { DRAWER_WIDTH } from '@/config';
@@ -46,16 +46,16 @@ export default function MainDrawer({ window }: Props) {
             sx: {
               boxSizing: 'border-box',
               width: DRAWER_WIDTH,
-              borderRight: '1px solid',
-              borderRightColor: 'divider',
+              borderRight: 'none',
               backgroundImage: 'none',
+              backgroundColor: SIDEBAR_BG,
               boxShadow: 'inherit'
             }
           }
         }}
       >
         {drawerHeader}
-        <Divider sx={{ mx: 2 }} />
+        <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
         {drawerContent}
       </Drawer>
 
@@ -63,7 +63,7 @@ export default function MainDrawer({ window }: Props) {
       {!downLG && (
         <MiniDrawerStyled variant="permanent" open={drawerOpen}>
           {drawerHeader}
-          <Divider sx={{ mx: 2 }} />
+          <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
           {drawerContent}
         </MiniDrawerStyled>
       )}

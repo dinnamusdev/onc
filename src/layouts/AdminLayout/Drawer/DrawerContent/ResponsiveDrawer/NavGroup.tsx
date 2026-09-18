@@ -49,11 +49,11 @@ export default function NavGroup({ item }: Props) {
     <List
       component="div"
       subheader={
-        <Typography component="div" variant="caption" sx={{ mb: 0.75, color: 'grey.700' }}>
+        <Typography component="div" variant="caption" sx={{ mb: 0.75, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.68rem' }}>
           <FormattedMessage id={item.title} />
         </Typography>
       }
-      sx={{ '&:not(:first-of-type)': { pt: 1, borderTop: '1px solid', borderColor: 'divider' } }}
+      sx={{ '&:not(:first-of-type)': { pt: 1, borderTop: '1px solid', borderColor: 'rgba(255,255,255,0.10)' } }}
     >
       {item.children?.map((menuItem) => renderNavItem(menuItem))}
     </List>
