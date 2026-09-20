@@ -39,7 +39,9 @@ export default function ThemeModeSwitcher() {
   const open = Boolean(anchorEl);
   const id = open ? 'Theme-mode-popper' : undefined;
 
-  const activeIcon = themeModeData.find((item) => item.mode === mode)?.icon;
+  // When mode is null (system), show System icon
+  const displayMode = mode === null ? ThemeMode.SYSTEM : mode;
+  const activeIcon = themeModeData.find((item) => item.mode === displayMode)?.icon;
 
   const handleClick = (event: MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -48,7 +50,12 @@ export default function ThemeModeSwitcher() {
 
   const onModeChange = (item: ThemeModeItem) => {
     setAnchorEl(null);
-    setMode(item.mode);
+    // When System is selected, pass null to follow system preferences
+    if (item.mode === ThemeMode.SYSTEM) {
+      setMode(null);
+    } else {
+      setMode(item.mode as 'light' | 'dark');
+    }
   };
 
   return (
@@ -73,7 +80,7 @@ export default function ThemeModeSwitcher() {
                 <List disablePadding>
                   {themeModeData.map((item, index) => (
                     <ListItemButton
-                      selected={mode === item.mode}
+                      selected={displayMode === item.mode}
                       key={index}
                       sx={{ borderRadius: 2, p: 1 }}
                       onClick={() => onModeChange(item)}

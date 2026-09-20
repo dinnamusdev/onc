@@ -14,6 +14,7 @@ import ListItemText from '@mui/material/ListItemText';
 // @project
 import { handlerActiveItem, handlerDrawerOpen, useGetMenuMaster } from '@/states/menu';
 import DynamicIcon from '@/components/DynamicIcon';
+import { withAlpha } from '@/utils/colorUtils';
 
 // @third-party
 import { FormattedMessage } from 'react-intl';
@@ -21,12 +22,6 @@ import { FormattedMessage } from 'react-intl';
 // @types
 import { NavItemType } from '@/types/menu';
 import { DynamicIconProps } from '@/types/tabler';
-
-// Sidebar dark theme color tokens
-const SIDEBAR_TEXT = 'rgba(255,255,255,0.82)';
-const SIDEBAR_TEXT_ACTIVE = '#FFCDD2';
-const SIDEBAR_ACTIVE_BG = 'rgba(183,28,28,0.28)';
-const SIDEBAR_HOVER_BG = 'rgba(255,255,255,0.07)';
 
 interface Props {
   item: NavItemType;
@@ -51,7 +46,7 @@ export default function NavItem({ item, level = 0 }: Props) {
   }, [pathname]);
 
   const isActive = openItem === item.id;
-  const iconcolor = isActive ? SIDEBAR_TEXT_ACTIVE : SIDEBAR_TEXT;
+  const iconcolor = isActive ? theme.vars.palette.primary.main : theme.vars.palette.text.secondary;
 
   const itemHandler = () => {
     if (downMD) handlerDrawerOpen(false);
@@ -67,23 +62,23 @@ export default function NavItem({ item, level = 0 }: Props) {
       disabled={item.disabled}
       onClick={itemHandler}
       sx={{
-        color: SIDEBAR_TEXT,
-        '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
+        color: theme.vars.palette.text.primary,
+        '&:hover': { bgcolor: theme.vars.palette.action.hover },
         ...(level === 0 && {
           my: 0.25,
           '&.Mui-selected': {
-            bgcolor: SIDEBAR_ACTIVE_BG,
-            color: SIDEBAR_TEXT_ACTIVE,
-            '&:hover': { bgcolor: 'rgba(183,28,28,0.40)' },
-            '&.Mui-focusVisible': { bgcolor: SIDEBAR_ACTIVE_BG }
+            bgcolor: withAlpha(theme.vars.palette.primary.main, 0.15),
+            color: theme.vars.palette.primary.main,
+            '&:hover': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.25) },
+            '&.Mui-focusVisible': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.15) }
           }
         }),
         ...(level > 0 && {
           '&.Mui-selected': {
-            color: SIDEBAR_TEXT_ACTIVE,
+            color: theme.vars.palette.primary.main,
             bgcolor: 'transparent',
-            '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
-            '&.Mui-focusVisible': { bgcolor: SIDEBAR_HOVER_BG },
+            '&:hover': { bgcolor: theme.vars.palette.action.hover },
+            '&.Mui-focusVisible': { bgcolor: theme.vars.palette.action.hover },
             '& .MuiTypography-root': { fontWeight: 600 }
           }
         })

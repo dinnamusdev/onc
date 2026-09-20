@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 // @mui
+import { useTheme } from '@mui/material/styles';
 import Collapse from '@mui/material/Collapse';
 import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -17,6 +18,7 @@ import DynamicIcon from '@/components/DynamicIcon';
 import { AuthRole } from '@/enum';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import useMenuCollapse from '@/hooks/useMenuCollapse';
+import { withAlpha } from '@/utils/colorUtils';
 
 // @third-party
 import { FormattedMessage } from 'react-intl';
@@ -28,14 +30,8 @@ import { DynamicIconProps } from '@/types/tabler';
 // @assets
 import { IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 
-// Sidebar dark theme color tokens
-const SIDEBAR_TEXT = 'rgba(255,255,255,0.82)';
-const SIDEBAR_TEXT_ACTIVE = '#FFCDD2';
-const SIDEBAR_ACTIVE_BG = 'rgba(183,28,28,0.20)';
-const SIDEBAR_HOVER_BG = 'rgba(255,255,255,0.07)';
-
 // @style
-const verticalDivider = {
+const getVerticalDivider = (borderColor: string) => ({
   '&:after': {
     content: "''",
     position: 'absolute',
@@ -44,9 +40,9 @@ const verticalDivider = {
     height: `calc(100% + 2px)`,
     width: '1px',
     opacity: 1,
-    bgcolor: 'rgba(255,255,255,0.15)'
+    bgcolor: borderColor
   }
-};
+});
 
 interface LoopProps {
   item: NavItemType;
@@ -85,6 +81,7 @@ interface Props {
 /***************************  RESPONSIVE DRAWER - COLLAPSE  ***************************/
 
 export default function NavCollapse({ item, level = 0 }: Props) {
+  const theme = useTheme();
   const { userData } = useCurrentUser();
 
   const [open, setOpen] = useState<boolean>(false);
@@ -102,7 +99,7 @@ export default function NavCollapse({ item, level = 0 }: Props) {
   };
 
   const isActive = open || selected === item.id;
-  const iconcolor = isActive ? SIDEBAR_TEXT_ACTIVE : SIDEBAR_TEXT;
+  const iconcolor = isActive ? theme.vars.palette.primary.main : theme.vars.palette.text.secondary;
 
   return (
     <>
@@ -111,13 +108,13 @@ export default function NavCollapse({ item, level = 0 }: Props) {
         selected={isActive}
         sx={{
           my: 0.25,
-          color: SIDEBAR_TEXT,
-          '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
+          color: theme.vars.palette.text.primary,
+          '&:hover': { bgcolor: theme.vars.palette.action.hover },
           '&.Mui-selected': {
-            color: SIDEBAR_TEXT,
-            bgcolor: SIDEBAR_ACTIVE_BG,
-            '&:hover': { bgcolor: SIDEBAR_HOVER_BG },
-            '&.Mui-focusVisible': { bgcolor: SIDEBAR_ACTIVE_BG }
+            color: theme.vars.palette.text.primary,
+            bgcolor: withAlpha(theme.vars.palette.primary.main, 0.15),
+            '&:hover': { bgcolor: theme.vars.palette.action.hover },
+            '&.Mui-focusVisible': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.15) }
           }
         }}
         onClick={handleClick}
@@ -129,11 +126,11 @@ export default function NavCollapse({ item, level = 0 }: Props) {
         )}
         <ListItemText primary={<FormattedMessage id={item.title} />} sx={{ mb: '-1px' }} />
         {open
-          ? <IconChevronUp size={18} stroke={1.5} color={SIDEBAR_TEXT} />
-          : <IconChevronDown size={18} stroke={1.5} color={SIDEBAR_TEXT} />}
+          ? <IconChevronUp size={18} stroke={1.5} color={theme.vars.palette.text.primary} />
+          : <IconChevronDown size={18} stroke={1.5} color={theme.vars.palette.text.primary} />}
       </ListItemButton>
       <Collapse in={open} timeout="auto" unmountOnExit>
-        <List component="div" sx={{ p: 0, pl: 3, position: 'relative', ...verticalDivider }}>
+        <List component="div" sx={{ p: 0, pl: 3, position: 'relative', ...getVerticalDivider(theme.vars.palette.divider) }}>
           <NavCollapseLoop item={item} userRole={userRole} />
         </List>
       </Collapse>
