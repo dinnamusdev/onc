@@ -6,11 +6,12 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
 
 // @project
 import DrawerHeader from './DrawerHeader';
 import DrawerContent from './DrawerContent';
-import MiniDrawerStyled, { SIDEBAR_BG } from './MiniDrawerStyled';
+import MiniDrawerStyled from './MiniDrawerStyled';
 
 import { handlerDrawerOpen, useGetMenuMaster } from '@/states/menu';
 import { DRAWER_WIDTH } from '@/config';
@@ -22,6 +23,7 @@ interface Props {
 /***************************  ADMIN LAYOUT - DRAWER  ***************************/
 
 export default function MainDrawer({ window }: Props) {
+  const theme = useTheme();
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
   const downLG = useMediaQuery((theme: Theme) => theme.breakpoints.down('lg'));
@@ -29,8 +31,8 @@ export default function MainDrawer({ window }: Props) {
   // Define container for drawer when window is specified
   const container = window !== undefined ? () => window().document.body : undefined;
 
-  // Memoize drawer content and header to prevent unnecessary re-renders
-  const drawerContent = useMemo(() => <DrawerContent />, []);
+  // Drawer content sem memoization para responder a mudanças de tema
+  const drawerContent = <DrawerContent />;
   const drawerHeader = useMemo(() => <DrawerHeader open={drawerOpen} />, [drawerOpen]);
 
   return (
@@ -48,14 +50,15 @@ export default function MainDrawer({ window }: Props) {
               width: DRAWER_WIDTH,
               borderRight: 'none',
               backgroundImage: 'none',
-              backgroundColor: SIDEBAR_BG,
+              backgroundColor: theme.vars.palette.background.paper,
+              color: theme.vars.palette.text.primary,
               boxShadow: 'inherit'
             }
           }
         }}
       >
         {drawerHeader}
-        <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
+        <Divider sx={{ mx: 2, borderColor: theme.vars.palette.divider }} />
         {drawerContent}
       </Drawer>
 
@@ -63,7 +66,7 @@ export default function MainDrawer({ window }: Props) {
       {!downLG && (
         <MiniDrawerStyled variant="permanent" open={drawerOpen}>
           {drawerHeader}
-          <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.12)' }} />
+          <Divider sx={{ mx: 2, borderColor: theme.vars.palette.divider }} />
           {drawerContent}
         </MiniDrawerStyled>
       )}

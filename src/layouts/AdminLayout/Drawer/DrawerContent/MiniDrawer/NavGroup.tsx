@@ -1,4 +1,5 @@
 // @mui
+import { useTheme } from '@mui/material/styles';
 import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
 
@@ -10,20 +11,6 @@ import useCurrentUser from '@/hooks/useCurrentUser';
 // @types
 import { NavItemType } from '@/types/menu';
 
-// @style
-const groupDivider = {
-  '&:before': {
-    content: '""',
-    display: 'block',
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    height: '1px',
-    width: 44,
-    bgcolor: 'divider'
-  }
-};
-
 interface Props {
   item: NavItemType;
 }
@@ -31,7 +18,21 @@ interface Props {
 /***************************  MINI DRAWER - GROUP  ***************************/
 
 export default function NavGroup({ item }: Props) {
+  const theme = useTheme();
   const { userData } = useCurrentUser();
+
+  const groupDivider = {
+    '&:before': {
+      content: '""',
+      display: 'block',
+      position: 'absolute',
+      top: 0,
+      left: 16,
+      height: '1px',
+      width: 44,
+      bgcolor: theme.vars.palette.divider
+    }
+  };
 
   const renderNavItem = (menuItem: NavItemType) => {
     const userRole = userData?.role;

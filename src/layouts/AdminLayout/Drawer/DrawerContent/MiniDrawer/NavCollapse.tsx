@@ -26,6 +26,7 @@ import SimpleBar from '@/components/third-party/SimpleBar';
 import { AuthRole } from '@/enum';
 import useCurrentUser from '@/hooks/useCurrentUser';
 import useMenuCollapse from '@/hooks/useMenuCollapse';
+import { withAlpha } from '@/utils/colorUtils';
 
 // @third-party
 import { FormattedMessage } from 'react-intl';
@@ -145,22 +146,22 @@ export default function NavCollapse({ item, level = 0 }: Props) {
 
   const isSelected = (level > 0 && open) || miniMenuOpened || selected === item.id;
 
-  // level === 0 - list item button avatar style (icon in dark sidebar)
+  // level === 0 - list item button avatar style (icon in sidebar)
   const listItemAvatarStyle = {
     my: 0.5,
-    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(255,255,255,0.07)' } },
+    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: theme.vars.palette.action.hover } },
     '&.Mui-selected': {
       bgcolor: 'transparent',
-      '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.30)' },
-      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.45)' } },
-      '&.Mui-focusVisible': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.30)' } }
+      '& .MuiListItemAvatar-root': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.2) },
+      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.3) } },
+      '&.Mui-focusVisible': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.2) } }
     }
   };
 
   // level > 0 - popup list item text style
   const listItemStyle = {
     color: 'text.primary',
-    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItem-root': { bgcolor: 'action.hover' } },
+    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItem-root': { bgcolor: theme.vars.palette.action.hover } },
     '&.Mui-selected': {
       color: 'text.primary',
       bgcolor: 'transparent',
@@ -172,12 +173,12 @@ export default function NavCollapse({ item, level = 0 }: Props) {
     }
   };
 
-  // level 0: icon in dark sidebar → always white-ish; level > 0: popup over white bg → theme colors
+  // level 0: icon in sidebar; level > 0: popup over background
   const iconcolor =
     level === 0
       ? isSelected
-        ? '#FFCDD2'
-        : 'rgba(255,255,255,0.82)'
+        ? theme.vars.palette.primary.main
+        : theme.vars.palette.text.secondary
       : isSelected && colorScheme === ThemeMode.DARK
         ? theme.vars.palette.background.default
         : theme.vars.palette.text.primary;

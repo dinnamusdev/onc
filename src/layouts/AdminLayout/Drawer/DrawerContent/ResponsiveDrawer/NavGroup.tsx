@@ -1,4 +1,5 @@
 // @mui
+import { useTheme } from '@mui/material/styles';
 import List from '@mui/material/List';
 import Typography from '@mui/material/Typography';
 
@@ -20,6 +21,7 @@ interface Props {
 /***************************  RESPONSIVE DRAWER - GROUP  ***************************/
 
 export default function NavGroup({ item }: Props) {
+  const theme = useTheme();
   const { userData } = useCurrentUser();
 
   const renderNavItem = (menuItem: NavItemType) => {
@@ -49,11 +51,24 @@ export default function NavGroup({ item }: Props) {
     <List
       component="div"
       subheader={
-        <Typography component="div" variant="caption" sx={{ mb: 0.75, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.68rem' }}>
+        <Typography 
+          component="div" 
+          variant="caption" 
+          sx={{ 
+            mb: 0.75, 
+            color: theme.vars.palette.text.secondary,
+            textTransform: 'uppercase', 
+            letterSpacing: '0.08em', 
+            fontSize: '0.68rem',
+            ...theme.applyStyles('dark', {
+              color: theme.vars.palette.text.primary
+            })
+          }}
+        >
           <FormattedMessage id={item.title} />
         </Typography>
       }
-      sx={{ '&:not(:first-of-type)': { pt: 1, borderTop: '1px solid', borderColor: 'rgba(255,255,255,0.10)' } }}
+      sx={{ '&:not(:first-of-type)': { pt: 1, borderTop: '1px solid', borderColor: theme.vars.palette.divider } }}
     >
       {item.children?.map((menuItem) => renderNavItem(menuItem))}
     </List>

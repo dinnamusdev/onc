@@ -15,6 +15,7 @@ import ListItemText from '@mui/material/ListItemText';
 // @project
 import { handlerActiveItem, useGetMenuMaster } from '@/states/menu';
 import DynamicIcon from '@/components/DynamicIcon';
+import { withAlpha } from '@/utils/colorUtils';
 
 // @third-party
 import { FormattedMessage } from 'react-intl';
@@ -22,10 +23,6 @@ import { FormattedMessage } from 'react-intl';
 // @types
 import { NavItemType } from '@/types/menu';
 import { DynamicIconProps } from '@/types/tabler';
-
-// Sidebar dark theme color tokens (level 0 icons in sidebar)
-const SIDEBAR_ICON = 'rgba(255,255,255,0.82)';
-const SIDEBAR_ICON_ACTIVE = '#FFCDD2';
 
 interface Props {
   item: NavItemType;
@@ -49,29 +46,27 @@ export default function NavItem({ item, level = 0 }: Props) {
 
   const isSelected = openItem === item.id;
 
-  // level 0: icon in dark sidebar → always white-ish
+  // level 0: icon in sidebar → use theme colors
   // level > 0: popup over white background → use theme colors
   const iconcolor =
     level === 0
       ? isSelected
-        ? SIDEBAR_ICON_ACTIVE
-        : SIDEBAR_ICON
+        ? theme.vars.palette.primary.main
+        : theme.vars.palette.text.secondary
       : isSelected
         ? theme.vars.palette.primary.main
         : theme.vars.palette.text.primary;
-
-  // level === 0 - list item button avatar style (dark sidebar icon)
   const listItemAvatarStyle = {
     p: 0,
     my: 0.5,
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'default',
-    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(255,255,255,0.07)' } },
+    '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: theme.vars.palette.action.hover } },
     '&.Mui-selected': {
       bgcolor: 'transparent',
-      '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.30)' },
-      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: 'rgba(183,28,28,0.45)' } }
+      '& .MuiListItemAvatar-root': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.2) },
+      '&:hover, &:focus': { bgcolor: 'transparent', '& .MuiListItemAvatar-root': { bgcolor: withAlpha(theme.vars.palette.primary.main, 0.3) } }
     }
   };
 

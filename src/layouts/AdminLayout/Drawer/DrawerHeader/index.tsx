@@ -4,6 +4,7 @@
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Box from '@mui/material/Box';
+import { useTheme } from '@mui/material/styles';
 
 // @project
 import { handlerDrawerOpen, useGetMenuMaster } from '@/states/menu';
@@ -19,6 +20,7 @@ interface Props {
 /***************************  DRAWER HEADER  ***************************/
 
 export default function DrawerHeader({ open }: Props) {
+  const theme = useTheme();
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
 
@@ -26,7 +28,7 @@ export default function DrawerHeader({ open }: Props) {
     <Box sx={{ width: 1, px: 2, py: { xs: 2, md: 2.5 } }}>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: open ? 'space-between' : 'center', height: 36 }}>
         {open && (
-          <Box sx={{ filter: 'brightness(0) invert(1)', opacity: 0.9 }}>
+          <Box>
             <Logo />
           </Box>
         )}
@@ -35,9 +37,13 @@ export default function DrawerHeader({ open }: Props) {
           onClick={() => handlerDrawerOpen(!drawerOpen)}
           size="small"
           sx={{
-            color: 'rgba(255,255,255,0.70)',
-            border: '1px solid rgba(255,255,255,0.20)',
-            '&:hover': { bgcolor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.35)' }
+            color: theme.vars.palette.text.secondary,
+            border: '1px solid',
+            borderColor: theme.vars.palette.divider,
+            '&:hover': { 
+              bgcolor: theme.vars.palette.action.hover,
+              borderColor: theme.vars.palette.primary.main
+            }
           }}
         >
           {!drawerOpen ? <IconLayoutSidebarRightCollapse size={20} /> : <IconLayoutSidebarLeftCollapse size={20} />}
