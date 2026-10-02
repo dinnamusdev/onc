@@ -30,3 +30,25 @@ export function formatPhone(value: string): string {
   if (clean.length === 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
   return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
 }
+
+/**
+ * Formata uma string para o padrão de data: DD/MM/AAAA
+ */
+export function formatDate(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 8);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 4) return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  return `${clean.slice(0, 2)}/${clean.slice(2, 4)}/${clean.slice(4)}`;
+}
+
+/**
+ * Formata uma string para o padrão de CNPJ: 99.999.999/9999-99
+ */
+export function formatCNPJ(value: string): string {
+  const clean = value.replace(/\D/g, '').slice(0, 14);
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 5) return `${clean.slice(0, 2)}.${clean.slice(2)}`;
+  if (clean.length <= 8) return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5)}`;
+  if (clean.length <= 12) return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}/${clean.slice(8)}`;
+  return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}/${clean.slice(8, 12)}-${clean.slice(12)}`;
+}
