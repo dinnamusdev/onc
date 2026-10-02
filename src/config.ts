@@ -28,6 +28,10 @@ export const RBAC_PROVIDER: ProviderType = ProviderType.ONC; // Começar com moc
 
 export const USERS_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mock para desenvolvimento
 
+/***************************  LEAD CONSTANT  ***************************/
+
+export const LEAD_PROVIDER: ProviderType = ProviderType.MOCK; // Começar com mock para desenvolvimento
+
 /***************************  THEME ENUM  ***************************/
 
 export enum Themes {
