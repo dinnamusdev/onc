@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // @mui
 import Box from '@mui/material/Box';
@@ -12,6 +13,8 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 
 // @third-party
 import { useForm, SubmitHandler } from 'react-hook-form';
@@ -44,7 +47,10 @@ const requiredFieldsByStep: Record<number, string[]> = {
 };
 
 export default function CertificacaoForm() {
+  const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Initialize react-hook-form
   const {
@@ -243,9 +249,52 @@ export default function CertificacaoForm() {
     setActiveStep(stepIndex);
   };
 
-  const onSubmit: SubmitHandler<CertificacaoStep1 & CertificacaoStep2 & CertificacaoStep3 & CertificacaoStep4 & CertificacaoStep5 & CertificacaoStep6> = (data) => {
-    console.log('Form submitted:', data);
-    // TODO: Submit to backend
+  const handleSubmitForm = async () => {
+    setSubmitError(null);
+    setIsSubmitting(true);
+    
+    try {
+      // Validar campos obrigatórios do step 6 (Revisão)
+      const fieldsToValidate = requiredFieldsByStep[activeStep];
+      console.log('Validando campos:', fieldsToValidate);
+      const isValid = await trigger(fieldsToValidate as any);
+
+      if (!isValid) {
+        console.warn('Validação falhou para campos:', fieldsToValidate);
+        setSubmitError('Por favor, marque os campos obrigatórios antes de enviar.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('Validação passou, enviando formulário...');
+      handleSubmit(onSubmit)();
+    } catch (error) {
+      console.error('Erro ao processar envio:', error);
+      setSubmitError('Ocorreu um erro ao processar o envio. Tente novamente.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const onSubmit: SubmitHandler<CertificacaoStep1 & CertificacaoStep2 & CertificacaoStep3 & CertificacaoStep4 & CertificacaoStep5 & CertificacaoStep6> = async (data) => {
+    try {
+      console.log('Form submitted:', data);
+      // TODO: Submit to backend - Descomentar quando API estiver pronta
+      // const response = await fetch('/api/lead/certificacao', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(data)
+      // });
+      // if (!response.ok) throw new Error('Erro ao enviar formulário');
+
+      setIsSubmitting(false);
+      // Redirecionar para tela de agradecimento
+      router.push('/solicitar-proposta/obrigado');
+    } catch (error) {
+      console.error('Erro ao enviar formulário:', error);
+      setSubmitError('Erro ao enviar o formulário. Tente novamente.');
+      setIsSubmitting(false);
+      // TODO: Exibir mensagem de erro ao usuário via Snackbar
+    }
   };
 
   return (
@@ -259,6 +308,13 @@ export default function CertificacaoForm() {
       <Typography variant="body2" sx={{ textAlign: 'center', color: 'text.secondary', mb: 2 }}>
         Caso sua solicitação seja diferente dessa, retorne ao Site do ONC e registre uma nova solicitação.
       </Typography>
+
+      {/* Alerta de erro */}
+      {submitError && (
+        <Alert severity="error" onClose={() => setSubmitError(null)}>
+          {submitError}
+        </Alert>
+      )}
 
       {/* Stepper */}
       <Stepper activeStep={activeStep} alternativeLabel>
@@ -282,11 +338,22 @@ export default function CertificacaoForm() {
 
           {/* Botões de navegação */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-            <Button disabled={activeStep === 0} onClick={handleBack} variant="outlined" size="small">
+            <Button 
+              disabled={activeStep === 0 || isSubmitting} 
+              onClick={handleBack} 
+              variant="outlined" 
+              size="small"
+            >
               Anterior
             </Button>
-            <Button onClick={activeStep === steps.length - 1 ? handleSubmit(onSubmit) : handleNext} variant="contained" size="small">
-              {activeStep === steps.length - 1 ? 'Enviar' : 'Próximo'}
+            <Button 
+              onClick={activeStep === steps.length - 1 ? handleSubmitForm : handleNext}
+              disabled={isSubmitting}
+              variant="contained" 
+              size="small"
+              startIcon={isSubmitting && activeStep === steps.length - 1 ? <CircularProgress size={16} /> : undefined}
+            >
+              {isSubmitting && activeStep === steps.length - 1 ? 'Enviando...' : activeStep === steps.length - 1 ? 'Enviar' : 'Próximo'}
             </Button>
           </Box>
         </CardContent>
