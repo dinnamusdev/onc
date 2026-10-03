@@ -182,6 +182,37 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     setMenuAnchorEl(null);
   };
 
+  const handleRowClick = async (user: UserRow) => {
+  // Busca os dados completos do usuário para preencher o formulário de edição.
+  const { data, error } = await getUserById(user.id);
+  const dto = (error ? null : data) as Record<string, unknown> | null;
+
+  setEditingUser({
+  id: user.id,
+  userName: dto?.userName ? String(dto.userName) : '',
+  email: dto?.email ? String(dto.email) : '',
+  nomeCompleto: dto?.nomeCompleto ? String(dto.nomeCompleto) : user.name,
+  cpf: dto?.cpf ? String(dto.cpf) : '',
+  whatsapp: dto?.whatsapp ? String(dto.whatsapp) : '',
+  telefone: dto?.telefone ? String(dto.telefone) : '',
+  isAtivo: dto?.isAtivo === undefined ? user.status !== 'Bloqueado' : Boolean(dto.isAtivo),
+
+  // FOTO DE PERFIL
+  fotoURL: dto?.fotoURL ? String(dto.fotoURL) : '',
+
+  logradouro: dto?.logradouro ? String(dto.logradouro) : '',
+  numero: dto?.numero ? String(dto.numero) : '',
+  complemento: dto?.complemento ? String(dto.complemento) : '',
+  bairro: dto?.bairro ? String(dto.bairro) : '',
+  cidade: dto?.cidade ? String(dto.cidade) : '',
+  estado: dto?.estado ? String(dto.estado) : '',
+  cep: dto?.cep ? String(dto.cep) : '',
+  roles: user.roles ?? []
+});
+
+  setOpenEditDialog(true);
+};
+
   /*************************** EDITAR ***************************/
 
   const handleEditOpen = async () => {
@@ -194,23 +225,27 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
     const dto = (error ? null : data) as Record<string, unknown> | null;
 
     setEditingUser({
-      id: targetId,
-      userName: dto?.userName ? String(dto.userName) : '',
-      email: dto?.email ? String(dto.email) : '',
-      nomeCompleto: dto?.nomeCompleto ? String(dto.nomeCompleto) : menuUser.name,
-      cpf: dto?.cpf ? String(dto.cpf) : '',
-      whatsapp: dto?.whatsapp ? String(dto.whatsapp) : '',
-      telefone: dto?.telefone ? String(dto.telefone) : '',
-      isAtivo: dto?.isAtivo === undefined ? menuUser.status !== 'Bloqueado' : Boolean(dto.isAtivo),
-      logradouro: dto?.logradouro ? String(dto.logradouro) : '',
-      numero: dto?.numero ? String(dto.numero) : '',
-      complemento: dto?.complemento ? String(dto.complemento) : '',
-      bairro: dto?.bairro ? String(dto.bairro) : '',
-      cidade: dto?.cidade ? String(dto.cidade) : '',
-      estado: dto?.estado ? String(dto.estado) : '',
-      cep: dto?.cep ? String(dto.cep) : '',
-      roles: menuUser.roles ?? []
-    });
+  id: targetId,
+  userName: dto?.userName ? String(dto.userName) : '',
+  email: dto?.email ? String(dto.email) : '',
+  nomeCompleto: dto?.nomeCompleto ? String(dto.nomeCompleto) : menuUser.name,
+  cpf: dto?.cpf ? String(dto.cpf) : '',
+  whatsapp: dto?.whatsapp ? String(dto.whatsapp) : '',
+  telefone: dto?.telefone ? String(dto.telefone) : '',
+  isAtivo: dto?.isAtivo === undefined ? menuUser.status !== 'Bloqueado' : Boolean(dto.isAtivo),
+
+  // FOTO DE PERFIL
+  fotoURL: dto?.fotoURL ? String(dto.fotoURL) : '',
+
+  logradouro: dto?.logradouro ? String(dto.logradouro) : '',
+  numero: dto?.numero ? String(dto.numero) : '',
+  complemento: dto?.complemento ? String(dto.complemento) : '',
+  bairro: dto?.bairro ? String(dto.bairro) : '',
+  cidade: dto?.cidade ? String(dto.cidade) : '',
+  estado: dto?.estado ? String(dto.estado) : '',
+  cep: dto?.cep ? String(dto.cep) : '',
+  roles: menuUser.roles ?? []
+});
 
     setOpenEditDialog(true);
   };
@@ -643,10 +678,19 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
             <TableBody>
               {paginatedUsers.map((user) => (
                 <TableRow
-                  key={user.id}
-                  hover
-                  sx={user.status === 'Bloqueado' ? { opacity: 0.6, backgroundColor: 'action.disabledBackground' } : {}}
-                >
+  key={user.id}
+  hover
+  onClick={() => handleRowClick(user)}
+  sx={{
+    cursor: 'pointer',
+    ...(user.status === 'Bloqueado'
+      ? {
+          opacity: 0.6,
+          backgroundColor: 'action.disabledBackground'
+        }
+      : {})
+  }}
+>
                   <TableCell padding="checkbox">
                     <Checkbox checked={selected.includes(user.id)} onChange={() => handleSelectOne(user.id)} disabled={user.status === 'Bloqueado'} />
                   </TableCell>
@@ -692,9 +736,15 @@ export default function UsersView({ showCreateButton = true }: UsersViewProps) {
 
                   {/* TRÊS PONTINHOS */}
                   <TableCell align="right">
-                    <IconButton size="small" onClick={(event) => handleMenuOpen(event, user)}>
-                      <IconDotsVertical size={18} />
-                    </IconButton>
+                    <IconButton
+  size="small"
+  onClick={(event) => {
+    event.stopPropagation();
+    handleMenuOpen(event, user);
+  }}
+>
+  <IconDotsVertical size={18} />
+</IconButton>
                   </TableCell>
                 </TableRow>
               ))}

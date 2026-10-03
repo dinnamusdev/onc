@@ -58,7 +58,13 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<LoginFormInput>({ defaultValues: { email: '', password: '' } });
+  } = useForm<LoginFormInput>({
+    defaultValues: {
+      email: '',
+      password: ''
+    }
+  });
+
   /*************************** LIMPAR ERRO AUTOMATICAMENTE ***************************/
 
   useEffect(() => {
@@ -79,6 +85,7 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
 
     startTransition(async () => {
       const { data, error } = await login(formData);
+
       if (error) {
         setLoginError(error || 'Algo deu errado');
         return;
@@ -90,11 +97,19 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
       // Enriquece com dados do perfil completo (fotoURL, nomeCompleto, etc.)
       // para que o header exiba a foto corretamente já no primeiro carregamento.
       const email = (data as Record<string, unknown>)?.email as string | undefined;
+
       if (email) {
         const { data: users } = await getUsers({ email });
         const profile = Array.isArray(users) ? users[0] : users;
+
         if (profile) {
-          localStorage.setItem(AUTH_USER_KEY, JSON.stringify({ ...(data as Record<string, unknown>), ...profile }));
+          localStorage.setItem(
+            AUTH_USER_KEY,
+            JSON.stringify({
+              ...(data as Record<string, unknown>),
+              ...profile
+            })
+          );
         }
       }
 
@@ -102,13 +117,25 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
     });
   };
 
-  const commonIconProps = { size: 16, color: theme.vars.palette.grey[700] };
+  const commonIconProps = {
+    size: 16,
+    color: theme.vars.palette.grey[700]
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <Stack gap={2}>
+      <Stack
+        gap={2}
+        sx={{
+          width: '100%',
+          maxWidth: 600,
+          mx: 'auto'
+        }}
+      >
+        {/* E-mail */}
         <Box>
           <InputLabel>E-mail</InputLabel>
+
           <OutlinedInput
             {...register('email', emailSchema)}
             placeholder="exemplo@gmail.com"
@@ -116,19 +143,29 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
             error={Boolean(errors.email)}
             sx={{
               ...inputSx,
-              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
-                WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
-                WebkitTextFillColor: '#000000 !important',
-                caretColor: '#000000',
-                transition: 'background-color 5000s ease-in-out 0s !important'
-              }
+              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active':
+                {
+                  WebkitBoxShadow:
+                    '0 0 0 1000px #ffffff inset !important',
+                  WebkitTextFillColor: '#000000 !important',
+                  caretColor: '#000000',
+                  transition:
+                    'background-color 5000s ease-in-out 0s !important'
+                }
             }}
           />
-          {errors.email?.message && <FormHelperText error>{errors.email.message}</FormHelperText>}
+
+          {errors.email?.message && (
+            <FormHelperText error>
+              {errors.email.message}
+            </FormHelperText>
+          )}
         </Box>
 
+        {/* Senha */}
         <Box>
           <InputLabel>Senha</InputLabel>
+
           <OutlinedInput
             {...register('password', passwordSchema)}
             type={isPasswordVisible ? 'text' : 'password'}
@@ -136,55 +173,104 @@ export default function AuthLogin({ inputSx }: CommonAuthComponentProps) {
             fullWidth
             error={Boolean(errors.password)}
             endAdornment={
-              <InputAdornment position="end" sx={{ cursor: 'pointer' }} onClick={() => setIsPasswordVisible(!isPasswordVisible)}>
-                {isPasswordVisible ? <IconEye {...commonIconProps} /> : <IconEyeOff {...commonIconProps} />}
+              <InputAdornment
+                position="end"
+                sx={{ cursor: 'pointer' }}
+                onClick={() =>
+                  setIsPasswordVisible(!isPasswordVisible)
+                }
+              >
+                {isPasswordVisible ? (
+                  <IconEye {...commonIconProps} />
+                ) : (
+                  <IconEyeOff {...commonIconProps} />
+                )}
               </InputAdornment>
             }
             sx={{
               ...inputSx,
-              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active': {
-                WebkitBoxShadow: '0 0 0 1000px #ffffff inset !important',
-                WebkitTextFillColor: '#000000 !important',
-                caretColor: '#000000',
-                transition: 'background-color 5000s ease-in-out 0s !important'
-              }
+              '& input:-webkit-autofill, & input:-webkit-autofill:hover, & input:-webkit-autofill:focus, & input:-webkit-autofill:active':
+                {
+                  WebkitBoxShadow:
+                    '0 0 0 1000px #ffffff inset !important',
+                  WebkitTextFillColor: '#000000 !important',
+                  caretColor: '#000000',
+                  transition:
+                    'background-color 5000s ease-in-out 0s !important'
+                }
             }}
           />
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: errors.password ? 'space-between' : 'flex-end', width: 1 }}>
-            {errors.password?.message && <FormHelperText error>{errors.password.message}</FormHelperText>}
+
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: 'center',
+              justifyContent: errors.password
+                ? 'space-between'
+                : 'flex-end',
+              width: 1
+            }}
+          >
+            {errors.password?.message && (
+              <FormHelperText error>
+                {errors.password.message}
+              </FormHelperText>
+            )}
+
             <Link
               component={NextLink}
               underline="hover"
               variant="caption"
               href="/forgot-password"
               textAlign="right"
-              sx={{ '&:hover': { color: 'primary.dark' }, mt: 0.75 }}
+              sx={{
+                '&:hover': {
+                  color: 'primary.dark'
+                },
+                mt: 0.75
+              }}
             >
               Esqueceu sua senha?
             </Link>
           </Stack>
         </Box>
-      </Stack>
 
-      <Button
-        type="submit"
-        color="primary"
-        variant="contained"
-        fullWidth
-        disabled={isProcessing}
-        endIcon={isProcessing && <CircularProgress color="secondary" size={16} />}
-        sx={{
-          mt: { xs: 1, sm: 4 },
-          '& .MuiButton-endIcon': { ml: 1 }
-        }}
-      >
-        Login
-      </Button>
-      {loginError && (
-        <Alert sx={{ mt: 2 }} severity="error" variant="filled" icon={false}>
-          {loginError}
-        </Alert>
-      )}
+        {/* Botão Login */}
+        <Button
+  type="submit"
+  color="primary"
+  variant="contained"
+  disabled={isProcessing}
+  endIcon={
+    isProcessing && (
+      <CircularProgress color="secondary" size={16} />
+    )
+  }
+  sx={{
+    width: '250px',
+    maxWidth: '100%',
+    mx: 'auto',
+    mt: { xs: 1, sm: 2 },
+    '& .MuiButton-endIcon': {
+      ml: 1
+    }
+  }}
+>
+  Login
+</Button>
+
+        {/* Erro de login */}
+        {loginError && (
+          <Alert
+            sx={{ mt: 2 }}
+            severity="error"
+            variant="filled"
+            icon={false}
+          >
+            {loginError}
+          </Alert>
+        )}
+      </Stack>
     </form>
   );
 }

@@ -110,10 +110,12 @@ interface RoleRow {
 
 interface PermissionRow {
   id: string;
+  permissionIds: string[];
   subject: string;
   action: string;
+  actions: string[];
   subjectId?: number;
-  actionId?: number;
+  actionIds: number[];
   description: string;
   roles: string[];
 }
@@ -374,42 +376,115 @@ export default function RolesPermissionsView() {
     }
 
     if (permsRes.error) {
-      setPermissions([]);
-    } else if (Array.isArray(permsRes.data)) {
-      const mapped: PermissionRow[] = (permsRes.data as Array<ApiPermission & Record<string, unknown>>).map((perm) => {
-        // IDs numéricos retornados pelo backend ONC
-        const subjectId = typeof perm.subjectId === 'number' ? perm.subjectId : undefined;
-        const actionId = typeof perm.actionId === 'number' ? perm.actionId : undefined;
+  setPermissions([]);
+} else if (Array.isArray(permsRes.data)) {
+  const rawPermissions = permsRes.data as Array<ApiPermission & Record<string, unknown>>;
 
-        // Tenta descrição via lookup de ID (modo ONC); fallback para campos de texto (modo mock)
-        const rawSubject =
-          (subjectId != null ? subjectMap.get(subjectId) : undefined) ??
-          String(perm.subject ?? perm.Subject ?? perm.resource ?? perm.Resource ?? '');
-
-        const rawActionText =
-          (actionId != null ? actionMap.get(actionId) : undefined) ??
-          String(perm.action ?? perm.Action ?? perm.name ?? perm.Name ?? '');
-
-        const actionValue = Array.isArray(rawActionText) ? (rawActionText as string[]).join(', ') : rawActionText;
-        const dottedParts = !rawSubject && actionValue.includes('.') ? actionValue.split('.') : [];
-        const subject = rawSubject || dottedParts[0] || '';
-        const action = dottedParts.length > 1 ? dottedParts.slice(1).join('.') : actionValue;
-        const rawRoles = perm.roles ?? perm.Roles ?? [];
-
-        return {
-          id: String(perm.id ?? perm.Id),
-          subject,
-          action,
-          subjectId,
-          actionId,
-          description: String(perm.description ?? perm.Description ?? ''),
-          roles: Array.isArray(rawRoles) ? rawRoles.map(String) : []
-        };
-      });
-      setPermissions(mapped);
-    } else {
-      setPermissions([]);
+  /**
+   * O backend possui uma permissão por ação:
+   *
+   * Order + read
+   * Order + create
+   * Order + update
+   * Order + delete
+   *
+   * Na interface queremos uma única linha:
+   *
+   * Order | read, create, update, delete
+   *
+   * Portanto agrupamos as permissões pelo alvo (subject).
+   */
+  const groupedPermissions = new Map<
+    string,
+    {
+      permissionIds: string[];
+      subject: string;
+      subjectId?: number;
+      actions: string[];
+      actionIds: number[];
+      description: string;
+      roles: string[];
     }
+  >();
+
+  rawPermissions.forEach((perm) => {
+    const subjectId = typeof perm.subjectId === 'number' ? perm.subjectId : undefined;
+    const actionId = typeof perm.actionId === 'number' ? perm.actionId : undefined;
+
+    const rawSubject =
+      (subjectId != null ? subjectMap.get(subjectId) : undefined) ??
+      String(perm.subject ?? perm.Subject ?? perm.resource ?? perm.Resource ?? '');
+
+    const rawAction =
+      (actionId != null ? actionMap.get(actionId) : undefined) ??
+      String(perm.action ?? perm.Action ?? perm.name ?? perm.Name ?? '');
+
+    const subject = rawSubject.trim();
+    const action = rawAction.trim();
+
+    const groupKey =
+      subjectId != null
+        ? `subject:${subjectId}`
+        : `subject:${subject.toLowerCase()}`;
+
+    const rawRoles = perm.roles ?? perm.Roles ?? [];
+    const roles = Array.isArray(rawRoles) ? rawRoles.map(String) : [];
+
+    const existing = groupedPermissions.get(groupKey);
+
+    if (existing) {
+      const permissionId = String(perm.id ?? perm.Id);
+
+      if (!existing.permissionIds.includes(permissionId)) {
+        existing.permissionIds.push(permissionId);
+      }
+
+      if (action && !existing.actions.includes(action)) {
+        existing.actions.push(action);
+      }
+
+      if (actionId != null && !existing.actionIds.includes(actionId)) {
+        existing.actionIds.push(actionId);
+      }
+
+      roles.forEach((role) => {
+        if (!existing.roles.includes(role)) {
+          existing.roles.push(role);
+        }
+      });
+
+      if (!existing.description) {
+        existing.description = String(perm.description ?? perm.Description ?? '');
+      }
+    } else {
+      groupedPermissions.set(groupKey, {
+        permissionIds: [String(perm.id ?? perm.Id)],
+        subject,
+        subjectId,
+        actions: action ? [action] : [],
+        actionIds: actionId != null ? [actionId] : [],
+        description: String(perm.description ?? perm.Description ?? ''),
+        roles: Array.from(new Set(roles))
+      });
+    }
+  });
+
+  const mapped: PermissionRow[] = Array.from(groupedPermissions.values()).map((group) => ({
+    id: group.permissionIds[0],
+    permissionIds: group.permissionIds,
+    subject: group.subject,
+    action: group.actions.join(', '),
+    actions: group.actions,
+    subjectId: group.subjectId,
+    actionIds: group.actionIds,
+    description: group.description,
+    roles: group.roles
+  }));
+
+  setPermissions(mapped);
+} else {
+  setPermissions([]);
+}
 
     // Carrega subjects e actions nas tabelas próprias
     type LookupRow = { id: string | number; description?: string; createdAt?: string };
@@ -463,13 +538,20 @@ export default function RolesPermissionsView() {
     openSnackbar({ open: true, message: 'Alvo criado com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
   };
 
-  const handleEditSubjectOpen = () => {
-    if (!menuSubject) return;
-    setEditSubjectDescription(menuSubject.description);
-    setSubjectDialogError('');
-    handleSubjectMenuClose();
-    setOpenEditSubjectDialog(true);
-  };
+  const openSubjectEdit = (subject: typeof menuSubject) => {
+  if (!subject) return;
+
+  setEditSubjectDescription(subject.description);
+  setSubjectDialogError('');
+  setOpenEditSubjectDialog(true);
+};
+
+const handleEditSubjectOpen = () => {
+  if (!menuSubject) return;
+
+  handleSubjectMenuClose();
+  openSubjectEdit(menuSubject);
+};
 
   const handleEditSubjectSave = async () => {
     if (!menuSubject) return;
@@ -526,13 +608,20 @@ export default function RolesPermissionsView() {
     openSnackbar({ open: true, message: 'Ação criada com sucesso', variant: 'alert', severity: 'success', alert: { color: 'success' } } as never);
   };
 
-  const handleEditActionOpen = () => {
-    if (!menuAction) return;
-    setEditActionDescription(menuAction.description);
-    setActionDialogError('');
-    handleActionMenuClose();
-    setOpenEditActionDialog(true);
-  };
+ const openActionEdit = (action: typeof menuAction) => {
+  if (!action) return;
+
+  setEditActionDescription(action.description);
+  setActionDialogError('');
+  setOpenEditActionDialog(true);
+};
+
+const handleEditActionOpen = () => {
+  if (!menuAction) return;
+
+  handleActionMenuClose();
+  openActionEdit(menuAction);
+};
 
   const handleEditActionSave = async () => {
     if (!menuAction) return;
@@ -924,21 +1013,29 @@ export default function RolesPermissionsView() {
 
   /*************************** EDIT ROLE ***************************/
 
-  const handleEditRoleOpen = () => {
-    if (!menuRole) {
-      return;
-    }
+ const openRoleEdit = (role: typeof menuRole) => {
+  if (!role) {
+    return;
+  }
 
-    setEditRoleName(menuRole.name);
-    setEditRoleDescription(menuRole.description);
-    setEditPermissions(menuRole.permissions);
-    setEditUsers(menuRole.users);
-    setSelectedPermissionIds([]);
-    setSelectedUserIds([]);
+  setEditRoleName(role.name);
+  setEditRoleDescription(role.description);
+  setEditPermissions(role.permissions);
+  setEditUsers(role.users);
+  setSelectedPermissionIds([]);
+  setSelectedUserIds([]);
 
-    handleMenuClose();
-    setOpenEditRoleDialog(true);
-  };
+  setOpenEditRoleDialog(true);
+};
+
+const handleEditRoleOpen = () => {
+  if (!menuRole) {
+    return;
+  }
+
+  handleMenuClose();
+  openRoleEdit(menuRole);
+};
 
   const handleEditRoleClose = () => {
     setOpenEditRoleDialog(false);
@@ -1195,127 +1292,222 @@ export default function RolesPermissionsView() {
 
   /*************************** EDIT PERMISSION ***************************/
 
-  const handleEditPermissionOpen = () => {
-    if (!menuPermission) {
-      return;
-    }
+  const openPermissionEdit = (permission: typeof menuPermission) => {
+  if (!permission) return;
 
-    // Prepara os dados no formato esperado pelo CreatePermissionDialog
-    // Passa IDs numéricos para o form (subjectId/actionId) além das descriptions para fallback de display
-    const permissionData: PermissionData = {
-      id: menuPermission.id,
-      target: menuPermission.subject,
-      targetId: menuPermission.subjectId != null ? String(menuPermission.subjectId) : undefined,
-      actions: menuPermission.action
-        .split(',')
-        .map((action) => action.trim())
-        .filter(Boolean),
-      actionIds: menuPermission.actionId != null ? [String(menuPermission.actionId)] : undefined,
-      description: menuPermission.description
-    };
-
-    setEditPermissionData(permissionData);
-
-    handlePermissionMenuClose();
-    setOpenEditPermissionDialog(true);
+  const permissionData: PermissionData = {
+    id: permission.id,
+    target: permission.subject,
+    targetId: permission.subjectId != null ? String(permission.subjectId) : undefined,
+    actions: permission.actions,
+    actionIds: permission.actionIds.map(String),
+    description: permission.description
   };
+
+  setEditPermissionData(permissionData);
+  setOpenEditPermissionDialog(true);
+};
+
+const handleEditPermissionOpen = () => {
+  if (!menuPermission) {
+    return;
+  }
+
+  handlePermissionMenuClose();
+  openPermissionEdit(menuPermission);
+};
 
   const handleEditPermissionClose = () => {
     setOpenEditPermissionDialog(false);
     setEditPermissionData(null);
   };
 
-  const handleEditPermissionSave = async (data: { name?: string; target: string; actions: string[]; description: string }) => {
-    if (!menuPermission) {
-      console.error('handleEditPermissionSave - menuPermission é null');
-      return false;
-    }
+  const handleEditPermissionSave = async (data: {
+  name?: string;
+  target: string;
+  actions: string[];
+  description?: string;
+}) => {
+  if (!menuPermission) return false;
 
-    console.log('handleEditPermissionSave - Dados recebidos:', data);
-    console.log('handleEditPermissionSave - menuPermission:', menuPermission);
-    console.log('handleEditPermissionSave - ID da permissão:', menuPermission.id);
+  const subjectId = data.target ? Number(data.target) : NaN;
 
-    // data.target = subjectId (string), data.actions = actionIds (string[])
-    const subjectId = data.target ? Number(data.target) : NaN;
-    const actionIds = data.actions.map(Number).filter((n) => !isNaN(n) && n > 0);
-    const firstActionId = actionIds[0];
+  const desiredActionIds = Array.from(
+    new Set(
+      data.actions
+        .map(Number)
+        .filter((id) => !isNaN(id) && id > 0)
+    )
+  );
 
-    if (!firstActionId || isNaN(subjectId)) {
-      openSnackbar({ open: true, message: 'Selecione pelo menos uma ação.', variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
-      return false;
-    }
-
-    const duplicatePermission = permissions.find((permission) => {
-      if (permission.id === menuPermission.id) return false;
-      // Comparação por IDs quando disponíveis (modo ONC); fallback por texto (modo mock)
-      if (permission.subjectId != null && !isNaN(subjectId)) {
-        return permission.subjectId === subjectId && permission.actionId === firstActionId;
-      }
-      return permission.subject.trim().toLowerCase() === data.target.trim().toLowerCase();
-    });
-    if (duplicatePermission) {
-      openSnackbar({
-        open: true,
-        message: 'Já existe uma permissão com este alvo e ação.',
-        variant: 'alert',
-        severity: 'error',
-        alert: { color: 'error' }
-      } as never);
-      return false;
-    }
-
-    // O backend mantém uma ação por permissão; a edição atualiza o registro existente.
-    console.log('handleEditPermissionSave - Enviando updatePermission com:', {
-      id: menuPermission.id,
-      subjectId,
-      actionId: firstActionId,
-      description: data.description
-    });
-    const { error } = await updatePermission({
-      id: menuPermission.id,
-      subjectId,
-      actionId: firstActionId,
-      description: data.description
-    });
-
-    if (error) {
-      console.error('handleEditPermissionSave - Erro no updatePermission:', error);
-      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
-      return false;
-    }
-
-    const additionalPermissionResults = await Promise.all(
-      actionIds.slice(1).map((additionalActionId) =>
-        createPermission({
-          subjectId,
-          actionId: additionalActionId,
-          description: data.description
-        })
-      )
-    );
-    const additionalPermissionError = additionalPermissionResults.find((result) => result.error)?.error;
-    if (additionalPermissionError) {
-      openSnackbar({ open: true, message: additionalPermissionError, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
-      return false;
-    }
-
-    console.log('handleEditPermissionSave - Update realizado com sucesso');
+  if (isNaN(subjectId) || desiredActionIds.length === 0) {
     openSnackbar({
-      open: true,
-      message: 'Permissão atualizada com sucesso!',
-      variant: 'alert',
-      severity: 'success',
-      alert: { color: 'success' }
-    } as never);
+  open: true,
+  message: 'Selecione um alvo e pelo menos uma ação.',
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
+    return false;
+  }
 
-    await mutate('/api/rbac/permissions');
-    await mutate('/api/rbac/roles');
-    await reloadData();
+  /**
+   * Evita duplicar a mesma combinação alvo + ação
+   * em outra linha já existente.
+   */
+  const duplicatePermission = permissions.find((permission) => {
+    if (permission.id === menuPermission.id) return false;
 
-    setOpenEditPermissionDialog(false);
-    setMenuPermission(null);
-    return true;
-  };
+    if (permission.subjectId !== subjectId) return false;
+
+    return permission.actionIds.some((actionId) =>
+      desiredActionIds.includes(actionId)
+    );
+  });
+
+  if (duplicatePermission) {
+    openSnackbar({
+  open: true,
+  message: 'Já existe uma permissão para uma das ações selecionadas neste alvo.',
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
+    return false;
+  }
+
+  const currentPermissionIds = menuPermission.permissionIds ?? [menuPermission.id];
+  const currentActionIds = menuPermission.actionIds ?? [];
+
+  /**
+   * Mantemos os registros existentes sempre que possível.
+   * Isso evita apagar/recriar tudo desnecessariamente.
+   */
+  const actionsToKeep = desiredActionIds.filter((actionId) =>
+    currentActionIds.includes(actionId)
+  );
+
+  const actionsToCreate = desiredActionIds.filter(
+    (actionId) => !currentActionIds.includes(actionId)
+  );
+
+  const actionsToDelete = currentActionIds.filter(
+    (actionId) => !desiredActionIds.includes(actionId)
+  );
+
+  const updates: Promise<any>[] = [];
+
+  /**
+   * Atualiza os registros que continuam existindo.
+   */
+  actionsToKeep.forEach((actionId) => {
+    const index = currentActionIds.indexOf(actionId);
+    const permissionId = currentPermissionIds[index];
+
+    if (permissionId) {
+      updates.push(
+        updatePermission({
+          id: permissionId,
+          subjectId,
+          actionId,
+          description: data.description || ''
+        })
+      );
+    }
+  });
+
+  const updateResults = await Promise.all(updates);
+
+  const updateError = updateResults.find((result) => result?.error)?.error;
+
+  if (updateError) {
+    openSnackbar({
+  open: true,
+  message: updateError,
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
+
+    return false;
+  }
+
+  /**
+   * Cria as novas ações selecionadas.
+   */
+  const createResults = await Promise.all(
+    actionsToCreate.map((actionId) =>
+      createPermission({
+        subjectId,
+        actionId,
+        description: data.description || ''
+      })
+    )
+  );
+
+  const createError = createResults.find((result) => result?.error)?.error;
+
+  if (createError) {
+    openSnackbar({
+  open: true,
+  message: createError,
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
+
+    return false;
+  }
+
+  /**
+   * Remove as ações que foram desmarcadas.
+   */
+  const deleteIds = currentActionIds
+    .map((actionId, index) => ({
+      actionId,
+      permissionId: currentPermissionIds[index]
+    }))
+    .filter(
+      ({ actionId, permissionId }) =>
+        actionsToDelete.includes(actionId) && Boolean(permissionId)
+    )
+    .map(({ permissionId }) => permissionId);
+
+  const deleteResults = await Promise.all(
+    deleteIds.map((permissionId) => deletePermission(permissionId))
+  );
+
+  const deleteError = deleteResults.find((result) => result?.error)?.error;
+
+  if (deleteError) {
+    openSnackbar({
+  open: true,
+  message: deleteError,
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
+
+    return false;
+  }
+
+  openSnackbar({
+  open: true,
+  message: 'Permissão atualizada com sucesso.',
+  variant: 'alert',
+  severity: 'success',
+  alert: { color: 'success' }
+} as never);
+
+  await mutate('/api/rbac/permissions');
+  await mutate('/api/rbac/roles');
+  await reloadData();
+
+  setOpenEditPermissionDialog(false);
+  setMenuPermission(null);
+
+  return true;
+};
 
   /*************************** DELETE PERMISSION ***************************/
 
@@ -1328,35 +1520,44 @@ export default function RolesPermissionsView() {
     setOpenDeletePermissionDialog(false);
   };
 
-  const handleDeletePermissionConfirm = async () => {
-    if (!menuPermission) {
-      return;
-    }
+ const handleDeletePermissionConfirm = async () => {
+  if (!menuPermission) return;
 
-    const { error } = await deletePermission(menuPermission.id);
+  const permissionIds = menuPermission.permissionIds ?? [menuPermission.id];
 
-    if (error) {
-      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as never);
-    } else {
-      openSnackbar({
-        open: true,
-        message: 'Permissão excluída com sucesso!',
-        variant: 'alert',
-        severity: 'success',
-        alert: { color: 'success' }
-      } as never);
+  const results = await Promise.all(
+    permissionIds.map((permissionId) => deletePermission(permissionId))
+  );
 
-      // Invalida o cache do SWR para forçar recarregamento
-      await mutate('/api/rbac/permissions');
-      await mutate('/api/rbac/roles');
+  const error = results.find((result) => result?.error)?.error;
 
-      await reloadData();
-    }
+  if (error) {
+    openSnackbar({
+  open: true,
+  message: error,
+  variant: 'alert',
+  severity: 'error',
+  alert: { color: 'error' }
+} as never);
 
-    setOpenDeletePermissionDialog(false);
-    setMenuPermission(null);
-  };
+    return;
+  }
 
+  openSnackbar({
+  open: true,
+  message: 'Permissão excluída com sucesso.',
+  variant: 'alert',
+  severity: 'success',
+  alert: { color: 'success' }
+} as never);
+
+  await mutate('/api/rbac/permissions');
+  await mutate('/api/rbac/roles');
+  await reloadData();
+
+  setOpenDeletePermissionDialog(false);
+  setMenuPermission(null);
+};
   /*************************** CREATE ROLE ***************************/
 
   const handleCreateRole = async (_data: CreateRoleData) => {
@@ -1667,7 +1868,14 @@ export default function RolesPermissionsView() {
 
                 <TableBody>
                   {paginatedRoles.map((role) => (
-                    <TableRow key={role.id} hover>
+                    <TableRow
+  key={role.id}
+  hover
+  onClick={() => openRoleEdit(role)}
+  sx={{
+    cursor: 'pointer'
+  }}
+>
 
                       <TableCell sx={{ overflow: 'hidden' }}>
                         <Typography variant="subtitle2" noWrap>
@@ -1753,10 +1961,16 @@ export default function RolesPermissionsView() {
                       </TableCell>
 
                       <TableCell align="right">
-                        <IconButton size="small" onClick={(event) => handleMenuOpen(event, role)}>
-                          <IconDotsVertical size={18} />
-                        </IconButton>
-                      </TableCell>
+  <IconButton
+    size="small"
+    onClick={(event) => {
+      event.stopPropagation();
+      handleMenuOpen(event, role);
+    }}
+  >
+    <IconDotsVertical size={18} />
+  </IconButton>
+</TableCell>
                     </TableRow>
                   ))}
 
@@ -1912,118 +2126,103 @@ export default function RolesPermissionsView() {
 
         {tab === 1 && (
           <>
-            <TableContainer
-              sx={{
-                overflowX: 'auto'
+            <TableContainer sx={{ overflowX: 'auto' }}>
+  <Table sx={{ tableLayout: 'fixed', minWidth: 700 }}>
+    <TableHead>
+      <TableRow>
+        <TableCell sx={{ width: '30%' }}>
+          Alvo
+        </TableCell>
+
+        <TableCell sx={{ width: '60%' }}>
+          Ações
+        </TableCell>
+
+        <TableCell
+          align="right"
+          sx={{ width: 60 }}
+        />
+      </TableRow>
+    </TableHead>
+
+    <TableBody>
+      {paginatedPermissions.map((permission) => (
+        <TableRow
+          key={permission.id}
+          hover
+          onClick={() => openPermissionEdit(permission)}
+          sx={{ cursor: 'pointer' }}
+        >
+          <TableCell>
+            <Typography
+              variant="subtitle2"
+              noWrap
+            >
+              {permission.subject}
+            </Typography>
+          </TableCell>
+
+          <TableCell>
+  {permission.actions.length === 0 ? (
+    <Typography variant="body2" color="text.disabled">
+      —
+    </Typography>
+  ) : (
+    <Stack
+      direction="row"
+      sx={{
+        flexWrap: 'wrap',
+        gap: 0.5,
+        alignItems: 'center'
+      }}
+    >
+      {permission.actions.map((action) => (
+        <Chip
+          key={action}
+          label={action}
+          size="small"
+          variant="outlined"
+          sx={{
+            color: 'error.main',
+            borderColor: 'error.main',
+            backgroundColor: 'rgba(214, 69, 69, 0.06)',
+            '& .MuiChip-label': {
+              color: 'inherit'
+            }
+          }}
+        />
+      ))}
+    </Stack>
+  )}
+</TableCell>
+
+          <TableCell align="right">
+            <IconButton
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                handlePermissionMenuOpen(event, permission);
               }}
             >
-              <Table
-                sx={{
-                  tableLayout: 'fixed',
-                  minWidth: 1100
-                }}
-              >
-                <TableHead>
-                  <TableRow>
+              <IconDotsVertical size={18} />
+            </IconButton>
+          </TableCell>
+        </TableRow>
+      ))}
 
-                    <TableCell sx={{ width: '12%' }}>Alvo</TableCell>
-
-                    <TableCell sx={{ width: '15%' }}>Ações</TableCell>
-
-                    <TableCell sx={{ width: '63%' }}>Descrição</TableCell>
-
-                    <TableCell align="right" sx={{ width: 60 }} />
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {paginatedPermissions.map((permission) => (
-                    <TableRow key={permission.id} hover>
-                      
-                      <TableCell
-                        sx={{
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Typography variant="subtitle2" noWrap>
-                          {permission.subject}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Typography variant="subtitle2" noWrap>
-                          {permission.action}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell
-                        sx={{
-                          overflow: 'hidden'
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            display: 'block',
-                            width: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                          title={permission.description}
-                        >
-                          {permission.description}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell>
-                        <Stack
-                          direction="row"
-                          sx={{
-                            gap: 0.5,
-                            flexWrap: 'nowrap',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          {permission.roles.map((role) => (
-                            <Chip
-                              key={role}
-                              label={role}
-                              size="small"
-                              variant="outlined"
-                              sx={{
-                                flexShrink: 0
-                              }}
-                            />
-                          ))}
-                        </Stack>
-                      </TableCell>
-
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={(event) => handlePermissionMenuOpen(event, permission)}>
-                          <IconDotsVertical size={18} />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-
-                  {paginatedPermissions.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
-                          Nenhuma permissão encontrada.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+      {paginatedPermissions.length === 0 && (
+        <TableRow>
+          <TableCell
+            colSpan={3}
+            align="center"
+          >
+            Nenhuma permissão encontrada.
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
 
             <Stack
               direction="row"
@@ -2186,7 +2385,7 @@ export default function RolesPermissionsView() {
                 </TableHead>
                 <TableBody>
                   {paginatedSubjects.map((subject) => (
-                    <TableRow key={subject.id} hover>
+                    <TableRow key={subject.id} hover onClick={() => openSubjectEdit(subject)} sx={{ cursor: 'pointer' }}>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">{String(subject.id)}</Typography>
                       </TableCell>
@@ -2194,9 +2393,15 @@ export default function RolesPermissionsView() {
                         <Typography variant="subtitle2">{subject.description}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" onClick={(e) => handleSubjectMenuOpen(e, subject)}>
-                          <IconDotsVertical size={18} />
-                        </IconButton>
+                        <IconButton
+  size="small"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleSubjectMenuOpen(e, subject);
+  }}
+>
+  <IconDotsVertical size={18} />
+</IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2254,7 +2459,7 @@ export default function RolesPermissionsView() {
                 </TableHead>
                 <TableBody>
                   {paginatedActions.map((action) => (
-                    <TableRow key={action.id} hover>
+                    <TableRow key={action.id} hover onClick={() => openActionEdit(action)} sx={{ cursor: 'pointer' }}>
                       <TableCell>
                         <Typography variant="body2" color="text.secondary">{String(action.id)}</Typography>
                       </TableCell>
@@ -2262,9 +2467,15 @@ export default function RolesPermissionsView() {
                         <Typography variant="subtitle2">{action.description}</Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <IconButton size="small" onClick={(e) => handleActionMenuOpen(e, action)}>
-                          <IconDotsVertical size={18} />
-                        </IconButton>
+                        <IconButton
+  size="small"
+  onClick={(e) => {
+    e.stopPropagation();
+    handleActionMenuOpen(e, action);
+  }}
+>
+  <IconDotsVertical size={18} />
+</IconButton>
                       </TableCell>
                     </TableRow>
                   ))}

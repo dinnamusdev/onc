@@ -51,11 +51,18 @@ export default function ProfileSection() {
   const theme = useTheme();
   const { userData } = useCurrentUser();
 
-  const { data: registeredUsers } = useSWR<User[]>(userData?.email ? `/api/users?email=${encodeURIComponent(userData.email)}` : null, async () => {
+  const profileKey = userData?.email
+  ? `/api/users?email=${encodeURIComponent(userData.email)}`
+  : null;
+
+const { data: registeredUsers, mutate: mutateRegisteredUsers } = useSWR<User[]>(
+  profileKey,
+  async () => {
     const { data, error } = await getUsers({ email: userData?.email });
     if (error) throw new Error(error);
     return (Array.isArray(data) ? data : data ? [data] : []) as User[];
-  });
+  }
+);
 
   const registeredUser = registeredUsers?.[0];
 
@@ -163,7 +170,12 @@ export default function ProfileSection() {
             maxHeight: 'unset'
           }
         }}>
-        <ProfileForm onClose={() => setOpenProfile(false)} />
+        <ProfileForm
+  onClose={() => setOpenProfile(false)}
+  onUpdated={async () => {
+    await mutateRegisteredUsers();
+  }}
+/>
       </Dialog>
     </>
   );
