@@ -2,9 +2,464 @@
   "openapi": "3.0.1",
   "info": {
     "title": "ONC Auth Api",
-    "version": "0.1.4"
+    "version": "0.1.5"
   },
   "paths": {
+    "/auth/api/Lead": {
+      "post": {
+        "tags": [
+          "Lead"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/EnumLeadOrderBy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadPagedResultServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadPagedResultServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadPagedResultServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCreateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/Lead/lead-by-id": {
+      "get": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/Lead/lead-by-email": {
+      "get": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/LeadCertificacoes": {
+      "post": {
+        "tags": [
+          "LeadCertificacoes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoCreateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoCreateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoCreateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "LeadCertificacoes"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "LeadCertificacoes"
+        ],
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoUpdateRequestDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoUpdateRequestDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadCertificacaoUpdateRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/LeadCertificacoes/GetLeadCertificacao": {
+      "get": {
+        "tags": [
+          "LeadCertificacoes"
+        ],
+        "parameters": [
+          {
+            "name": "leadCertificacaoId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "leadId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/api/Login/login-by-username": {
       "post": {
         "tags": [
@@ -245,6 +700,191 @@
         }
       }
     },
+    "/auth/api/Norma": {
+      "get": {
+        "tags": [
+          "Norma"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Norma"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Norma"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Norma"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Norma"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Norma"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Norma"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/Norma"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Norma"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaUpdateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaUpdateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaUpdateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/api/Norma/norma-by-id": {
+      "get": {
+        "tags": [
+          "Norma"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Norma"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/Norma/{id}": {
+      "delete": {
+        "tags": [
+          "Norma"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/auth/api/Permission/roles": {
       "post": {
         "tags": [
@@ -358,17 +998,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleListServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOListServiceResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleListServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOListServiceResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleListServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOListServiceResponse"
                 }
               }
             }
@@ -434,17 +1074,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOServiceResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOServiceResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RoleServiceResponse"
+                  "$ref": "#/components/schemas/RolePermissionsIntsResponseDTOServiceResponse"
                 }
               }
             }
@@ -1020,6 +1660,43 @@
             "description": "OK"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "Permission"
+        ],
+        "parameters": [
+          {
+            "name": "subjectId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StringServiceResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/auth/api/Permission/actions": {
@@ -1465,9 +2142,7 @@
             "multipart/form-data": {
               "schema": {
                 "required": [
-                  "Email",
-                  "NomeCompleto",
-                  "UserName"
+                  "Email"
                 ],
                 "type": "object",
                 "properties": {
@@ -1489,10 +2164,6 @@
                   },
                   "Cpf": {
                     "type": "string"
-                  },
-                  "DataCadastro": {
-                    "type": "string",
-                    "format": "date-time"
                   },
                   "FotoURL": {
                     "type": "string"
@@ -1547,9 +2218,6 @@
                   "style": "form"
                 },
                 "Cpf": {
-                  "style": "form"
-                },
-                "DataCadastro": {
                   "style": "form"
                 },
                 "FotoURL": {
@@ -1912,6 +2580,39 @@
         },
         "additionalProperties": false
       },
+      "EnumLeadOrderBy": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EnumSetorEmpresa": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EnumTipoCertificacao": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EnumTipoPropostaLead": {
+        "enum": [
+          0,
+          1
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "HttpStatusCode": {
         "enum": [
           100,
@@ -1979,6 +2680,517 @@
         "type": "integer",
         "format": "int32"
       },
+      "Lead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoProposta": {
+            "$ref": "#/components/schemas/EnumTipoPropostaLead"
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "setor": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "comoPodemosAjudar": {
+            "type": "string",
+            "nullable": true
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAtivo": {
+            "type": "boolean"
+          },
+          "certificacao": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacao": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tipoCertificacao": {
+            "$ref": "#/components/schemas/EnumTipoCertificacao"
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "lead": {
+            "$ref": "#/components/schemas/Lead"
+          },
+          "certificadosTransferencias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoTransferencia"
+            },
+            "nullable": true
+          },
+          "normas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Norma"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoCreateDTO": {
+        "required": [
+          "leadId",
+          "tipoCertificacao"
+        ],
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tipoCertificacao": {
+            "$ref": "#/components/schemas/EnumTipoCertificacao"
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "certificadosTransferencias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoTransferenciaCreateDTO"
+            },
+            "nullable": true
+          },
+          "normasIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoTransferencia": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "leadCertificacao": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoTransferenciaCreateDTO": {
+        "required": [
+          "numeroCertificado",
+          "validadeCertificado"
+        ],
+        "type": "object",
+        "properties": {
+          "numeroCertificado": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoTransferenciaUpdateDTO": {
+        "required": [
+          "numeroCertificado",
+          "validadeCertificado"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "numeroCertificado": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoUpdateRequestDTO": {
+        "required": [
+          "tipoCertificacao"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoCertificacao": {
+            "$ref": "#/components/schemas/EnumTipoCertificacao"
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "normasIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "certificadosTransferencias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoTransferenciaUpdateDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCreateDTO": {
+        "required": [
+          "cargo",
+          "comoPodemosAjudar",
+          "email",
+          "empresa",
+          "nomeContato",
+          "setor",
+          "telefone",
+          "tipoProposta",
+          "whatsapp"
+        ],
+        "type": "object",
+        "properties": {
+          "nomeContato": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "tipoProposta": {
+            "$ref": "#/components/schemas/EnumTipoPropostaLead"
+          },
+          "empresa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "setor": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "cargo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "telefone": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "whatsapp": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "comoPodemosAjudar": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAtivo": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadPagedResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Lead"
+            },
+            "nullable": true
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadPagedResultServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeadPagedResult"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Lead"
+          }
+        },
+        "additionalProperties": false
+      },
       "LoginRequestEmail": {
         "required": [
           "email",
@@ -2011,6 +3223,34 @@
           },
           "password": {
             "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Norma": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sigla": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaUpdateDTO": {
+        "required": [
+          "sigla"
+        ],
+        "type": "object",
+        "properties": {
+          "sigla": {
+            "maxLength": 50,
+            "minLength": 3,
             "type": "string"
           }
         },
@@ -2317,37 +3557,6 @@
         },
         "additionalProperties": false
       },
-      "RoleListServiceResponse": {
-        "type": "object",
-        "properties": {
-          "statusCode": {
-            "$ref": "#/components/schemas/HttpStatusCode"
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
-          "erros": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "nullable": true
-          },
-          "success": {
-            "type": "boolean",
-            "readOnly": true
-          },
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Role"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
       "RolePermissionCreateDTO": {
         "required": [
           "effect"
@@ -2370,7 +3579,51 @@
         },
         "additionalProperties": false
       },
-      "RoleServiceResponse": {
+      "RolePermissionsIntsResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RolePermissionsIntsResponseDTOListServiceResponse": {
         "type": "object",
         "properties": {
           "statusCode": {
@@ -2392,7 +3645,38 @@
             "readOnly": true
           },
           "data": {
-            "$ref": "#/components/schemas/Role"
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RolePermissionsIntsResponseDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RolePermissionsIntsResponseDTOServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/RolePermissionsIntsResponseDTO"
           }
         },
         "additionalProperties": false

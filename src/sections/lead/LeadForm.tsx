@@ -14,7 +14,6 @@ import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -102,7 +101,7 @@ export default function LeadForm() {
     setEmailAlert({ show: false, hasExistingLead: false });
 
     startTransition(async () => {
-      const { data, error } = await createLead(formData);
+      const { error } = await createLead(formData);
       if (error) {
         setSubmitError(error || 'Algo deu errado ao enviar a solicitação');
         return;
