@@ -13,10 +13,14 @@ export interface LeadFormData {
 }
 
 // --- Certificação ---
+export interface Certificado {
+  numero: string;
+  validade: string;
+}
+
 export interface CertificacaoStep1 {
   tipoCertificacao: 'inicial' | 'transferencia';
-  numeroCertificado?: string;
-  validadeCertificado?: string;
+  certificados?: Certificado[];
   ondeNosConheceu?: string;
   nomeContato: string;
   cargo: string;
@@ -28,7 +32,7 @@ export interface CertificacaoStep1 {
 }
 
 export interface CertificacaoStep2 {
-  normasSelecionadas: number[]; // IDs da tabela Normas
+  normasSelecionadas: string[]; // Nomes das normas (temp: usar IDs quando integrar com backend)
   outraNorma?: string;
 }
 
@@ -65,37 +69,37 @@ export interface CertificacaoStep4 {
   produtosServicos: string;
   principaisProcessos: string;
   principaisObrigacoesLegais?: string;
-  jaCertificada: boolean;
+  jaCertificada: 'true' | 'false';
   descricaoCertificacoes?: string;
-  responssavelProjeto: boolean;
-  terceirizaProcesso: boolean;
+  responssavelProjeto: 'true' | 'false';
+  terceirizaProcesso: 'true' | 'false';
   processosTerceirizados?: string;
 }
 
 export interface CertificacaoStep5 {
   grauImplementacao: 'total' | 'parcial' | 'nao';
   grauIntegracao: 'total' | 'parcial' | 'nao';
-  cobreTodasLocalidades: boolean;
+  cobreTodasLocalidades: 'true' | 'false';
   localidadesIndependentes?: string;
-  utilizaConsultoria: boolean;
+  utilizaConsultoria: 'true' | 'false';
   nomeConsultoria?: string;
   nomeConsultor?: string;
-  certificacaoAcreditada: boolean;
+  certificacaoAcreditada: 'true' | 'false';
   escopo: string;
   localidades: LocalidadeCertificacao[];
   arquivoLocalidades?: File;
-  funcionariosEmClientes: boolean;
+  funcionariosEmClientes: 'true' | 'false';
   descricaoClientes?: string;
 }
 
 export interface DadosEspecificosLixoZero {
   areaTotalM2: number;
   residuosGerados: string;
-  possuiGestaoResiduos: boolean;
+  possuiGestaoResiduos: 'true' | 'false';
   tiposResiduos: string;
   geracaoMensalKg: number;
   porcentualReciclagem: number;
-  existeDestinacao: boolean;
+  existeDestinacao: 'true' | 'false';
   quemRealiza?: 'propria' | 'contratada';
   arquivoLocalidades?: File;
 }
@@ -115,14 +119,14 @@ export interface DadosEspecificosISO45001 {
   riscosSSOIdentificados: string;
   principaisAmeacas?: string;
   materiaisPerigosos?: string;
-  acidentesSemAfastamento: boolean;
+  acidentesSemAfastamento: 'true' | 'false';
   totalAcidentesSemAfastamento?: number;
-  acidentesComAfastamento: boolean;
+  acidentesComAfastamento: 'true' | 'false';
   totalAcidentesComAfastamento?: number;
   requisitosLegaisSSO: string;
-  alocaFuncionariosEmClientes: boolean;
-  sistemaGestaoCobreClientes?: boolean;
-  avaliadaPorOrgao: boolean;
+  alocaFuncionariosEmClientes: 'true' | 'false';
+  sistemaGestaoCobreClientes?: 'true' | 'false';
+  avaliadaPorOrgao: 'true' | 'false';
   descricaoOrgao?: string;
 }
 
@@ -139,9 +143,9 @@ export interface DadosEspecificosISO37001 {
   pessoasElaboracaoOfertas: number;
   pessoasAquisicoes: number;
   pessoasComunicacaoSubcontratados: number;
-  realizaDoacoes: boolean;
+  realizaDoacoes: 'true' | 'false';
   descricaoDoacoes?: string;
-  envolvidoSuborno: boolean;
+  envolvidoSuborno: 'true' | 'false';
 }
 
 export interface CertificacaoStep6 {
@@ -151,6 +155,8 @@ export interface CertificacaoStep6 {
   iso45001?: DadosEspecificosISO45001;
   iso22000?: DadosEspecificosISO22000;
   iso37001?: DadosEspecificosISO37001;
+  aceitaTermos?: boolean;
+  aceitaPoliticaPrivacidade?: boolean;
 }
 
 export interface CertificacaoFormData {
