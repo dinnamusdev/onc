@@ -32,6 +32,10 @@ export const USERS_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mo
 
 export const LEAD_PROVIDER: ProviderType = ProviderType.ONC; // Testando integração real com o backend ONC
 
+/***************************  LEAD CERTIFICACAO CONSTANT  ***************************/
+
+export const LEAD_CERTIFICACAO_PROVIDER: ProviderType = ProviderType.ONC;
+
 /***************************  THEME ENUM  ***************************/
 
 export enum Themes {
