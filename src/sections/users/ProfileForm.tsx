@@ -76,11 +76,14 @@ interface ProfileFormProps {
   /** Quando fornecido, o formulário renderiza no modo dialog (sem MainCard).
    *  Chamado ao clicar em "Cancelar" ou após salvar com sucesso. */
   onClose?: () => void;
+
+  /** Chamado após salvar o perfil com sucesso. */
+  onUpdated?: () => void | Promise<void>;
 }
 
 /***************************  USER - PROFILE FORM  ***************************/
 
-export default function ProfileForm({ onClose }: ProfileFormProps = {}) {
+export default function ProfileForm({ onClose, onUpdated }: ProfileFormProps = {}) {
   const { userData, updateUser: updateAuthUser } = useCurrentUser();
 
   const notify = (message: string, severity: SnackbarProps['severity']) => {
@@ -382,19 +385,23 @@ const handleTelefoneChange = (event: ChangeEvent<HTMLInputElement>) => {
     }
 
     updateAuthUser({
-      id: userId,
-      userName: userData?.userName ?? formData.email,
-      email: formData.email,
-      nomeCompleto: formData.nomeCompleto,
-      whatsapp: formData.whatsapp,
-      telefone: formData.telefone,
-      cpf: formData.cpf,
-      fotoURL: updatedProfile?.fotoURL ?? currentPhotoUrl
-    });
-    setCurrentPhotoUrl(updatedProfile?.fotoURL ?? currentPhotoUrl);
-    setSelectedPhoto(null);
-    notify('Perfil atualizado com sucesso!', 'success');
-    onClose?.();
+  id: userId,
+  userName: userData?.userName ?? formData.email,
+  email: formData.email,
+  nomeCompleto: formData.nomeCompleto,
+  whatsapp: formData.whatsapp,
+  telefone: formData.telefone,
+  cpf: formData.cpf,
+  fotoURL: updatedProfile?.fotoURL ?? currentPhotoUrl
+});
+
+setCurrentPhotoUrl(updatedProfile?.fotoURL ?? currentPhotoUrl);
+setSelectedPhoto(null);
+
+await onUpdated?.();
+
+notify('Perfil atualizado com sucesso!', 'success');
+onClose?.();
   };
 
   // --- Conteúdo de loading ---

@@ -37,6 +37,21 @@ const pages: NavItemType = {
           icon: 'IconShieldLock'
         }
       ]
+    },
+    {
+      id: 'comercial',
+      title: 'Comercial',
+      type: 'collapse',
+      icon: 'IconBriefcase',
+      children: [
+        {
+          id: 'leads',
+          title: 'Lead',
+          type: 'item',
+          url: '/leads',
+          icon: 'IconUserPlus'
+        }
+      ]
     }
   ]
 };

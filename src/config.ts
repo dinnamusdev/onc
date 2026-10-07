@@ -30,7 +30,7 @@ export const USERS_PROVIDER: ProviderType = ProviderType.ONC; // Começar com mo
 
 /***************************  LEAD CONSTANT  ***************************/
 
-export const LEAD_PROVIDER: ProviderType = ProviderType.MOCK; // Começar com mock para desenvolvimento
+export const LEAD_PROVIDER: ProviderType = ProviderType.ONC; // Testando integração real com o backend ONC
 
 /***************************  THEME ENUM  ***************************/
 

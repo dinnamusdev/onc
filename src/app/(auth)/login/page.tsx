@@ -24,7 +24,7 @@ export default function Login() {
       <Box
         sx={{
           width: '100%',
-          maxWidth: 800,
+          maxWidth: 760,
           px: { xs: 3, sm: 2 }
         }}
       >

@@ -46,7 +46,6 @@ export interface PermissionData {
 interface CreatePermissionFormInput {
   target: string;
   actions: string[];
-  description: string;
 }
 
 interface CreatePermissionDialogProps {
@@ -119,11 +118,9 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
     formState: { errors }
   } = useForm<CreatePermissionFormInput>({
     defaultValues: {
-      // Usa IDs como valor; descriptions são só para exibição nos labels
-      target: permission?.targetId || '',
-      actions: permission?.actionIds || [],
-      description: permission?.description || ''
-    }
+  target: permission?.targetId || '',
+  actions: permission?.actionIds || []
+}
   });
 
   /**
@@ -132,17 +129,15 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
    */
   const handleDialogEntered = () => {
     reset({
-      target: permission?.targetId || '',
-      actions: permission?.actionIds || [],
-      description: permission?.description || ''
-    });
+  target: permission?.targetId || '',
+  actions: permission?.actionIds || []
+});
   };
 
   const handleClose = () => {
     reset({
       target: '',
-      actions: [],
-      description: ''
+      actions: []
     });
 
     onClose();
@@ -368,38 +363,7 @@ export default function CreatePermissionDialog({ open, onClose, onCreate, permis
                 {errors.actions?.message && <FormHelperText error>{errors.actions.message}</FormHelperText>}
               </Grid>
 
-            {/* ================================================= */}
-            {/* DESCRIÇÃO                                         */}
-            {/* ================================================= */}
-
-            <Grid size={{ xs: 12 }} sx={{ order: 4 }}>
-              <InputLabel
-                sx={{
-                  mb: 0.75,
-                  fontSize: 14,
-                  color: 'text.primary'
-                }}
-              >
-                Descrição
-              </InputLabel>
-
-              <TextField
-                {...register('description')}
-                placeholder={isEdit ? '' : 'Insira uma descrição de permissão'}
-                fullWidth
-                multiline
-                minRows={isEdit ? 3 : 3}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 1.5,
-                    alignItems: 'flex-start'
-                  },
-                  '& textarea': {
-                    lineHeight: 1.5
-                  }
-                }}
-              />
-            </Grid>
+            
 
             </Grid>
           </Stack>

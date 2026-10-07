@@ -10,6 +10,136 @@ export interface LeadFormData {
   whatsapp: string;
   comoPodemosAjudar: string;
   aceitaPoliticaPrivacidade: boolean;
+  // Usado apenas na gestão administrativa (tela /leads) para ativar/desativar um lead.
+  // No formulário público de captação este campo não é definido (assume-se `true`).
+  isAtivo?: boolean;
+}
+
+// --- Backend ONC (domínio Lead — swagger `backend.url.txt`) ---
+// Obs.: o swagger não nomeia os valores dos enums (apenas inteiros). Mapeamento assumido
+// com base na ordem exibida no formulário; ajustar aqui caso o backend use outra ordem.
+export enum EnumTipoPropostaLead {
+  Certificacao = 0,
+  Treinamento = 1
+}
+
+export enum EnumSetorEmpresa {
+  Privado = 0,
+  Publico = 1
+}
+
+// Valores 0/1/2 confirmados no swagger, nomes não documentados — não utilizado no formulário público.
+export enum EnumLeadOrderBy {
+  Id = 0,
+  NomeContato = 1,
+  DataCriacao = 2
+}
+
+export interface LeadCreateDTO {
+  nomeContato: string;
+  tipoProposta: EnumTipoPropostaLead;
+  empresa: string;
+  setor: EnumSetorEmpresa;
+  cargo: string;
+  email: string;
+  telefone: string;
+  whatsapp: string;
+  comoPodemosAjudar: string;
+  isAceitaPoliticaPrivacidade?: boolean;
+  isAtivo?: boolean;
+}
+
+/** Representa o objeto `Lead` retornado pelo backend (schema `Lead` do swagger). */
+export interface LeadDTO {
+  id: number;
+  tipoProposta: EnumTipoPropostaLead;
+  nomeContato: string;
+  empresa: string;
+  setor: EnumSetorEmpresa;
+  cargo: string;
+  email: string;
+  telefone: string;
+  whatsapp: string;
+  comoPodemosAjudar: string;
+  isAceitaPoliticaPrivacidade?: boolean | null;
+  isAtivo: boolean;
+  // Dados complementares de certificação (domínio `LeadCertificacoes`) — fora do escopo atual.
+  certificacao?: unknown | null;
+}
+
+export interface LeadPagedResult {
+  items: LeadDTO[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
+export interface LeadListParams {
+  page?: number;
+  pageSize?: number;
+  orderBy?: EnumLeadOrderBy;
+}
+
+export interface CheckEmailExistsResult {
+  exists: boolean;
+  hasExistingLead: boolean;
+}
+
+export interface CheckCNPJExistsResult {
+  exists: boolean;
+  hasActiveRequest: boolean;
+  hasExistingRequest: boolean;
+}
+
+/***************************  MAPPERS — LeadFormData <-> LeadCreateDTO/LeadDTO  ***************************/
+
+export function tipoPropostaToEnum(tipo: LeadFormData['tipoProposta']): EnumTipoPropostaLead {
+  return tipo === 'treinamento' ? EnumTipoPropostaLead.Treinamento : EnumTipoPropostaLead.Certificacao;
+}
+
+export function enumToTipoProposta(value: EnumTipoPropostaLead): LeadFormData['tipoProposta'] {
+  return value === EnumTipoPropostaLead.Treinamento ? 'treinamento' : 'certificacao';
+}
+
+export function setorToEnum(setor: LeadFormData['setor']): EnumSetorEmpresa {
+  return setor === 'publico' ? EnumSetorEmpresa.Publico : EnumSetorEmpresa.Privado;
+}
+
+export function enumToSetor(value: EnumSetorEmpresa): LeadFormData['setor'] {
+  return value === EnumSetorEmpresa.Publico ? 'publico' : 'privado';
+}
+
+export function mapLeadFormDataToCreateDTO(form: LeadFormData): LeadCreateDTO {
+  return {
+    nomeContato: form.nomeContato,
+    tipoProposta: tipoPropostaToEnum(form.tipoProposta),
+    empresa: form.empresa,
+    setor: setorToEnum(form.setor),
+    cargo: form.cargo,
+    email: form.email,
+    telefone: form.telefone,
+    whatsapp: form.whatsapp,
+    comoPodemosAjudar: form.comoPodemosAjudar,
+    isAceitaPoliticaPrivacidade: form.aceitaPoliticaPrivacidade,
+    isAtivo: form.isAtivo ?? true
+  };
+}
+
+export function mapLeadDTOToFormData(lead: LeadDTO): LeadFormData {
+  return {
+    tipoProposta: enumToTipoProposta(lead.tipoProposta),
+    nomeContato: lead.nomeContato,
+    empresa: lead.empresa,
+    setor: enumToSetor(lead.setor),
+    cargo: lead.cargo,
+    email: lead.email,
+    telefone: lead.telefone,
+    whatsapp: lead.whatsapp,
+    comoPodemosAjudar: lead.comoPodemosAjudar,
+    aceitaPoliticaPrivacidade: !!lead.isAceitaPoliticaPrivacidade,
+    isAtivo: lead.isAtivo
+  };
 }
 
 // --- Certificação ---
