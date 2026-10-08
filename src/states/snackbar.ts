@@ -119,3 +119,19 @@ export function handlerIconVariants(iconVariant: string) {
     false
   );
 }
+
+/**
+ * Popup de erro padronizado para formulários públicos (Lead, Certificação, Treinamento).
+ * Usa o Snackbar global (fixo na tela, não rola com a página, já some automaticamente
+ * após `autoHideDuration`) ancorado no topo/centro para ficar próximo ao cabeçalho.
+ */
+export function openFormErrorSnackbar(message: string) {
+  openSnackbar({
+    open: true,
+    message,
+    variant: 'alert',
+    severity: 'error',
+    anchorOrigin: { vertical: 'top', horizontal: 'center' },
+    alert: { color: 'error' }
+  } as SnackbarProps);
+}

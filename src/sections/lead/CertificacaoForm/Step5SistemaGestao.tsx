@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 
 // @mui
+import Alert from '@mui/material/Alert';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -29,7 +30,7 @@ import Paper from '@mui/material/Paper';
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'react-hook-form';
 
 // @project
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { getMunicipiosByUf } from '@/utils/api/ibge';
 
 // @types
@@ -37,6 +38,38 @@ import { CertificacaoStep5, CertificacaoStep1, CertificacaoStep2, CertificacaoSt
 
 // @data
 import { brazilianStates } from '@/data/brazilianStates';
+
+// @utils
+import { extractSelectedFile } from '@/utils/file';
+import {
+  isCsvFile,
+  LOCALIDADES_CSV_EXAMPLE,
+  LOCALIDADES_CSV_HEADERS,
+  LOCALIDADES_CSV_TEMPLATE,
+  parseLocalidadesCsv
+} from '@/utils/localidadesCsv';
+
+type CsvFeedback = { severity: 'success' | 'warning' | 'error'; messages: string[] } | null;
+
+// CSVs exportados pelo Excel costumam vir em Windows-1252; tenta UTF-8 primeiro.
+async function readFileText(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder('windows-1252').decode(buffer);
+  }
+}
+
+function downloadCsvTemplate() {
+  const blob = new Blob(['\uFEFF', LOCALIDADES_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'modelo-localidades.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 /***************************  STEP 5 - DADOS DO SISTEMA DE GESTÃO  ***************************/
 
@@ -55,11 +88,14 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
   const watchedArquivoLocalidades = watch('arquivoLocalidades');
   const [cidadesPorEstado, setCidadesPorEstado] = useState<{ [key: string]: string[] }>({});
   const [loadingCidadesPorEstado, setLoadingCidadesPorEstado] = useState<{ [key: string]: boolean }>({});
+  const [csvFeedback, setCsvFeedback] = useState<CsvFeedback>(null);
+  const arquivoLocalidadesRegister = register('arquivoLocalidades');
 
   const requiredField = { required: 'Campo obrigatório' };
 
-  // Verificar se tem arquivo selecionado
-  const temArquivoSelecionado = watchedArquivoLocalidades instanceof File;
+  // Verificar se tem arquivo selecionado (inputs type="file" guardam um FileList, não um File)
+  const arquivoSelecionado = extractSelectedFile(watchedArquivoLocalidades);
+  const temArquivoSelecionado = Boolean(arquivoSelecionado);
 
   // Carregar cidades para cada estado de localidade
   useEffect(() => {
@@ -79,6 +115,11 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
       }
     });
   }, [watchedLocalidades, cidadesPorEstado]);
+
+  const isCidadeNaoEncontrada = (estado: string, cidade: string) => {
+    const cidades = cidadesPorEstado[estado];
+    return Boolean(cidade) && Boolean(cidades?.length) && !cidades.includes(cidade);
+  };
 
   const handleAddLocalidade = () => {
     const currentLocalidades = watchedLocalidades || [];
@@ -102,6 +143,37 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
   const handleRemoveLocalidade = (index: number) => {
     const currentLocalidades = watchedLocalidades || [];
     setValue('localidades', currentLocalidades.filter((_, i) => i !== index));
+  };
+
+  const handleArquivoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    await arquivoLocalidadesRegister.onChange(event);
+    setCsvFeedback(null);
+
+    // Outros formatos apenas ficam anexados; somente CSV preenche a tabela.
+    if (!file || !isCsvFile(file)) return;
+
+    const { localidades, errors } = parseLocalidadesCsv(await readFileText(file));
+
+    if (errors.length > 0) {
+      // Mantém o arquivo inválido fora do formulário para não satisfazer a validação de localidades.
+      setValue('arquivoLocalidades', undefined);
+      const shown = errors.slice(0, 5);
+      if (errors.length > shown.length) shown.push(`... e mais ${errors.length - shown.length} erro(s).`);
+      setCsvFeedback({ severity: 'error', messages: ['Não foi possível importar o CSV. Corrija o arquivo e envie novamente:', ...shown] });
+      return;
+    }
+
+    const replaced = watchedLocalidades.length;
+    setValue('localidades', localidades, { shouldValidate: true });
+    setCsvFeedback({
+      severity: replaced > 0 ? 'warning' : 'success',
+      messages: [
+        `${localidades.length} localidade(s) importada(s) para a tabela abaixo.`,
+        ...(replaced > 0 ? [`As ${replaced} linha(s) existente(s) na tabela foram substituídas.`] : []),
+        'Confira as cidades marcadas em vermelho, pois não foram encontradas na lista do estado.'
+      ]
+    });
   };
 
   const handleLocalidadeChange = (index: number, field: string, value: string | number) => {
@@ -271,35 +343,70 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
 
       {/* Upload de arquivo */}
       <Box sx={{ mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-            Opção 1: Upload de Arquivo
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
+          Opção 1: Upload de Arquivo
+        </Typography>
+
+        <Alert severity="info" sx={{ mb: 1, '& .MuiAlert-message': { width: '100%' } }}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            Formato esperado do arquivo CSV
           </Typography>
-          {temArquivoSelecionado && (
-            <Button
+          <Typography variant="body2">
+            A primeira linha deve ser o cabeçalho com as colunas abaixo, nesta ordem, e cada linha seguinte é uma localidade. Separador: ponto e
+            vírgula (;) ou vírgula (,). Ao enviar um CSV válido, a tabela abaixo é preenchida automaticamente (substituindo as linhas atuais).
+          </Typography>
+          <Box
+            component="code"
+            sx={{ display: 'block', mt: 0.5, p: 0.75, bgcolor: 'action.hover', borderRadius: 1, fontSize: '0.75rem', wordBreak: 'break-word' }}
+          >
+            {LOCALIDADES_CSV_HEADERS.join(';')}
+            <br />
+            {LOCALIDADES_CSV_EXAMPLE}
+          </Box>
+          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+            Estado: sigla da UF (ex.: SP) · Cidade: nome do município · Funcionários e turnos: números inteiros · Horários: HH:mm
+          </Typography>
+          <Button size="small" variant="text" onClick={downloadCsvTemplate} sx={{ mt: 0.5, px: 0 }}>
+            Baixar modelo CSV
+          </Button>
+        </Alert>
+
+        {csvFeedback && (
+          <Alert severity={csvFeedback.severity} onClose={() => setCsvFeedback(null)} sx={{ mb: 1 }}>
+            {csvFeedback.messages.map((message) => (
+              <Typography key={message} variant="body2">
+                {message}
+              </Typography>
+            ))}
+          </Alert>
+        )}
+
+        {arquivoSelecionado ? (
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', gap: 1, px: 1.5, py: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+          >
+            <Typography variant="body2" sx={{ flex: 1, wordBreak: 'break-all' }}>
+              {arquivoSelecionado.name}
+            </Typography>
+            <IconButton
               size="small"
-              variant="outlined"
-              color="error"
-              startIcon={<IconTrash size={14} />}
+              aria-label="Remover arquivo"
               onClick={() => {
-                // Limpar o arquivo
                 setValue('arquivoLocalidades', undefined);
+                setCsvFeedback(null);
               }}
-              sx={{ ml: 'auto' }}
+              sx={{ bgcolor: 'primary.main', color: 'common.white', '&:hover': { bgcolor: 'primary.dark' } }}
             >
-              Remover Arquivo
-            </Button>
-          )}
-        </Box>
-        <TextField
-          {...register('arquivoLocalidades')}
-          type="file"
-          fullWidth
-          size="small"
-          placeholder="Selecione um arquivo"
-          InputLabelProps={{ shrink: true }}
-          disabled={temArquivoSelecionado}
-        />
+              <IconX size={16} />
+            </IconButton>
+          </Stack>
+        ) : (
+          <Button component="label" variant="contained" size="small">
+            Selecionar arquivo
+            <input hidden type="file" {...arquivoLocalidadesRegister} onChange={handleArquivoChange} />
+          </Button>
+        )}
       </Box>
 
       {/* Ou preencha manualmente */}
@@ -377,6 +484,8 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
                       <TextField
                         {...params}
                         size="small"
+                        error={isCidadeNaoEncontrada(localidade.estado, localidade.cidade)}
+                        helperText={isCidadeNaoEncontrada(localidade.estado, localidade.cidade) ? 'Cidade não encontrada' : undefined}
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -457,7 +566,12 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
                   </Grid>
                 </TableCell>
                 <TableCell sx={{ py: 2 }}>
-                  <IconButton size="small" onClick={() => handleRemoveLocalidade(index)} color="error">
+                  <IconButton
+                    size="small"
+                    aria-label="Remover localidade"
+                    onClick={() => handleRemoveLocalidade(index)}
+                    sx={{ bgcolor: 'primary.main', color: 'common.white', '&:hover': { bgcolor: 'primary.dark' } }}
+                  >
                     <IconTrash size={16} />
                   </IconButton>
                 </TableCell>
@@ -479,7 +593,15 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
       ) : null}
 
       {/* Botão Adicionar Localidade */}
-      <Button startIcon={<IconPlus size={16} />} onClick={handleAddLocalidade} variant="outlined" size="small" sx={{ mt: 1 }} disabled={temArquivoSelecionado}>
+      <Button
+        startIcon={<IconPlus size={18} />}
+        onClick={handleAddLocalidade}
+        variant="contained"
+        color="primary"
+        size="large"
+        disabled={temArquivoSelecionado}
+        sx={{ mt: 1, alignSelf: 'flex-start' }}
+      >
         Adicionar Localidade
       </Button>
 

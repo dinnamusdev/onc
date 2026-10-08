@@ -2,7 +2,6 @@
 
 // @mui
 import Checkbox from '@mui/material/Checkbox';
-import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
@@ -44,7 +43,6 @@ const normasList = [
 
 export default function Step2Normas({ register, errors, watch, setValue }: Step2NormasProps) {
   const watchedNormas = watch('normasSelecionadas') || [];
-  const watchedOutra = watch('outraNorma');
 
   const isOutraSelected = watchedNormas.includes('Outra');
 
@@ -90,17 +88,9 @@ export default function Step2Normas({ register, errors, watch, setValue }: Step2
         ))}
       </Grid>
 
-      {errors.normasSelecionadas && (
-        <FormHelperText error>{errors.normasSelecionadas.message}</FormHelperText>
+      {watchedNormas.length === 0 && (
+        <FormHelperText error>Selecione pelo menos uma norma</FormHelperText>
       )}
-
-      {/* Validação oculta para garantir mínimo de 1 norma */}
-      <input
-        type="hidden"
-        {...register('normasSelecionadas', {
-          validate: (value) => (value && value.length > 0) || 'Selecione pelo menos uma norma'
-        })}
-      />
 
       {/* Campo condicional para "Outra" */}
       {isOutraSelected && (

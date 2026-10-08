@@ -2,6 +2,7 @@
 
 // @mui
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
@@ -21,6 +22,7 @@ import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'rea
 
 // @types
 import { CertificacaoStep6, CertificacaoStep1, CertificacaoStep2, CertificacaoStep3, CertificacaoStep4, CertificacaoStep5 } from '@/types/lead';
+import { extractSelectedFile } from '@/utils/file';
 
 /***************************  STEP 6 - DADOS ESPECÍFICOS  ***************************/
 
@@ -31,8 +33,22 @@ interface Step6DadosEspecificosProps {
   setValue: UseFormSetValue<CertificacaoStep1 & CertificacaoStep2 & CertificacaoStep3 & CertificacaoStep4 & CertificacaoStep5 & CertificacaoStep6>;
 }
 
+function SpecificSectionHeading({ norma }: { norma: string }) {
+  return (
+    <Box sx={{ textAlign: 'center', mt: 0.5, mb: 0.25 }}>
+      <Typography variant="overline" sx={{ display: 'block', color: 'text.secondary', fontWeight: 'bold', lineHeight: 1.2 }}>
+        ESPECÍFICO
+      </Typography>
+      <Typography variant="subtitle1" sx={{ color: 'primary.main', fontWeight: 'bold', lineHeight: 1.3 }}>
+        {norma}
+      </Typography>
+    </Box>
+  );
+}
+
 export default function Step6DadosEspecificos({ register, errors, watch, setValue }: Step6DadosEspecificosProps) {
   const watchedNormas = watch('normasSelecionadas') || [];
+  const arquivoLocalidadesLixoZero = extractSelectedFile(watch('lixoZero.arquivoLocalidades'));
   const requiredField = { required: 'Campo obrigatório' };
 
   const hasLixoZero = watchedNormas.includes('Lixo Zero');
@@ -45,8 +61,8 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
   // Se nenhuma norma específica foi selecionada, mostra mensagem
   if (!hasLixoZero && !hasISO50001 && !hasISO14001 && !hasISO45001 && !hasISO22000 && !hasISO37001) {
     return (
-      <Stack gap={2}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem' }}>
+      <Stack gap={1.25}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem', textAlign: 'center' }}>
           DADOS ESPECÍFICOS
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
@@ -57,17 +73,15 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
   }
 
   return (
-    <Stack gap={2}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem' }}>
+    <Stack gap={1.25}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem', textAlign: 'center' }}>
         DADOS ESPECÍFICOS
       </Typography>
 
       {/* Bloco Lixo Zero */}
       {hasLixoZero && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — LIXO ZERO
-          </Typography>
+          <SpecificSectionHeading norma="LIXO ZERO" />
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
@@ -165,18 +179,28 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
             <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
               Caso a certificação seja para várias localidades, faça upload das informações por site:
             </Typography>
-            <TextField {...register('lixoZero.arquivoLocalidades')} type="file" fullWidth size="small" />
+            <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+              <Button component="label" variant="contained" size="small">
+                Selecionar arquivo
+                <input hidden type="file" {...register('lixoZero.arquivoLocalidades')} />
+              </Button>
+              {arquivoLocalidadesLixoZero && (
+                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                  {arquivoLocalidadesLixoZero.name}
+                </Typography>
+              )}
+            </Stack>
           </Box>
-          {(hasISO50001 || hasISO14001 || hasISO45001 || hasISO22000 || hasISO37001) && <Divider sx={{ my: 2 }} />}
+          {(hasISO50001 || hasISO14001 || hasISO45001 || hasISO22000 || hasISO37001) && (
+            <Divider sx={{ my: 1.25, borderColor: 'rgba(102, 0, 0, 0.35)', borderBottomWidth: 2 }} />
+          )}
         </>
       )}
 
       {/* Bloco ISO 50001 */}
       {hasISO50001 && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — ISO 50001
-          </Typography>
+          <SpecificSectionHeading norma="ISO 50001" />
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
@@ -215,16 +239,16 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
               />
             </Grid>
           </Grid>
-          {(hasISO14001 || hasISO45001 || hasISO22000 || hasISO37001) && <Divider sx={{ my: 2 }} />}
+          {(hasISO14001 || hasISO45001 || hasISO22000 || hasISO37001) && (
+            <Divider sx={{ my: 1.25, borderColor: 'rgba(102, 0, 0, 0.35)', borderBottomWidth: 2 }} />
+          )}
         </>
       )}
 
       {/* Bloco ISO 14001 */}
       {hasISO14001 && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — ISO 14001
-          </Typography>
+          <SpecificSectionHeading norma="ISO 14001" />
           <TextField
             {...register('iso14001.aspectosAmbientais', requiredField)}
             label="Quais os aspectos ambientais identificados? *"
@@ -247,16 +271,16 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
             helperText={errors.iso14001?.requisitosLegaisAmbientais?.message}
             InputLabelProps={{ shrink: true }}
           />
-          {(hasISO45001 || hasISO22000 || hasISO37001) && <Divider sx={{ my: 2 }} />}
+          {(hasISO45001 || hasISO22000 || hasISO37001) && (
+            <Divider sx={{ my: 1.25, borderColor: 'rgba(102, 0, 0, 0.35)', borderBottomWidth: 2 }} />
+          )}
         </>
       )}
 
       {/* Bloco ISO 45001 */}
       {hasISO45001 && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — ISO 45001
-          </Typography>
+          <SpecificSectionHeading norma="ISO 45001" />
           <TextField
             {...register('iso45001.riscosSSOIdentificados', requiredField)}
             label="Riscos à saúde e segurança ocupacional identificados: *"
@@ -423,16 +447,16 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
               )}
             </Grid>
           </Grid>
-          {(hasISO22000 || hasISO37001) && <Divider sx={{ my: 2 }} />}
+          {(hasISO22000 || hasISO37001) && (
+            <Divider sx={{ my: 1.25, borderColor: 'rgba(102, 0, 0, 0.35)', borderBottomWidth: 2 }} />
+          )}
         </>
       )}
 
       {/* Bloco ISO 22000 */}
       {hasISO22000 && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — ISO 22000
-          </Typography>
+          <SpecificSectionHeading norma="ISO 22000" />
           <TextField
             {...register('iso22000.appccs', requiredField)}
             label="APPCCs implementadas: *"
@@ -488,16 +512,14 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
             helperText={errors.iso22000?.pprs?.message}
             InputLabelProps={{ shrink: true }}
           />
-          {hasISO37001 && <Divider sx={{ my: 2 }} />}
+          {hasISO37001 && <Divider sx={{ my: 1.25, borderColor: 'rgba(102, 0, 0, 0.35)', borderBottomWidth: 2 }} />}
         </>
       )}
 
       {/* Bloco ISO 37001 */}
       {hasISO37001 && (
         <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.85rem', mt: 2 }}>
-            ESPECÍFICO — ISO 37001
-          </Typography>
+          <SpecificSectionHeading norma="ISO 37001" />
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField

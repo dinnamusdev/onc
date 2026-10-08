@@ -111,7 +111,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             Setor da Empresa *
           </Typography>
@@ -130,7 +130,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           </TextField>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             E-mail da Empresa *
           </Typography>
@@ -147,7 +147,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             Telefone da Empresa *
           </Typography>
@@ -222,7 +222,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             CEP *
           </Typography>
@@ -247,7 +247,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             Estado *
           </Typography>
@@ -269,7 +269,7 @@ export default function Step2Empresa({ register, errors, watch, control }: Step2
           </TextField>
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
             Cidade *
           </Typography>

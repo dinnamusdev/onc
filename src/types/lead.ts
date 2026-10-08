@@ -217,7 +217,9 @@ export interface CertificacaoStep5 {
   certificacaoAcreditada: 'true' | 'false';
   escopo: string;
   localidades: LocalidadeCertificacao[];
-  arquivoLocalidades?: File;
+  // Inputs nativos `type="file"` registrados via react-hook-form armazenam um FileList
+  // (não um File único) — ver src/utils/file.ts para extrair o arquivo selecionado.
+  arquivoLocalidades?: File | FileList;
   funcionariosEmClientes: 'true' | 'false';
   descricaoClientes?: string;
 }
