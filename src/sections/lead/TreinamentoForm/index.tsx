@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // @mui
@@ -9,21 +9,29 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CircularProgress from '@mui/material/CircularProgress';
+
+// @icons
+import { IconArrowLeft, IconArrowRight, IconSend } from '@tabler/icons-react';
 import Stack from '@mui/material/Stack';
 
 // @third-party
 import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
+import Recaptcha, { RecaptchaHandle, RECAPTCHA_SITE_KEY } from '@/components/Recaptcha';
+import { verifyRecaptcha } from '@/utils/api/recaptcha';
 import Step1TipoSolicitante from './Step1TipoSolicitante';
 import Step2Empresa from './Step2Empresa';
 import Step2Participante from './Step2Participante';
 import Step3Treinamentos from './Step3Treinamentos';
 import Step4Revisao from './Step4Revisao';
 import { useLeadFormHeader } from '@/contexts/LeadFormHeaderContext';
+import { createLead, getLeadById } from '@/utils/api/lead';
+import { createLeadTreinamento } from '@/utils/api/leadTreinamento';
 
 // @types
-import { TreinamentoFormData } from '@/types/lead';
+import { EnumSetorEmpresa, TreinamentoFormData } from '@/types/lead';
+import { mapTreinamentoFormToCreateDTO, mapTreinamentoFormToLeadForm } from '@/types/leadTreinamento';
 
 /***************************  TREINAMENTO FORM  ***************************/
 
@@ -38,10 +46,13 @@ const requiredFieldsByStep: Record<number, string[]> = {
 
 const headerSubtitle = 'Caso sua solicitação seja diferente dessa, retorne ao Site do ONC e registre uma nova solicitação.';
 
-export default function TreinamentoForm() {
+export default function TreinamentoForm({ leadId }: { leadId?: string }) {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
+  const [createdLeadId, setCreatedLeadId] = useState<number | null>(null);
 
   // Publica título, frase de aviso e Stepper no cabeçalho fixo do LeadLayout (junto com a logo),
   // para que fiquem sempre visíveis e só o conteúdo do formulário role com a página.
@@ -59,6 +70,7 @@ export default function TreinamentoForm() {
     watch,
     trigger,
     getValues,
+    setValue,
     control
   } = useForm<TreinamentoFormData>({
     mode: 'onBlur',
@@ -118,6 +130,28 @@ export default function TreinamentoForm() {
   });
 
   const paraQuem = watch('paraQuem');
+
+  useEffect(() => {
+    if (!leadId) return;
+    let cancelled = false;
+    getLeadById(leadId).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data) {
+        showNotice(error || 'Não foi possível recuperar os dados do lead.');
+        return;
+      }
+      setValue('nomeContato', data.nomeContato);
+      setValue('cargo', data.cargo);
+      setValue('email', data.email);
+      setValue('telefone', data.telefone);
+      setValue('whatsapp', data.whatsapp);
+      setValue('empresa.razaoSocial', data.empresa);
+      setValue('empresa.setorEmpresa', data.setor === EnumSetorEmpresa.Publico ? 'publico' : 'privado');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [leadId, setValue, showNotice]);
 
   const validateStep = useCallback(async (stepIndex: number) => {
     dismissNotice();
@@ -247,6 +281,20 @@ export default function TreinamentoForm() {
         return;
       }
 
+      if (RECAPTCHA_SITE_KEY && !recaptchaToken) {
+        showNotice('Confirme que você não é um robô.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const captcha = await verifyRecaptcha(recaptchaToken);
+      if (captcha.error) {
+        showNotice(captcha.error);
+        recaptchaRef.current?.reset();
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log('Validação passou, enviando formulário...');
       handleSubmit(onSubmit)();
     } catch (error) {
@@ -257,24 +305,27 @@ export default function TreinamentoForm() {
   };
 
   const onSubmit: SubmitHandler<TreinamentoFormData> = async (data) => {
-    try {
-      console.log('Form submitted:', data);
-      // TODO: Submit to backend - Descomentar quando API estiver pronta
-      // const response = await fetch('/api/lead/treinamento', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(data)
-      // });
-      // if (!response.ok) throw new Error('Erro ao enviar formulário');
-
-      setIsSubmitting(false);
-      // Redirecionar para tela de agradecimento
-      router.push('/solicitar-proposta/obrigado');
-    } catch (error) {
-      console.error('Erro ao enviar formulário:', error);
-      showNotice('Erro ao enviar o formulário. Tente novamente.');
-      setIsSubmitting(false);
+    let targetLeadId = Number(leadId) || createdLeadId;
+    if (!targetLeadId) {
+      const { data: lead, error: leadError } = await createLead(mapTreinamentoFormToLeadForm(data));
+      if (leadError || !lead) {
+        showNotice(leadError || 'Não foi possível criar o lead.');
+        setIsSubmitting(false);
+        return;
+      }
+      targetLeadId = lead.id;
+      setCreatedLeadId(lead.id);
     }
+
+    const { error } = await createLeadTreinamento(mapTreinamentoFormToCreateDTO(targetLeadId, data));
+    if (error) {
+      showNotice(error || 'Erro ao enviar a solicitação de treinamento.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+    router.push('/solicitar-proposta/obrigado');
   };
 
   return (
@@ -296,6 +347,12 @@ export default function TreinamentoForm() {
           
           {activeStep === 3 && <Step4Revisao register={register} errors={errors} watch={watch} onEdit={handleEdit} />}
 
+          {activeStep === steps.length - 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
+            </Box>
+          )}
+
           {/* Botões de navegação */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
             <Button
@@ -304,6 +361,7 @@ export default function TreinamentoForm() {
               onClick={handleBack}
               variant="contained"
               size="small"
+              startIcon={<IconArrowLeft size={16} />}
             >
               Anterior
             </Button>
@@ -313,7 +371,8 @@ export default function TreinamentoForm() {
               disabled={isSubmitting}
               variant="contained"
               size="small"
-              startIcon={isSubmitting && activeStep === steps.length - 1 ? <CircularProgress size={16} /> : undefined}
+              startIcon={activeStep === steps.length - 1 ? (isSubmitting ? <CircularProgress size={16} color="inherit" /> : <IconSend size={16} />) : undefined}
+              endIcon={activeStep === steps.length - 1 ? undefined : <IconArrowRight size={16} />}
             >
               {isSubmitting && activeStep === steps.length - 1 ? 'Enviando...' : activeStep === steps.length - 1 ? 'Enviar' : 'Próximo'}
             </Button>

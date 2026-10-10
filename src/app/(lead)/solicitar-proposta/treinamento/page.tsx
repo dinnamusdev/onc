@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   description: 'Solicite um treinamento da ONC Certificação'
 };
 
-export default function TreinamentoPage() {
-  return <TreinamentoForm />;
+export default async function TreinamentoPage({ searchParams }: { searchParams: Promise<{ leadId?: string }> }) {
+  const { leadId } = await searchParams;
+  return <TreinamentoForm leadId={leadId} />;
 }

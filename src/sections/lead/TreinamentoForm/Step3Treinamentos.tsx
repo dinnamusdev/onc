@@ -194,9 +194,9 @@ export default function Step3Treinamentos({ register, errors, watch, control }: 
                 <TableCell sx={{ textAlign: 'center' }}>
                   <IconButton
                     size="small"
-                    color="error"
                     onClick={() => remove(index)}
                     disabled={fields.length === 1}
+                    sx={{ bgcolor: 'primary.main', color: 'common.white', '&:hover': { bgcolor: 'primary.dark' }, '&.Mui-disabled': { bgcolor: 'action.disabledBackground', color: 'action.disabled' } }}
                   >
                     <IconTrash size={18} />
                   </IconButton>
@@ -208,7 +208,7 @@ export default function Step3Treinamentos({ register, errors, watch, control }: 
       </TableContainer>
 
       <Button
-        variant="outlined"
+        variant="contained"
         size="small"
         onClick={handleAddTreinamento}
         sx={{ alignSelf: 'flex-start' }}

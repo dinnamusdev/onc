@@ -57,6 +57,12 @@ export default function Step3DadosEmpresa({ register, errors, watch, setValue }:
 
   const requiredField = { required: 'Campo obrigatório' };
 
+  // A cidade é controlada pelo Autocomplete; registrar aqui faz a validação de obrigatório exibir o erro
+  useEffect(() => {
+    register('cidade', requiredField);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [register]);
+
   // Carregar cidades quando estado mudar
   useEffect(() => {
     if (watchedEstado && watchedEstado.length === 2) {
@@ -344,10 +350,10 @@ export default function Step3DadosEmpresa({ register, errors, watch, setValue }:
         <Alert severity="warning" variant="filled">
           {cnpjAlert.message}
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-            <Button size="small" variant="outlined" color="inherit" onClick={() => handleCnpjAlertAction('continue')}>
+            <Button size="small" variant="contained" onClick={() => handleCnpjAlertAction('continue')}>
               Seguir com nova solicitação
             </Button>
-            <Button size="small" variant="outlined" color="inherit" onClick={() => handleCnpjAlertAction('commercial')}>
+            <Button size="small" variant="contained" onClick={() => handleCnpjAlertAction('commercial')}>
               Solicitar contato do Comercial
             </Button>
           </Stack>

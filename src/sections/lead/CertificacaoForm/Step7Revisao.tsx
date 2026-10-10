@@ -85,11 +85,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
       </Typography>
 
       {/* ACORDEÃO 1: Tipo e Solicitante */}
-      <Accordion defaultExpanded>
+      <Accordion defaultExpanded sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>TIPO E SOLICITANTE</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(0)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(0)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -151,11 +151,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
       </Accordion>
 
       {/* ACORDEÃO 2: Normas */}
-      <Accordion>
+      <Accordion sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>NORMAS</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(1)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(1)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -178,11 +178,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
       </Accordion>
 
       {/* ACORDEÃO 3: Empresa */}
-      <Accordion>
+      <Accordion sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>EMPRESA</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(2)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(2)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -251,6 +251,7 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
                   loading={loadingCidades}
                   disabled={!watchedEstado || loadingCidades}
                   size="small"
+                  sx={{ '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(102, 0, 0, 0.55)', borderWidth: 1.5 } }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -276,11 +277,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
       </Accordion>
 
       {/* ACORDEÃO 4: Negócio */}
-      <Accordion>
+      <Accordion sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>NEGÓCIO</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(3)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(3)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -334,11 +335,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
       </Accordion>
 
       {/* ACORDEÃO 5: Sistema de Gestão */}
-      <Accordion>
+      <Accordion sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>SISTEMA DE GESTÃO</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(4)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(4)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -435,11 +436,11 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
 
       {/* ACORDEÃO 6: Dados Específicos (condicional) */}
       {hasEspecificos && (
-        <Accordion>
+        <Accordion sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
           <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
               <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>DADOS ESPECÍFICOS</Typography>
-              <Button size="small" variant="outlined" onClick={() => onEdit(5)} startIcon={<IconEdit size={16} />}>
+              <Button size="small" variant="contained" onClick={() => onEdit(1)} startIcon={<IconEdit size={16} />}>
                 Editar
               </Button>
             </Box>
@@ -616,13 +617,6 @@ export default function Step7Revisao({ register, errors, watch, onEdit }: Step7R
           }
         />
         {errors.aceitaPoliticaPrivacidade && <FormHelperText error>{errors.aceitaPoliticaPrivacidade.message}</FormHelperText>}
-
-        {/* TODO: Integrar reCAPTCHA aqui */}
-        <Box sx={{ p: 1.5, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider', borderRadius: 1, textAlign: 'center' }}>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            [reCAPTCHA — Não sou um robô]
-          </Typography>
-        </Box>
       </Stack>
     </Stack>
   );

@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -40,14 +41,18 @@ import {
   IconEdit,
   IconEye,
   IconFilter,
+  IconPlus,
   IconSearch,
+  IconTrash,
   IconX
 } from '@tabler/icons-react';
 
 // @project
 import EditLeadDialog, { EditableLead } from '@/sections/leads/EditLeadDialog';
 import LeadDetailsDialog, { LeadDetails } from '@/sections/leads/LeadDetailsDialog';
-import { getLeads, updateLead } from '@/utils/api/lead';
+import ManageLeadTreinamentoDialog from '@/sections/leads/ManageLeadTreinamentoDialog';
+import { deleteLead, getLeads, updateLead } from '@/utils/api/lead';
+import { getLeadTreinamentos } from '@/utils/api/leadTreinamento';
 import { openSnackbar } from '@/states/snackbar';
 
 // @types
@@ -70,10 +75,15 @@ interface LeadRow {
   isAtivo: boolean;
   isAceitaPoliticaPrivacidade: boolean;
   hasCertificacao: boolean;
+  hasTreinamento: boolean | null;
 }
 
 type ActiveStatus = 'Ativo' | 'Inativo';
 type ComplementarStatus = 'Enviada' | 'Pendente';
+
+interface LeadsViewProps {
+  tipoProposta?: EnumTipoPropostaLead;
+}
 
 /***************************  HELPERS  ***************************/
 
@@ -96,7 +106,8 @@ function mapDTOToRow(dto: LeadDTO): LeadRow {
     setor: dto.setor,
     isAtivo: dto.isAtivo,
     isAceitaPoliticaPrivacidade: !!dto.isAceitaPoliticaPrivacidade,
-    hasCertificacao: !!dto.certificacao
+    hasCertificacao: !!dto.certificacao,
+    hasTreinamento: false
   };
 }
 
@@ -123,21 +134,33 @@ function rowToLeadDetails(row: LeadRow): LeadDetails {
 
 /***************************  LEADS - VIEW  ***************************/
 
-export default function LeadsView() {
+export default function LeadsView({ tipoProposta }: LeadsViewProps = {}) {
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const isTreinamentoView = tipoProposta === EnumTipoPropostaLead.Treinamento;
 
   const reloadData = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await getLeads({ page: 1, pageSize: 1000 });
+    const [{ data, error }, trainingResult] = await Promise.all([
+      getLeads({ page: 1, pageSize: 1000 }),
+      isTreinamentoView ? getLeadTreinamentos() : Promise.resolve({ data: null, error: null })
+    ]);
 
     if (!error && data) {
-      setLeads(data.items.map(mapDTOToRow));
+      const trainingLeadIds = new Set((trainingResult.data ?? []).map((training) => training.leadId));
+      const items = data.items.map((dto) => ({
+        ...mapDTOToRow(dto),
+        hasTreinamento: trainingResult.error ? null : trainingLeadIds.has(dto.id)
+      }));
+      setLeads(tipoProposta === undefined ? items : items.filter((lead) => lead.tipoProposta === tipoProposta));
     } else if (error) {
       openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as SnackbarProps);
     }
+    if (trainingResult.error) {
+      openSnackbar({ open: true, message: trainingResult.error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as SnackbarProps);
+    }
     setIsLoading(false);
-  }, []);
+  }, [tipoProposta, isTreinamentoView]);
 
   useEffect(() => {
     reloadData();
@@ -170,6 +193,12 @@ export default function LeadsView() {
   // Modal ativar/desativar
   const [openToggleActiveDialog, setOpenToggleActiveDialog] = useState(false);
   const [isTogglingActive, setIsTogglingActive] = useState(false);
+
+  // Cadastro e exclusão são habilitados na tela específica de treinamento.
+  const [openManageTrainingDialog, setOpenManageTrainingDialog] = useState(false);
+  const [managingTrainingLead, setManagingTrainingLead] = useState<LeadRow | null>(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   /*************************** MENU ***************************/
 
@@ -261,6 +290,47 @@ export default function LeadsView() {
     } as SnackbarProps);
   };
 
+  const handleDeleteOpen = () => {
+    handleMenuClose();
+    setOpenDeleteDialog(true);
+  };
+
+  const handleManageTraining = () => {
+    if (!menuLead) return;
+    setManagingTrainingLead(menuLead);
+    setOpenManageTrainingDialog(true);
+    handleMenuClose();
+  };
+
+  const handleManageTrainingClose = () => {
+    setOpenManageTrainingDialog(false);
+    setManagingTrainingLead(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!menuLead) return;
+
+    setIsDeleting(true);
+    const { error } = await deleteLead(menuLead.id);
+    setIsDeleting(false);
+
+    if (error) {
+      openSnackbar({ open: true, message: error, variant: 'alert', severity: 'error', alert: { color: 'error' } } as SnackbarProps);
+      return;
+    }
+
+    setOpenDeleteDialog(false);
+    setMenuLead(null);
+    await reloadData();
+    openSnackbar({
+      open: true,
+      message: 'Lead de treinamento excluído com sucesso',
+      variant: 'alert',
+      severity: 'success',
+      alert: { color: 'success' }
+    } as SnackbarProps);
+  };
+
   /*************************** FILTROS ***************************/
 
   const toggleTipo = (tipo: EnumTipoPropostaLead) => {
@@ -321,17 +391,26 @@ export default function LeadsView() {
 
       if (!matchesSearch) return false;
 
-      const matchesTipo = selectedTipos.length === 0 || selectedTipos.includes(lead.tipoProposta);
+      const matchesTipo =
+        (tipoProposta === undefined || lead.tipoProposta === tipoProposta) &&
+        (tipoProposta !== undefined || selectedTipos.length === 0 || selectedTipos.includes(lead.tipoProposta));
 
       const leadStatus: ActiveStatus = lead.isAtivo ? 'Ativo' : 'Inativo';
       const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(leadStatus);
 
-      const leadComplementar: ComplementarStatus = lead.hasCertificacao ? 'Enviada' : 'Pendente';
-      const matchesComplementar = selectedComplementar.length === 0 || selectedComplementar.includes(leadComplementar);
+      const leadComplementar: ComplementarStatus = isTreinamentoView
+        ? lead.hasTreinamento
+          ? 'Enviada'
+          : 'Pendente'
+        : lead.hasCertificacao
+          ? 'Enviada'
+          : 'Pendente';
+      const matchesComplementar =
+        isTreinamentoView || selectedComplementar.length === 0 || selectedComplementar.includes(leadComplementar);
 
       return matchesTipo && matchesStatus && matchesComplementar;
     });
-  }, [leads, search, selectedTipos, selectedStatuses, selectedComplementar]);
+  }, [leads, search, selectedTipos, selectedStatuses, selectedComplementar, tipoProposta, isTreinamentoView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / rowsPerPage));
   const paginatedLeads = filteredLeads.slice((page - 1) * rowsPerPage, page * rowsPerPage);
@@ -345,8 +424,20 @@ export default function LeadsView() {
       {/* CABEÇALHO */}
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', minHeight: 40 }}>
         <Typography variant="h5" sx={{ lineHeight: '40px' }}>
-          Leads
+          {isTreinamentoView ? 'Leads de Treinamento' : 'Leads'}
         </Typography>
+        {isTreinamentoView && (
+          <Button
+            variant="contained"
+            startIcon={<IconPlus size={16} />}
+            onClick={() => {
+              setManagingTrainingLead(null);
+              setOpenManageTrainingDialog(true);
+            }}
+          >
+            Novo Lead de Treinamento
+          </Button>
+        )}
       </Stack>
 
       <Card sx={{ p: 0 }}>
@@ -405,7 +496,7 @@ export default function LeadsView() {
                 />
               )}
 
-              {selectedTipos.map((tipo) => (
+              {!isTreinamentoView && selectedTipos.map((tipo) => (
                 <Chip
                   key={tipo}
                   label={tipoPropostaLabel[tipo]}
@@ -425,7 +516,7 @@ export default function LeadsView() {
                 />
               ))}
 
-              {selectedComplementar.map((status) => (
+              {!isTreinamentoView && selectedComplementar.map((status) => (
                 <Chip
                   key={status}
                   label={`Complemento: ${status}`}
@@ -449,9 +540,9 @@ export default function LeadsView() {
               <TableRow>
                 <TableCell>Contato</TableCell>
                 <TableCell>Empresa</TableCell>
-                <TableCell>Tipo de Proposta</TableCell>
+                {!isTreinamentoView && <TableCell>Tipo de Proposta</TableCell>}
                 <TableCell>Status</TableCell>
-                <TableCell>Solicitação Complementar</TableCell>
+                <TableCell>{isTreinamentoView ? 'Solicitação de Treinamento' : 'Solicitação Complementar'}</TableCell>
                 <TableCell align="right" />
               </TableRow>
             </TableHead>
@@ -483,21 +574,30 @@ export default function LeadsView() {
                     <Typography variant="body2">{lead.empresa}</Typography>
                   </TableCell>
 
-                  <TableCell>
+                  {!isTreinamentoView && <TableCell>
                     <Chip label={tipoPropostaLabel[lead.tipoProposta]} size="small" color="primary" variant="outlined" />
-                  </TableCell>
+                  </TableCell>}
 
                   <TableCell>
                     <Chip label={lead.isAtivo ? 'Ativo' : 'Inativo'} size="small" color={lead.isAtivo ? 'success' : 'error'} />
                   </TableCell>
 
                   <TableCell>
+                    {isTreinamentoView ? (
+                      <Chip
+                        label={lead.hasTreinamento === null ? 'Não carregado' : lead.hasTreinamento ? 'Dados preenchidos' : 'Dados pendentes'}
+                        size="small"
+                        color={lead.hasTreinamento === null ? 'error' : lead.hasTreinamento ? 'info' : 'warning'}
+                        variant="outlined"
+                      />
+                    ) : (
                     <Chip
                       label={lead.hasCertificacao ? 'Enviada' : 'Pendente'}
                       size="small"
                       color={lead.hasCertificacao ? 'info' : 'warning'}
                       variant="outlined"
                     />
+                    )}
                   </TableCell>
 
                   <TableCell align="right">
@@ -516,7 +616,7 @@ export default function LeadsView() {
 
               {!isLoading && paginatedLeads.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={isTreinamentoView ? 5 : 6} align="center">
                     <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
                       Nenhum lead encontrado.
                     </Typography>
@@ -618,13 +718,36 @@ export default function LeadsView() {
             <Typography variant="body2">Ativar</Typography>
           </MenuItem>
         )}
+        {isTreinamentoView && (
+          <MenuItem onClick={handleManageTraining} sx={{ gap: 1.5, py: 1.25, px: 2 }}>
+            <IconEdit size={18} />
+            <Typography variant="body2">
+              {menuLead?.hasTreinamento === true
+                ? 'Editar solicitação'
+                : menuLead?.hasTreinamento === false
+                  ? 'Preencher solicitação'
+                  : 'Abrir solicitação'}
+            </Typography>
+          </MenuItem>
+        )}
+        {isTreinamentoView && menuLead?.hasTreinamento === false && (
+          <MenuItem onClick={handleDeleteOpen} sx={{ gap: 1.5, py: 1.25, px: 2, color: 'error.main' }}>
+            <IconTrash size={18} />
+            <Typography variant="body2">Excluir</Typography>
+          </MenuItem>
+        )}
       </Menu>
 
       {/* ========================================================= */}
       {/* MODAL DETALHES DO LEAD                                   */}
       {/* ========================================================= */}
 
-      <LeadDetailsDialog open={openDetailsDialog} onClose={handleDetailsClose} lead={detailsLead} />
+      <LeadDetailsDialog
+        open={openDetailsDialog}
+        onClose={handleDetailsClose}
+        lead={detailsLead}
+        showComplementaryStatus={!isTreinamentoView}
+      />
 
       {/* ========================================================= */}
       {/* MODAL EDITAR LEAD                                        */}
@@ -634,6 +757,7 @@ export default function LeadsView() {
         open={openEditDialog}
         lead={editingLead}
         onClose={handleEditClose}
+        fixedTipoProposta={isTreinamentoView ? 'treinamento' : undefined}
         onUpdated={() => {
           handleEditClose();
           reloadData();
@@ -707,6 +831,35 @@ export default function LeadsView() {
         </DialogActions>
       </Dialog>
 
+      <ManageLeadTreinamentoDialog
+        open={openManageTrainingDialog}
+        onClose={handleManageTrainingClose}
+        lead={managingTrainingLead}
+        onSaved={() => {
+          handleManageTrainingClose();
+          reloadData();
+        }}
+      />
+
+      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle>Excluir lead de treinamento</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            {menuLead
+              ? `Tem certeza de que deseja excluir permanentemente o lead de ${menuLead.nomeContato}?`
+              : 'Tem certeza de que deseja excluir este lead?'}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="outlined" onClick={() => setOpenDeleteDialog(false)} disabled={isDeleting}>
+            Cancelar
+          </Button>
+          <Button variant="contained" color="error" onClick={handleDeleteConfirm} disabled={isDeleting}>
+            {isDeleting ? <CircularProgress size={18} color="inherit" /> : 'Excluir'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* ========================================================= */}
       {/* MODAL DE FILTRO                                          */}
       {/* ========================================================= */}
@@ -728,23 +881,35 @@ export default function LeadsView() {
 
           <Stack sx={{ p: 2, gap: 2.5 }}>
             {/* TIPO DE PROPOSTA */}
-            <Stack sx={{ gap: 1 }}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
-                  Tipo de Proposta
-                </Typography>
-                {selectedTipos.length > 0 && (
-                  <Chip label={`${selectedTipos.length} selecionado${selectedTipos.length > 1 ? 's' : ''}`} size="small" variant="outlined" sx={{ height: 22 }} />
-                )}
-              </Stack>
-
-              {([EnumTipoPropostaLead.Certificacao, EnumTipoPropostaLead.Treinamento] as const).map((tipo) => (
-                <Stack key={tipo} direction="row" onClick={() => toggleTipo(tipo)} sx={{ alignItems: 'center', gap: 0.5, cursor: 'pointer' }}>
-                  <Checkbox size="small" checked={selectedTipos.includes(tipo)} />
-                  <Typography variant="body2">{tipoPropostaLabel[tipo]}</Typography>
+            {!isTreinamentoView && (
+              <Stack sx={{ gap: 1 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Tipo de Proposta
+                  </Typography>
+                  {selectedTipos.length > 0 && (
+                    <Chip
+                      label={`${selectedTipos.length} selecionado${selectedTipos.length > 1 ? 's' : ''}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ height: 22 }}
+                    />
+                  )}
                 </Stack>
-              ))}
-            </Stack>
+
+                {([EnumTipoPropostaLead.Certificacao, EnumTipoPropostaLead.Treinamento] as const).map((tipo) => (
+                  <Stack
+                    key={tipo}
+                    direction="row"
+                    onClick={() => toggleTipo(tipo)}
+                    sx={{ alignItems: 'center', gap: 0.5, cursor: 'pointer' }}
+                  >
+                    <Checkbox size="small" checked={selectedTipos.includes(tipo)} />
+                    <Typography variant="body2">{tipoPropostaLabel[tipo]}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            )}
 
             {/* STATUS */}
             <Stack sx={{ gap: 1 }}>
@@ -766,23 +931,35 @@ export default function LeadsView() {
             </Stack>
 
             {/* SOLICITAÇÃO COMPLEMENTAR */}
-            <Stack sx={{ gap: 1 }}>
-              <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="caption" color="text.secondary">
-                  Solicitação Complementar
-                </Typography>
-                {selectedComplementar.length > 0 && (
-                  <Chip label={`${selectedComplementar.length} selecionado${selectedComplementar.length > 1 ? 's' : ''}`} size="small" variant="outlined" sx={{ height: 22 }} />
-                )}
-              </Stack>
-
-              {(['Enviada', 'Pendente'] as ComplementarStatus[]).map((status) => (
-                <Stack key={status} direction="row" onClick={() => toggleComplementar(status)} sx={{ alignItems: 'center', gap: 0.5, cursor: 'pointer' }}>
-                  <Checkbox size="small" checked={selectedComplementar.includes(status)} />
-                  <Typography variant="body2">{status}</Typography>
+            {!isTreinamentoView && (
+              <Stack sx={{ gap: 1 }}>
+                <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Solicitação Complementar
+                  </Typography>
+                  {selectedComplementar.length > 0 && (
+                    <Chip
+                      label={`${selectedComplementar.length} selecionado${selectedComplementar.length > 1 ? 's' : ''}`}
+                      size="small"
+                      variant="outlined"
+                      sx={{ height: 22 }}
+                    />
+                  )}
                 </Stack>
-              ))}
-            </Stack>
+
+                {(['Enviada', 'Pendente'] as ComplementarStatus[]).map((status) => (
+                  <Stack
+                    key={status}
+                    direction="row"
+                    onClick={() => toggleComplementar(status)}
+                    sx={{ alignItems: 'center', gap: 0.5, cursor: 'pointer' }}
+                  >
+                    <Checkbox size="small" checked={selectedComplementar.includes(status)} />
+                    <Typography variant="body2">{status}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            )}
           </Stack>
 
           <Divider />

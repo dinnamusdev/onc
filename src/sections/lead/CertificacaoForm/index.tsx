@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // @mui
@@ -11,16 +11,20 @@ import CardContent from '@mui/material/CardContent';
 import Stack from '@mui/material/Stack';
 import CircularProgress from '@mui/material/CircularProgress';
 
+// @icons
+import { IconArrowLeft, IconArrowRight, IconSend } from '@tabler/icons-react';
+
 // @third-party
 import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
+import Recaptcha, { RecaptchaHandle, RECAPTCHA_SITE_KEY } from '@/components/Recaptcha';
+import { verifyRecaptcha } from '@/utils/api/recaptcha';
 import Step1TipoSolicitante from './Step1TipoSolicitante';
 import Step2Normas from './Step2Normas';
 import Step3DadosEmpresa from './Step3DadosEmpresa';
 import Step4DadosNegocio from './Step4DadosNegocio';
 import Step5SistemaGestao from './Step5SistemaGestao';
-import Step6DadosEspecificos from './Step6DadosEspecificos';
 import Step7Revisao from './Step7Revisao';
 import { useLeadFormHeader } from '@/contexts/LeadFormHeaderContext';
 
@@ -32,17 +36,16 @@ import { hasSelectedFile } from '@/utils/file';
 
 /***************************  CERTIFICACAO FORM  ***************************/
 
-const steps = ['Tipo e Solicitante', 'Normas', 'Empresa', 'Negócio', 'Sistema de Gestão', 'Específico', 'Revisão'];
+const steps = ['Tipo e Solicitante', 'Normas', 'Empresa', 'Negócio', 'Sistema de Gestão', 'Revisão'];
 
 // Campos obrigatórios por step de acordo com a documentação
 const requiredFieldsByStep: Record<number, string[]> = {
   0: ['tipoCertificacao', 'nomeContato', 'cargo', 'empresa', 'email', 'telefone'],
-  1: [], // Normas - validado manualmente em handleNext (normasSelecionadas é um array, não um input registrado)
+  1: [], // Normas (e dados específicos das normas) - validado manualmente (normasSelecionadas é um array, não um input registrado)
   2: ['cnpj', 'razaoSocial', 'setorEmpresa', 'emailEmpresa', 'telefoneEmpresa', 'endereco', 'numero', 'bairro', 'cep', 'cidade', 'estado'],
   3: ['produtosServicos', 'principaisProcessos', 'jaCertificada', 'responssavelProjeto', 'terceirizaProcesso'],
   4: ['grauImplementacao', 'grauIntegracao', 'cobreTodasLocalidades', 'utilizaConsultoria', 'certificacaoAcreditada', 'escopo', 'localidades', 'funcionariosEmClientes'],
-  5: [], // Campos específicos dependem das normas selecionadas
-  6: ['aceitaTermos', 'aceitaPoliticaPrivacidade'] // Revisão - validar checkboxes
+  5: ['aceitaTermos', 'aceitaPoliticaPrivacidade'] // Revisão - validar checkboxes
 };
 
 const headerSubtitle = 'Caso sua solicitação seja diferente dessa, retorne ao Site do ONC e registre uma nova solicitação.';
@@ -51,6 +54,8 @@ export default function CertificacaoForm() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
 
   // Publica título, frase de aviso e Stepper no cabeçalho fixo do LeadLayout (junto com a logo),
   // para que fiquem sempre visíveis e só o conteúdo do formulário role com a página.
@@ -263,7 +268,7 @@ export default function CertificacaoForm() {
       }
     }
 
-    if (stepIndex === 5) {
+    if (stepIndex === 1) {
       const normas = getValues('normasSelecionadas') || [];
       const fieldsToValidate: string[] = [];
       if (normas.includes('Lixo Zero')) {
@@ -382,6 +387,20 @@ export default function CertificacaoForm() {
         return;
       }
 
+      if (RECAPTCHA_SITE_KEY && !recaptchaToken) {
+        showNotice('Confirme que você não é um robô.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const captcha = await verifyRecaptcha(recaptchaToken);
+      if (captcha.error) {
+        showNotice(captcha.error);
+        recaptchaRef.current?.reset();
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log('Validação passou, enviando formulário...');
       handleSubmit(onSubmit)();
     } catch (error) {
@@ -393,6 +412,14 @@ export default function CertificacaoForm() {
 
   const onSubmit: SubmitHandler<CertificacaoStep1 & CertificacaoStep2 & CertificacaoStep3 & CertificacaoStep4 & CertificacaoStep5 & CertificacaoStep6> = async (data) => {
     try {
+      // Dados de normas desmarcadas ficam apenas ocultos no formulário e não são enviados
+      const normasMarcadas = data.normasSelecionadas || [];
+      if (!normasMarcadas.includes('Lixo Zero')) delete (data as Partial<typeof data>).lixoZero;
+      if (!normasMarcadas.includes('ISO 50001')) delete (data as Partial<typeof data>).iso50001;
+      if (!normasMarcadas.includes('ISO 14001')) delete (data as Partial<typeof data>).iso14001;
+      if (!normasMarcadas.includes('ISO 45001')) delete (data as Partial<typeof data>).iso45001;
+      if (!normasMarcadas.includes('ISO 22000')) delete (data as Partial<typeof data>).iso22000;
+      if (!normasMarcadas.includes('ISO 37001')) delete (data as Partial<typeof data>).iso37001;
       console.log('Form submitted:', data);
       // TODO: Submit to backend - Descomentar quando API estiver pronta
       // const response = await fetch('/api/lead/certificacao', {
@@ -422,8 +449,13 @@ export default function CertificacaoForm() {
           {activeStep === 2 && <Step3DadosEmpresa register={register} errors={errors} watch={watch} setValue={setValue} />}
           {activeStep === 3 && <Step4DadosNegocio register={register} errors={errors} watch={watch} setValue={setValue} />}
           {activeStep === 4 && <Step5SistemaGestao register={register} errors={errors} watch={watch} setValue={setValue} />}
-          {activeStep === 5 && <Step6DadosEspecificos register={register} errors={errors} watch={watch} setValue={setValue} />}
-          {activeStep === 6 && <Step7Revisao register={register} errors={errors} watch={watch} onEdit={handleEdit} />}
+          {activeStep === 5 && <Step7Revisao register={register} errors={errors} watch={watch} onEdit={handleEdit} />}
+
+          {activeStep === steps.length - 1 && (
+            <Box sx={{ mt: 2 }}>
+              <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
+            </Box>
+          )}
 
           {/* Botões de navegação */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
@@ -432,6 +464,7 @@ export default function CertificacaoForm() {
               onClick={handleBack} 
               variant="contained"
               size="small"
+              startIcon={<IconArrowLeft size={16} />}
             >
               Anterior
             </Button>
@@ -440,7 +473,8 @@ export default function CertificacaoForm() {
               disabled={isSubmitting}
               variant="contained" 
               size="small"
-              startIcon={isSubmitting && activeStep === steps.length - 1 ? <CircularProgress size={16} /> : undefined}
+              startIcon={activeStep === steps.length - 1 ? (isSubmitting ? <CircularProgress size={16} color="inherit" /> : <IconSend size={16} />) : undefined}
+              endIcon={activeStep === steps.length - 1 ? undefined : <IconArrowRight size={16} />}
             >
               {isSubmitting && activeStep === steps.length - 1 ? 'Enviando...' : activeStep === steps.length - 1 ? 'Enviar' : 'Próximo'}
             </Button>

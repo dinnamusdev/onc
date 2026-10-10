@@ -21,9 +21,10 @@ const defaultSources = [`'self'`, FIREBASE_AUTH_DOMAIN].filter(Boolean).join(' '
 
 const cspHeader = `
     default-src ${defaultSources};
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com;
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://flagcdn.com ${ONC_API_URL};
+    script-src 'self' 'unsafe-eval'     'unsafe-inline' https://apis.google.com https://www.google.com https://www.gstatic.com;
+        frame-src https://www.google.com https://recaptcha.google.com;
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' blob: data: https://flagcdn.com https://www.gstatic.com ${ONC_API_URL};
     font-src 'self';
     object-src 'self';
     base-uri 'self';

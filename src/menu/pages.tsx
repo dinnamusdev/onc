@@ -57,6 +57,13 @@ const pages: NavItemType = {
           type: 'item',
           url: '/leads-certificacao',
           icon: 'IconCertificate'
+        },
+        {
+          id: 'leads-treinamento',
+          title: 'Leads de Treinamento',
+          type: 'item',
+          url: '/leads-treinamento',
+          icon: 'IconCertificate'
         }
       ]
     }

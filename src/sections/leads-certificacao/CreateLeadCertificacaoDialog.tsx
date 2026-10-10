@@ -43,6 +43,7 @@ import { SnackbarProps } from '@/types/snackbar';
 interface CreateLeadCertificacaoDialogProps {
   open: boolean;
   onClose: () => void;
+  tipoProposta?: LeadFormData['tipoProposta'];
   onCreated?: () => void;
 }
 
@@ -65,7 +66,12 @@ const emptyValues: LeadFormData = {
 // de certificação (normas, certificados, etc.) são preenchidos depois, via o botão
 // "Gerenciar certificação" na listagem.
 
-export default function CreateLeadCertificacaoDialog({ open, onClose, onCreated }: CreateLeadCertificacaoDialogProps) {
+export default function CreateLeadCertificacaoDialog({
+  open,
+  onClose,
+  tipoProposta = 'certificacao',
+  onCreated
+}: CreateLeadCertificacaoDialogProps) {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -102,19 +108,19 @@ export default function CreateLeadCertificacaoDialog({ open, onClose, onCreated 
     setSubmitError('');
     setIsSubmitting(true);
 
-    const payload: LeadFormData = { ...formData, tipoProposta: 'certificacao' };
+    const payload: LeadFormData = { ...formData, tipoProposta };
     const { error } = await createLead(payload);
 
     setIsSubmitting(false);
 
     if (error) {
-      setSubmitError(error || 'Não foi possível criar a lead de certificação.');
+      setSubmitError(error || `Não foi possível criar o lead de ${tipoProposta}.`);
       return;
     }
 
     openSnackbar({
       open: true,
-      message: 'Lead de certificação criada com sucesso!',
+      message: `Lead de ${tipoProposta} criado com sucesso!`,
       variant: 'alert',
       severity: 'success',
       alert: { color: 'success' }
@@ -129,10 +135,10 @@ export default function CreateLeadCertificacaoDialog({ open, onClose, onCreated 
       <Stack direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between', px: 3, pt: 3, pb: 2.5 }}>
         <Box>
           <DialogTitle sx={{ p: 0, fontSize: 22, lineHeight: 1.3, fontWeight: 600, color: 'text.primary' }}>
-            Nova Lead de Certificação
+            Nova Lead de {tipoProposta === 'treinamento' ? 'Treinamento' : 'Certificação'}
           </DialogTitle>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontSize: 14 }}>
-            Cadastre manualmente uma solicitação de proposta de certificação.
+            Cadastre manualmente uma solicitação de proposta de {tipoProposta}.
           </Typography>
         </Box>
 

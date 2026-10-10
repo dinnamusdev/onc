@@ -60,20 +60,11 @@ export default function Step6DadosEspecificos({ register, errors, watch, setValu
 
   // Se nenhuma norma específica foi selecionada, mostra mensagem
   if (!hasLixoZero && !hasISO50001 && !hasISO14001 && !hasISO45001 && !hasISO22000 && !hasISO37001) {
-    return (
-      <Stack gap={1.25}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem', textAlign: 'center' }}>
-          DADOS ESPECÍFICOS
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
-          Nenhuma norma específica selecionada que requer dados adicionais.
-        </Typography>
-      </Stack>
-    );
+    return null;
   }
 
   return (
-    <Stack gap={1.25}>
+    <Stack gap={1.25} sx={{ '& .MuiInputLabel-shrink': { transform: 'translate(14px, -9px) scale(0.95)', maxWidth: 'calc(105% - 32px)' }, '& .MuiOutlinedInput-notchedOutline legend': { fontSize: '0.95em' } }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: '0.9rem', textAlign: 'center' }}>
         DADOS ESPECÍFICOS
       </Typography>

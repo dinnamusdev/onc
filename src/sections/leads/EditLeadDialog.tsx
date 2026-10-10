@@ -48,6 +48,7 @@ interface EditLeadDialogProps {
   open: boolean;
   onClose: () => void;
   lead: EditableLead | null;
+  fixedTipoProposta?: LeadFormData['tipoProposta'];
   onUpdated?: () => void;
 }
 
@@ -67,7 +68,7 @@ const emptyValues: LeadFormData = {
 
 /***************************  LEAD - EDIT DIALOG  ***************************/
 
-export default function EditLeadDialog({ open, onClose, lead, onUpdated }: EditLeadDialogProps) {
+export default function EditLeadDialog({ open, onClose, lead, fixedTipoProposta, onUpdated }: EditLeadDialogProps) {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,6 +111,7 @@ export default function EditLeadDialog({ open, onClose, lead, onUpdated }: EditL
     // ação "Ativar/Desativar", e aceitaPoliticaPrivacidade reflete o aceite original).
     const payload: LeadFormData = {
       ...formData,
+      tipoProposta: fixedTipoProposta ?? formData.tipoProposta,
       aceitaPoliticaPrivacidade: lead.aceitaPoliticaPrivacidade,
       isAtivo: lead.isAtivo
     };
@@ -170,7 +172,7 @@ export default function EditLeadDialog({ open, onClose, lead, onUpdated }: EditL
       <form onSubmit={handleSubmit(onSubmit)}>
         <DialogContent sx={{ px: 3, py: 2.5 }}>
           <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            {!fixedTipoProposta && <Grid size={{ xs: 12, sm: 6 }}>
               <InputLabel sx={{ mb: 0.75, fontSize: 14 }}>Tipo de Proposta *</InputLabel>
               <FormControl fullWidth error={Boolean(errors.tipoProposta)}>
                 <Select {...register('tipoProposta', requiredField)} defaultValue="certificacao">
@@ -179,7 +181,7 @@ export default function EditLeadDialog({ open, onClose, lead, onUpdated }: EditL
                 </Select>
                 {errors.tipoProposta && <FormHelperText>{errors.tipoProposta.message}</FormHelperText>}
               </FormControl>
-            </Grid>
+            </Grid>}
 
             <Grid size={{ xs: 12, sm: 6 }}>
               <InputLabel sx={{ mb: 0.75, fontSize: 14 }}>Setor *</InputLabel>

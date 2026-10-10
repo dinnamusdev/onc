@@ -41,6 +41,7 @@ interface LeadDetailsDialogProps {
   open: boolean;
   onClose: () => void;
   lead: LeadDetails | null;
+  showComplementaryStatus?: boolean;
 }
 
 /***************************  HELPERS  ***************************/
@@ -70,7 +71,7 @@ function DetailField({ label, value }: { label: string; value: ReactNode }) {
 
 /***************************  LEAD - DETAILS DIALOG  ***************************/
 
-export default function LeadDetailsDialog({ open, onClose, lead }: LeadDetailsDialogProps) {
+export default function LeadDetailsDialog({ open, onClose, lead, showComplementaryStatus = true }: LeadDetailsDialogProps) {
   return (
     <Dialog
       open={open}
@@ -121,12 +122,14 @@ export default function LeadDetailsDialog({ open, onClose, lead }: LeadDetailsDi
                 color={lead.isAtivo ? 'success' : 'error'}
               />
               <Chip label={tipoPropostaLabel[lead.tipoProposta]} size="small" color="primary" variant="outlined" />
-              <Chip
-                label={lead.hasCertificacao ? 'Solicitação complementar enviada' : 'Solicitação complementar pendente'}
-                size="small"
-                color={lead.hasCertificacao ? 'info' : 'warning'}
-                variant="outlined"
-              />
+              {showComplementaryStatus && (
+                <Chip
+                  label={lead.hasCertificacao ? 'Solicitação complementar enviada' : 'Solicitação complementar pendente'}
+                  size="small"
+                  color={lead.hasCertificacao ? 'info' : 'warning'}
+                  variant="outlined"
+                />
+              )}
             </Stack>
 
             <Grid container spacing={2.5}>

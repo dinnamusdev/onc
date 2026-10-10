@@ -68,7 +68,7 @@ function LeadLayoutContent({ children }: ChildrenProps) {
           )}
 
           {header.subtitle && (
-            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.25, maxWidth: 560, mx: 'auto' }}>
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary', mt: 0.25, maxWidth: 900, mx: 'auto' }}>
               {header.subtitle}
             </Typography>
           )}
@@ -116,7 +116,7 @@ function LeadLayoutContent({ children }: ChildrenProps) {
         {/* Footer */}
         <Box sx={{ textAlign: 'center', mt: 1.5 }}>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            © 2025 ONC — Política de Privacidade
+            © 2026 ONC — Política de Privacidade
           </Typography>
         </Box>
       </Container>

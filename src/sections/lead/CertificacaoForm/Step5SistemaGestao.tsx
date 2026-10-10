@@ -8,6 +8,10 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
@@ -30,7 +34,7 @@ import Paper from '@mui/material/Paper';
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'react-hook-form';
 
 // @project
-import { IconPlus, IconTrash, IconX } from '@tabler/icons-react';
+import { IconDownload, IconHelp, IconPlus, IconTrash, IconX } from '@tabler/icons-react';
 import { getMunicipiosByUf } from '@/utils/api/ibge';
 
 // @types
@@ -89,7 +93,16 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
   const [cidadesPorEstado, setCidadesPorEstado] = useState<{ [key: string]: string[] }>({});
   const [loadingCidadesPorEstado, setLoadingCidadesPorEstado] = useState<{ [key: string]: boolean }>({});
   const [csvFeedback, setCsvFeedback] = useState<CsvFeedback>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [indiceParaExcluir, setIndiceParaExcluir] = useState<number | null>(null);
   const arquivoLocalidadesRegister = register('arquivoLocalidades');
+
+  // O aviso do CSV some sozinho após alguns segundos
+  useEffect(() => {
+    if (!csvFeedback) return;
+    const timer = setTimeout(() => setCsvFeedback(null), 6000);
+    return () => clearTimeout(timer);
+  }, [csvFeedback]);
 
   const requiredField = { required: 'Campo obrigatório' };
 
@@ -343,33 +356,48 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
 
       {/* Upload de arquivo */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
-          Opção 1: Upload de Arquivo
-        </Typography>
-
-        <Alert severity="info" sx={{ mb: 1, '& .MuiAlert-message': { width: '100%' } }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            Formato esperado do arquivo CSV
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+            Opção 1: Upload de Arquivo
           </Typography>
-          <Typography variant="body2">
-            A primeira linha deve ser o cabeçalho com as colunas abaixo, nesta ordem, e cada linha seguinte é uma localidade. Separador: ponto e
-            vírgula (;) ou vírgula (,). Ao enviar um CSV válido, a tabela abaixo é preenchida automaticamente (substituindo as linhas atuais).
-          </Typography>
-          <Box
-            component="code"
-            sx={{ display: 'block', mt: 0.5, p: 0.75, bgcolor: 'action.hover', borderRadius: 1, fontSize: '0.75rem', wordBreak: 'break-word' }}
+          <IconButton
+            size="small"
+            aria-label="Ajuda sobre o formato do arquivo CSV"
+            onClick={() => setHelpOpen(true)}
+            sx={{ bgcolor: 'primary.main', color: 'common.white', '&:hover': { bgcolor: 'primary.dark' } }}
           >
-            {LOCALIDADES_CSV_HEADERS.join(';')}
-            <br />
-            {LOCALIDADES_CSV_EXAMPLE}
-          </Box>
-          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-            Estado: sigla da UF (ex.: SP) · Cidade: nome do município · Funcionários e turnos: números inteiros · Horários: HH:mm
-          </Typography>
-          <Button size="small" variant="text" onClick={downloadCsvTemplate} sx={{ mt: 0.5, px: 0 }}>
-            Baixar modelo CSV
-          </Button>
-        </Alert>
+            <IconHelp size={16} />
+          </IconButton>
+        </Stack>
+
+        <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Formato esperado do arquivo CSV</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              A primeira linha deve ser o cabeçalho com as colunas abaixo, nesta ordem, e cada linha seguinte é uma localidade. Separador: ponto e
+              vírgula (;) ou vírgula (,). Ao enviar um CSV válido, a tabela é preenchida automaticamente (substituindo as linhas atuais).
+            </Typography>
+            <Box
+              component="code"
+              sx={{ display: 'block', mt: 1, p: 0.75, bgcolor: 'action.hover', borderRadius: 1, fontSize: '0.75rem', wordBreak: 'break-word' }}
+            >
+              {LOCALIDADES_CSV_HEADERS.join(';')}
+              <br />
+              {LOCALIDADES_CSV_EXAMPLE}
+            </Box>
+            <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
+              Estado: sigla da UF (ex.: SP) · Cidade: nome do município · Funcionários e turnos: números inteiros · Horários: HH:mm
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button variant="contained" startIcon={<IconDownload size={16} />} onClick={downloadCsvTemplate}>
+              Baixar modelo CSV
+            </Button>
+            <Button variant="contained" onClick={() => setHelpOpen(false)}>
+              Fechar
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {csvFeedback && (
           <Alert severity={csvFeedback.severity} onClose={() => setCsvFeedback(null)} sx={{ mb: 1 }}>
@@ -569,7 +597,7 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
                   <IconButton
                     size="small"
                     aria-label="Remover localidade"
-                    onClick={() => handleRemoveLocalidade(index)}
+                    onClick={() => setIndiceParaExcluir(index)}
                     sx={{ bgcolor: 'primary.main', color: 'common.white', '&:hover': { bgcolor: 'primary.dark' } }}
                   >
                     <IconTrash size={16} />
@@ -581,6 +609,33 @@ export default function Step5SistemaGestao({ register, errors, watch, setValue }
         </Table>
       </TableContainer>
 
+      <Dialog open={indiceParaExcluir !== null} onClose={() => setIndiceParaExcluir(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirmar exclusão</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Tem certeza que deseja excluir
+            {indiceParaExcluir !== null && watchedLocalidades[indiceParaExcluir]?.nome
+              ? ` a localidade "${watchedLocalidades[indiceParaExcluir].nome}"`
+              : ' esta localidade'}
+            ? Esta ação não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setIndiceParaExcluir(null)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<IconTrash size={16} />}
+            onClick={() => {
+              if (indiceParaExcluir !== null) handleRemoveLocalidade(indiceParaExcluir);
+              setIndiceParaExcluir(null);
+            }}
+          >
+            Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* Mensagem de validação/confirmação */}
       {temArquivoSelecionado ? (
         <Typography variant="caption" sx={{ color: 'success.main', display: 'block', mt: 1, fontWeight: 500 }}>

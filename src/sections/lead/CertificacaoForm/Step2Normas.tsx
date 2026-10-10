@@ -12,6 +12,9 @@ import Stack from '@mui/material/Stack';
 // @third-party
 import { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'react-hook-form';
 
+// @project
+import Step6DadosEspecificos from './Step6DadosEspecificos';
+
 // @types
 import { CertificacaoStep2, CertificacaoStep1, CertificacaoStep3, CertificacaoStep4, CertificacaoStep5, CertificacaoStep6 } from '@/types/lead';
 
@@ -111,6 +114,9 @@ export default function Step2Normas({ register, errors, watch, setValue }: Step2
           inputProps={{ maxLength: 100 }}
         />
       )}
+
+      {/* Dados específicos das normas selecionadas */}
+      <Step6DadosEspecificos register={register} errors={errors} watch={watch} setValue={setValue} />
     </Stack>
   );
 }

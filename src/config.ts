@@ -36,6 +36,10 @@ export const LEAD_PROVIDER: ProviderType = ProviderType.ONC; // Testando integra
 
 export const LEAD_CERTIFICACAO_PROVIDER: ProviderType = ProviderType.ONC;
 
+/***************************  LEAD TREINAMENTO CONSTANT  ***************************/
+
+export const LEAD_TREINAMENTO_PROVIDER: ProviderType = ProviderType.ONC;
+
 /***************************  THEME ENUM  ***************************/
 
 export enum Themes {

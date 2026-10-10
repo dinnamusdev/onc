@@ -304,6 +304,7 @@ export interface CertificacaoFormData {
 
 // --- Treinamento ---
 export interface TreinamentoLinha {
+  id?: number;
   normaId: number | 'outra';
   outraNorma?: string;
   tipoTreinamentoId: number | 'outro';

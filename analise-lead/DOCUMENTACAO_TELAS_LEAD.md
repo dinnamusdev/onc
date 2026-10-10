@@ -1120,10 +1120,22 @@ export interface TreinamentoFormData {
 | Item | Observação |
 |------|-----------|
 | Figma | Designs mencionados nos docs mas não compartilhados. Usar `upede.com.br/business` como referência de layout multi-step |
-| Endpoints do backend | Definir URL e payload esperado para POST de lead, certificação e treinamento |
+| Endpoints do backend | CRUD de Lead, LeadCertificacoes e LeadTreinamentos documentados em `backend.url.txt`; a interface de treinamento usa as operações de listagem, busca, criação e atualização |
 | Chave reCAPTCHA | Site key pública do Google reCAPTCHA v2 |
 | URL Política de Privacidade | Já existe em `https://www.onccertificacao.com.br/politica-de-privacidade/` |
 | Tabelas do banco | Normas, Tipos de Treinamento, Formatos de Treinamento — confirmar schema e endpoint de leitura |
 | Token do link de e-mail | Mecanismo de token para que o link do e-mail abra o formulário complementar pré-identificado |
 | Status de inativação automática | Regra dos 30 dias + 3 follow-ups fica no backend; front apenas exibe dados |
-| Dashboard Comercial | Fora do escopo das telas de captação; será tela interna do painel admin |
+| Dashboard Comercial | A gestão de leads de treinamento fica em `/leads-treinamento`, separada das telas públicas de captação |
+
+## Gestão Interna de Leads de Treinamento
+
+**Rota:** `/leads-treinamento` (painel administrativo)
+
+A tela lista somente leads cujo tipo de proposta é Treinamento e permite pesquisar, filtrar por status, visualizar, criar e editar o cadastro base e os dados complementares, além de ativar/desativar leads. A criação interna cadastra o Lead e, em seguida, os dados complementares na API de treinamento.
+
+O cadastro complementar usa `GET /auth/api/LeadTreinamentos`, `GET /auth/api/LeadTreinamentos/GetLeadTreinamento?leadId=`, `POST /auth/api/LeadTreinamentos` e `PUT /auth/api/LeadTreinamentos?leadId=`. Os campos de empresa/participante e a lista de treinamentos são editados com os mesmos passos do formulário público. Os valores inteiros de `paraQuem` seguem a ordem Empresa (0) / Pessoa Física (1) exibida pelo formulário, pois o Swagger não nomeia esse enum.
+
+O Swagger não documenta operação DELETE para `LeadTreinamentos`; leads que já possuem dados complementares não podem ser excluídos pela tela para evitar deixar a solicitação sem vínculo. Leads ainda sem complemento podem ser excluídos pelo endpoint base de Lead.
+
+No fluxo público, o envio inicial cria o Lead e encaminha seu identificador ao formulário complementar. O envio final persiste os dados em `LeadTreinamentos` antes de exibir a página de agradecimento.

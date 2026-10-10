@@ -275,6 +275,44 @@
         }
       }
     },
+    "/auth/api/Lead/lead-by-cnpj": {
+      "get": {
+        "tags": [
+          "Lead"
+        ],
+        "parameters": [
+          {
+            "name": "cnpj",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/api/LeadCertificacoes": {
       "post": {
         "tags": [
@@ -388,17 +426,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                  "$ref": "#/components/schemas/LeadCertificacaoResponseDTOServiceResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                  "$ref": "#/components/schemas/LeadCertificacaoResponseDTOServiceResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                  "$ref": "#/components/schemas/LeadCertificacaoResponseDTOServiceResponse"
                 }
               }
             }
@@ -453,6 +491,191 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LeadCertificacaoServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/LeadTreinamentos": {
+      "post": {
+        "tags": [
+          "LeadTreinamentos"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoCreateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoCreateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoCreateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "LeadTreinamentos"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOListServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOListServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOListServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "LeadTreinamentos"
+        ],
+        "parameters": [
+          {
+            "name": "leadId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoUpdateRequestDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoUpdateRequestDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeadTreinamentoUpdateRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/LeadTreinamentos/GetLeadTreinamento": {
+      "get": {
+        "tags": [
+          "LeadTreinamentos"
+        ],
+        "parameters": [
+          {
+            "name": "leadTreinamentoId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "leadId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadTreinamentoResponseDTOServiceResponse"
                 }
               }
             }
@@ -881,6 +1104,223 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/auth/api/NormaEspecifico": {
+      "get": {
+        "tags": [
+          "NormaEspecifico"
+        ],
+        "parameters": [
+          {
+            "name": "normaId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOIEnumerableServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOIEnumerableServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOIEnumerableServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "NormaEspecifico"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoCreateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoCreateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoCreateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "NormaEspecifico"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoUpdateDTO"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoUpdateDTO"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NormaEspecificoUpdateDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "NormaEspecifico"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooleanServiceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/api/NormaEspecifico/by-id": {
+      "get": {
+        "tags": [
+          "NormaEspecifico"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NormaEspecificoResponseDTOServiceResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2566,6 +3006,33 @@
         },
         "additionalProperties": false
       },
+      "BooleanServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "EmailForNewPasswordDTO": {
         "required": [
           "email"
@@ -2690,6 +3157,10 @@
           "tipoProposta": {
             "$ref": "#/components/schemas/EnumTipoPropostaLead"
           },
+          "statusProposta": {
+            "type": "string",
+            "nullable": true
+          },
           "nomeContato": {
             "type": "string",
             "nullable": true
@@ -2730,6 +3201,9 @@
           },
           "certificacao": {
             "$ref": "#/components/schemas/LeadCertificacao"
+          },
+          "treinamento": {
+            "$ref": "#/components/schemas/LeadTreinamento"
           }
         },
         "additionalProperties": false
@@ -2807,6 +3281,22 @@
               "$ref": "#/components/schemas/Norma"
             },
             "nullable": true
+          },
+          "dadosEmpresa": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosEmpresa"
+          },
+          "dadosNegocio": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosNegocio"
+          },
+          "dadosSistemaGestao": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosSistemaGestao"
+          },
+          "normasPerguntas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoNormaEspecifico"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -2881,6 +3371,1169 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "normasPerguntas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoNormaEspecificoCreateDTO"
+            },
+            "nullable": true
+          },
+          "dadosEmpresa": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosEmpresaCreateDTO"
+          },
+          "dadosNegocio": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosNegocioCreateDTO"
+          },
+          "dadosSistemaGestao": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosSistemaGestaoCreateDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosEmpresa": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "cnpj": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefoneEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadCertificacao": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosEmpresaCreateDTO": {
+        "required": [
+          "bairro",
+          "cep",
+          "cidade",
+          "cnpj",
+          "emailEmpresa",
+          "endereco",
+          "estado",
+          "numero",
+          "razaoSocial",
+          "setorEmpresa",
+          "telefoneEmpresa"
+        ],
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "telefoneEmpresa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "endereco": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "numero": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cep": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cidade": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "estado": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosEmpresaResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cnpj": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefoneEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosEmpresaUpdateDTO": {
+        "required": [
+          "bairro",
+          "cep",
+          "cidade",
+          "cnpj",
+          "emailEmpresa",
+          "endereco",
+          "estado",
+          "numero",
+          "razaoSocial",
+          "setorEmpresa",
+          "telefoneEmpresa"
+        ],
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "telefoneEmpresa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "endereco": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "numero": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cep": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cidade": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "estado": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosNegocio": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "produtosServicos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisProcessos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisObrigacoesLegais": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCertificada": {
+            "type": "boolean"
+          },
+          "descricaoCertificacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isResponsavelProjeto": {
+            "type": "boolean"
+          },
+          "isTerceirizaProcesso": {
+            "type": "boolean"
+          },
+          "descricaoProcessosTerceirizados": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadCertificacao": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosNegocioCreateDTO": {
+        "required": [
+          "descricaoCertificacoes",
+          "isCertificada",
+          "isResponsavelProjeto",
+          "isTerceirizaProcesso",
+          "principaisProcessos",
+          "produtosServicos"
+        ],
+        "type": "object",
+        "properties": {
+          "produtosServicos": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string"
+          },
+          "principaisProcessos": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string"
+          },
+          "principaisObrigacoesLegais": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "isCertificada": {
+            "type": "boolean"
+          },
+          "descricaoCertificacoes": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string"
+          },
+          "isResponsavelProjeto": {
+            "type": "boolean"
+          },
+          "isTerceirizaProcesso": {
+            "type": "boolean"
+          },
+          "descricaoProcessosTerceirizados": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosNegocioResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "produtosServicos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisProcessos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisObrigacoesLegais": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCertificada": {
+            "type": "boolean"
+          },
+          "descricaoCertificacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isResponsavelProjeto": {
+            "type": "boolean"
+          },
+          "isTerceirizaProcesso": {
+            "type": "boolean"
+          },
+          "descricaoProcessosTerceirizados": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosNegocioUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "produtosServicos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisProcessos": {
+            "type": "string",
+            "nullable": true
+          },
+          "principaisObrigacoesLegais": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCertificada": {
+            "type": "boolean"
+          },
+          "descricaoCertificacoes": {
+            "type": "string",
+            "nullable": true
+          },
+          "isResponsavelProjeto": {
+            "type": "boolean"
+          },
+          "isTerceirizaProcesso": {
+            "type": "boolean"
+          },
+          "descricaoProcessosTerceirizados": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosSistemaGestao": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "grauImplementacao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grauIntegracao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cobreTodasLocalidades": {
+            "type": "boolean"
+          },
+          "utilizaConsultoria": {
+            "type": "boolean"
+          },
+          "nomeConsultoria": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeConsultor": {
+            "type": "string",
+            "nullable": true
+          },
+          "certificacaoAcreditada": {
+            "type": "boolean"
+          },
+          "escopo": {
+            "type": "string",
+            "nullable": true
+          },
+          "funcionariosEmCliente": {
+            "type": "boolean"
+          },
+          "descricaoClientes": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadCertificacao": {
+            "$ref": "#/components/schemas/LeadCertificacao"
+          },
+          "localidades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoLocalidade"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosSistemaGestaoCreateDTO": {
+        "required": [
+          "certificacaoAcreditada",
+          "cobreTodasLocalidades",
+          "funcionariosEmCliente",
+          "grauImplementacao",
+          "grauIntegracao",
+          "utilizaConsultoria"
+        ],
+        "type": "object",
+        "properties": {
+          "grauImplementacao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grauIntegracao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cobreTodasLocalidades": {
+            "type": "boolean"
+          },
+          "utilizaConsultoria": {
+            "type": "boolean"
+          },
+          "nomeConsultoria": {
+            "maxLength": 150,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "nomeConsultor": {
+            "maxLength": 150,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "certificacaoAcreditada": {
+            "type": "boolean"
+          },
+          "escopo": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "funcionariosEmCliente": {
+            "type": "boolean"
+          },
+          "descricaoClientes": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "localidades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoLocalidadeCreateDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosSistemaGestaoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "grauImplementacao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "grauIntegracao": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cobreTodasLocalidades": {
+            "type": "boolean"
+          },
+          "utilizaConsultoria": {
+            "type": "boolean"
+          },
+          "nomeConsultoria": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeConsultor": {
+            "type": "string",
+            "nullable": true
+          },
+          "certificacaoAcreditada": {
+            "type": "boolean"
+          },
+          "escopo": {
+            "type": "string",
+            "nullable": true
+          },
+          "funcionariosEmCliente": {
+            "type": "boolean"
+          },
+          "descricaoClientes": {
+            "type": "string",
+            "nullable": true
+          },
+          "localidades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoLocalidadeResponseDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoDadosSistemaGestaoUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "grauImplementacao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "grauIntegracao": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "cobreTodasLocalidades": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "utilizaConsultoria": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "nomeConsultoria": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeConsultor": {
+            "type": "string",
+            "nullable": true
+          },
+          "certificacaoAcreditada": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "escopo": {
+            "type": "string",
+            "nullable": true
+          },
+          "funcionariosEmCliente": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "descricaoClientes": {
+            "type": "string",
+            "nullable": true
+          },
+          "localidades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoLocalidadeUpdateDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoLocalidade": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadCertificacaoDadosSistemaGestaoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "nome": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "atividade": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalFuncionarios": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosAdm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosOp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "numeroDeTurnos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "horarioInicio": {
+            "type": "string",
+            "nullable": true
+          },
+          "horarioTermino": {
+            "type": "string",
+            "nullable": true
+          },
+          "dadosSistemaGestao": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosSistemaGestao"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoLocalidadeCreateDTO": {
+        "required": [
+          "atividade",
+          "cidade",
+          "estado",
+          "funcionariosAdm",
+          "funcionariosOp",
+          "horarioInicio",
+          "horarioTermino",
+          "nome",
+          "numeroDeTurnos",
+          "totalFuncionarios"
+        ],
+        "type": "object",
+        "properties": {
+          "nome": {
+            "maxLength": 150,
+            "minLength": 2,
+            "type": "string"
+          },
+          "estado": {
+            "maxLength": 2,
+            "minLength": 2,
+            "type": "string"
+          },
+          "cidade": {
+            "maxLength": 100,
+            "minLength": 2,
+            "type": "string"
+          },
+          "atividade": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string"
+          },
+          "totalFuncionarios": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosAdm": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosOp": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "numeroDeTurnos": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "horarioInicio": {
+            "maxLength": 8,
+            "minLength": 0,
+            "type": "string"
+          },
+          "horarioTermino": {
+            "maxLength": 8,
+            "minLength": 0,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoLocalidadeResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadCertificacaoDadosSistemaGestaoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nome": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "atividade": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalFuncionarios": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosAdm": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "funcionariosOp": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "numeroDeTurnos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "horarioInicio": {
+            "type": "string",
+            "nullable": true
+          },
+          "horarioTermino": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoLocalidadeUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "nome": {
+            "maxLength": 150,
+            "minLength": 2,
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "maxLength": 2,
+            "minLength": 2,
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "maxLength": 100,
+            "minLength": 2,
+            "type": "string",
+            "nullable": true
+          },
+          "atividade": {
+            "maxLength": 255,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "totalFuncionarios": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "funcionariosAdm": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "funcionariosOp": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "numeroDeTurnos": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "horarioInicio": {
+            "maxLength": 8,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "horarioTermino": {
+            "maxLength": 8,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoNormaEspecifico": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadCertificacaoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "perguntas": {
+            "type": "string",
+            "nullable": true
+          },
+          "ux": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoNormaEspecificoCreateDTO": {
+        "required": [
+          "normaId",
+          "perguntas"
+        ],
+        "type": "object",
+        "properties": {
+          "normaId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "perguntas": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoNormaEspecificoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "perguntas": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoNormaEspecificoUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "perguntas": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "tipoCertificacao": {
+            "$ref": "#/components/schemas/EnumTipoCertificacao"
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "normas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormaResponseDTO"
+            },
+            "nullable": true
+          },
+          "normasPerguntas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoNormaEspecificoResponseDTO"
+            },
+            "nullable": true
+          },
+          "certificadosTransferencias": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoTransferenciaResponseDTO"
+            },
+            "nullable": true
+          },
+          "dadosEmpresa": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosEmpresaResponseDTO"
+          },
+          "dadosNegocio": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosNegocioResponseDTO"
+          },
+          "dadosSistemaGestao": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosSistemaGestaoResponseDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoResponseDTOServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeadCertificacaoResponseDTO"
           }
         },
         "additionalProperties": false
@@ -2953,6 +4606,25 @@
           "validadeCertificado": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadCertificacaoTransferenciaResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "numeroCertificado": {
+            "type": "string",
+            "nullable": true
+          },
+          "validadeCertificado": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -3039,12 +4711,28 @@
             },
             "nullable": true
           },
+          "normasPerguntas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadCertificacaoNormaEspecificoUpdateDTO"
+            },
+            "nullable": true
+          },
           "certificadosTransferencias": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LeadCertificacaoTransferenciaUpdateDTO"
             },
             "nullable": true
+          },
+          "dadosEmpresa": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosEmpresaUpdateDTO"
+          },
+          "dadosNegocio": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosNegocioUpdateDTO"
+          },
+          "dadosSistemaGestao": {
+            "$ref": "#/components/schemas/LeadCertificacaoDadosSistemaGestaoUpdateDTO"
           }
         },
         "additionalProperties": false
@@ -3069,6 +4757,10 @@
           },
           "tipoProposta": {
             "$ref": "#/components/schemas/EnumTipoPropostaLead"
+          },
+          "statusProposta": {
+            "type": "string",
+            "nullable": true
           },
           "empresa": {
             "minLength": 1,
@@ -3191,6 +4883,1104 @@
         },
         "additionalProperties": false
       },
+      "LeadTreinamento": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "paraQuem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "participante": {
+            "$ref": "#/components/schemas/LeadTreinamentoParticipante"
+          },
+          "empresa": {
+            "$ref": "#/components/schemas/LeadTreinamentoDadosEmpresa"
+          },
+          "treinamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadTreinamentoDadosTreinamento"
+            },
+            "nullable": true
+          },
+          "isAceitaTermos": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "lead": {
+            "$ref": "#/components/schemas/Lead"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoCreateDTO": {
+        "required": [
+          "cargo",
+          "email",
+          "isAceitaPoliticaPrivacidade",
+          "isAceitaTermos",
+          "leadId",
+          "nomeContato",
+          "paraQuem",
+          "telefone"
+        ],
+        "type": "object",
+        "properties": {
+          "leadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paraQuem": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cargo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "participante": {
+            "$ref": "#/components/schemas/LeadTreinamentoParticipanteCreateDTO"
+          },
+          "empresa": {
+            "$ref": "#/components/schemas/LeadTreinamentoDadosEmpresaCreateDTO"
+          },
+          "treinamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadTreinamentoDadosTreinamentoCreateDTO"
+            },
+            "nullable": true
+          },
+          "isAceitaTermos": {
+            "type": "boolean"
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosEmpresa": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "cnpj": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefoneEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadTreinamento": {
+            "$ref": "#/components/schemas/LeadTreinamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosEmpresaCreateDTO": {
+        "required": [
+          "bairro",
+          "cep",
+          "cidade",
+          "cnpj",
+          "emailEmpresa",
+          "endereco",
+          "estado",
+          "numero",
+          "razaoSocial",
+          "setorEmpresa",
+          "telefoneEmpresa"
+        ],
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "telefoneEmpresa": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "endereco": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "numero": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cep": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cidade": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "estado": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosEmpresaResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cnpj": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefoneEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosEmpresaUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "razaoSocial": {
+            "type": "string",
+            "nullable": true
+          },
+          "setorEmpresa": {
+            "$ref": "#/components/schemas/EnumSetorEmpresa"
+          },
+          "emailEmpresa": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "telefoneEmpresa": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosTreinamento": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outraNorma": {
+            "type": "string",
+            "nullable": true
+          },
+          "tipoTreinamentoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outroTipoTreinamento": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalParticipantes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "formatoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dataPrevista": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "leadTreinamento": {
+            "$ref": "#/components/schemas/LeadTreinamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosTreinamentoCreateDTO": {
+        "required": [
+          "dataPrevista",
+          "formatoId",
+          "totalParticipantes"
+        ],
+        "type": "object",
+        "properties": {
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outraNorma": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "tipoTreinamentoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outroTipoTreinamento": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "totalParticipantes": {
+            "maximum": 999,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "formatoId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dataPrevista": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosTreinamentoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outraNorma": {
+            "type": "string",
+            "nullable": true
+          },
+          "tipoTreinamentoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outroTipoTreinamento": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalParticipantes": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "formatoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dataPrevista": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoDadosTreinamentoUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outraNorma": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "tipoTreinamentoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "outroTipoTreinamento": {
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string",
+            "nullable": true
+          },
+          "totalParticipantes": {
+            "maximum": 999,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "formatoId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dataPrevista": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoParticipante": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "nomeCompleto": {
+            "type": "string",
+            "nullable": true
+          },
+          "cpf": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresaOndeTrabalha": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "leadTreinamento": {
+            "$ref": "#/components/schemas/LeadTreinamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoParticipanteCreateDTO": {
+        "required": [
+          "bairro",
+          "cep",
+          "cidade",
+          "cpf",
+          "dataNascimento",
+          "email",
+          "endereco",
+          "estado",
+          "nomeCompleto",
+          "numero",
+          "telefone"
+        ],
+        "type": "object",
+        "properties": {
+          "nomeCompleto": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cpf": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "email": {
+            "minLength": 1,
+            "type": "string",
+            "format": "email"
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "telefone": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "numero": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cep": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "cidade": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "estado": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "empresaOndeTrabalha": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoParticipanteResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadTreinamentoId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "nomeCompleto": {
+            "type": "string",
+            "nullable": true
+          },
+          "cpf": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresaOndeTrabalha": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoParticipanteUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "nomeCompleto": {
+            "type": "string",
+            "nullable": true
+          },
+          "cpf": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "endereco": {
+            "type": "string",
+            "nullable": true
+          },
+          "numero": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          },
+          "bairro": {
+            "type": "string",
+            "nullable": true
+          },
+          "cep": {
+            "type": "string",
+            "nullable": true
+          },
+          "cidade": {
+            "type": "string",
+            "nullable": true
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "empresaOndeTrabalha": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "leadId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "paraQuem": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "participante": {
+            "$ref": "#/components/schemas/LeadTreinamentoParticipanteResponseDTO"
+          },
+          "empresa": {
+            "$ref": "#/components/schemas/LeadTreinamentoDadosEmpresaResponseDTO"
+          },
+          "treinamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadTreinamentoDadosTreinamentoResponseDTO"
+            },
+            "nullable": true
+          },
+          "isAceitaTermos": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoResponseDTOListServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadTreinamentoResponseDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoResponseDTOServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LeadTreinamentoResponseDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeadTreinamentoUpdateRequestDTO": {
+        "required": [
+          "paraQuem"
+        ],
+        "type": "object",
+        "properties": {
+          "paraQuem": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ondeNosConheceu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nomeContato": {
+            "type": "string",
+            "nullable": true
+          },
+          "cargo": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "nullable": true
+          },
+          "dataNascimento": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "telefone": {
+            "type": "string",
+            "nullable": true
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true
+          },
+          "participante": {
+            "$ref": "#/components/schemas/LeadTreinamentoParticipanteUpdateDTO"
+          },
+          "empresa": {
+            "$ref": "#/components/schemas/LeadTreinamentoDadosEmpresaUpdateDTO"
+          },
+          "treinamentos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LeadTreinamentoDadosTreinamentoUpdateDTO"
+            },
+            "nullable": true
+          },
+          "isAceitaTermos": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "isAceitaPoliticaPrivacidade": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "LoginRequestEmail": {
         "required": [
           "email",
@@ -3229,6 +6019,140 @@
         "additionalProperties": false
       },
       "Norma": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sigla": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaEspecificoCreateDTO": {
+        "required": [
+          "normaId",
+          "pergunta"
+        ],
+        "type": "object",
+        "properties": {
+          "normaId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pergunta": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string"
+          },
+          "ux": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaEspecificoResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "normaId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pergunta": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaEspecificoResponseDTOIEnumerableServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NormaEspecificoResponseDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaEspecificoResponseDTOServiceResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "$ref": "#/components/schemas/HttpStatusCode"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "success": {
+            "type": "boolean",
+            "readOnly": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/NormaEspecificoResponseDTO"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaEspecificoUpdateDTO": {
+        "type": "object",
+        "properties": {
+          "normaId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "pergunta": {
+            "maxLength": 500,
+            "minLength": 3,
+            "type": "string",
+            "nullable": true
+          },
+          "ux": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NormaResponseDTO": {
         "type": "object",
         "properties": {
           "id": {

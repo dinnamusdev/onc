@@ -141,14 +141,13 @@ export default function Step1TipoSolicitante({ register, errors, watch, setValue
               </Grid>
               <Grid size={{ xs: 12, sm: 3 }}>
                 {index === 0 ? (
-                  <Button variant="outlined" size="small" fullWidth onClick={handleAddCertificado} sx={{ height: '40px' }}>
+                  <Button variant="contained" size="small" fullWidth onClick={handleAddCertificado} sx={{ height: '40px' }}>
                     + Adicionar
                   </Button>
                 ) : (
                   <Button
-                    variant="outlined"
+                    variant="contained"
                     size="small"
-                    color="error"
                     fullWidth
                     onClick={() => handleRemoveCertificado(index)}
                     sx={{ height: '40px' }}

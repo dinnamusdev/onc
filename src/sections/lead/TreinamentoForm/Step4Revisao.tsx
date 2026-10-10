@@ -78,11 +78,11 @@ export default function Step4Revisao({ register, errors, watch, onEdit }: Step4R
       </Typography>
 
       {/* ACORDEÃO 1: Tipo e Solicitante */}
-      <Accordion defaultExpanded>
+      <Accordion defaultExpanded sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>TIPO E SOLICITANTE</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(0)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(0)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -137,13 +137,13 @@ export default function Step4Revisao({ register, errors, watch, onEdit }: Step4R
       </Accordion>
 
       {/* ACORDEÃO 2: Dados da Empresa ou Participante */}
-      <Accordion defaultExpanded>
+      <Accordion defaultExpanded sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
               {paraQuem === 'empresa' ? 'DADOS DA EMPRESA' : 'DADOS DO PARTICIPANTE'}
             </Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(1)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(1)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -240,11 +240,11 @@ export default function Step4Revisao({ register, errors, watch, onEdit }: Step4R
       </Accordion>
 
       {/* ACORDEÃO 3: Treinamentos */}
-      <Accordion defaultExpanded>
+      <Accordion defaultExpanded sx={{ border: '1.5px solid', borderColor: 'rgba(102, 0, 0, 0.55)', borderRadius: 1, boxShadow: 'none', '&:before': { display: 'none' } }}>
         <AccordionSummary expandIcon={<IconChevronDown size={20} />}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 2 }}>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>TREINAMENTOS</Typography>
-            <Button size="small" variant="outlined" onClick={() => onEdit(2)} startIcon={<IconEdit size={16} />}>
+            <Button size="small" variant="contained" onClick={() => onEdit(2)} startIcon={<IconEdit size={16} />}>
               Editar
             </Button>
           </Box>
@@ -313,8 +313,6 @@ export default function Step4Revisao({ register, errors, watch, onEdit }: Step4R
           }
         />
         {errors.aceitaPoliticaPrivacidade && <FormHelperText error>{errors.aceitaPoliticaPrivacidade.message}</FormHelperText>}
-
-        {/* TODO: Integrar reCAPTCHA aqui */}
       </Stack>
     </Stack>
   );

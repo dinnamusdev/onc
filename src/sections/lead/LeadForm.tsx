@@ -3,7 +3,7 @@
 // @next
 import { useRouter } from 'next/navigation';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
 // @mui
 import Alert from '@mui/material/Alert';
@@ -26,6 +26,8 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 
 // @project
 import { createLead, checkEmailExists } from '@/utils/api/lead';
+import { verifyRecaptcha } from '@/utils/api/recaptcha';
+import Recaptcha, { RecaptchaHandle, RECAPTCHA_SITE_KEY } from '@/components/Recaptcha';
 import { emailSchema } from '@/utils/validation-schema/common';
 import { formatPhone } from '@/utils/format';
 
@@ -39,6 +41,8 @@ export default function LeadForm() {
 
   const [isProcessing, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState('');
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<RecaptchaHandle>(null);
   const [emailAlert, setEmailAlert] = useState<{ show: boolean; hasExistingLead: boolean }>({ show: false, hasExistingLead: false });
 
   // Initialize react-hook-form
@@ -100,14 +104,36 @@ export default function LeadForm() {
     setSubmitError('');
     setEmailAlert({ show: false, hasExistingLead: false });
 
+    if (RECAPTCHA_SITE_KEY && !recaptchaToken) {
+      setSubmitError('Confirme que você não é um robô.');
+      return;
+    }
+
     startTransition(async () => {
-      const { error } = await createLead(formData);
-      if (error) {
-        setSubmitError(error || 'Algo deu errado ao enviar a solicitação');
+      const captcha = await verifyRecaptcha(recaptchaToken);
+      if (captcha.error) {
+        setSubmitError(captcha.error);
+        recaptchaRef.current?.reset();
         return;
       }
 
-      // Redirect to thank you page
+      const { data, error } = await createLead(formData);
+      if (error) {
+        setSubmitError(error || 'Algo deu errado ao enviar a solicitação');
+        recaptchaRef.current?.reset();
+        return;
+      }
+
+      if (!data) {
+        setSubmitError('A API não retornou os dados do lead criado. Tente novamente.');
+        return;
+      }
+
+      if (formData.tipoProposta === 'treinamento') {
+        router.push(`/solicitar-proposta/treinamento?leadId=${data.id}`);
+        return;
+      }
+
       router.push('/solicitar-proposta/obrigado');
     });
   };
@@ -267,17 +293,17 @@ export default function LeadForm() {
           <Alert severity="warning" variant="filled">
             Você já possui um cadastro no ONC.
             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-              <Button size="small" variant="outlined" color="inherit" onClick={() => handleAlertAction('new')}>
+              <Button size="small" variant="contained" onClick={() => handleAlertAction('new')}>
                 Iniciar nova solicitação
               </Button>
-              <Button size="small" variant="outlined" color="inherit" onClick={() => handleAlertAction('commercial')}>
+              <Button size="small" variant="contained" onClick={() => handleAlertAction('commercial')}>
                 Solicitar contato do Comercial
               </Button>
             </Stack>
           </Alert>
         )}
 
-        {/* reCAPTCHA placeholder e Privacy Policy Checkbox */}
+        {/* Privacy Policy Checkbox e reCAPTCHA */}
         <Grid container spacing={2} alignItems="flex-start">
           <Grid size={{ xs: 12, sm: 8 }}>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -298,11 +324,7 @@ export default function LeadForm() {
             )}
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                [reCAPTCHA — Não sou um robô]
-              </Typography>
-            </Box>
+            <Recaptcha ref={recaptchaRef} onChange={setRecaptchaToken} />
           </Grid>
         </Grid>
 
